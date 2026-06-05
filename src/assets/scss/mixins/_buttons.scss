@@ -1,0 +1,27 @@
+@use '../settings/variables' as *;
+@use '../settings/font-size' as *;
+
+@mixin button-primary {
+  background-color: $color-primary;
+  color: $color-surface;
+  border: none;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $border-radius-sm;
+  font-size: $font-size-base;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: $spacing-xs;
+
+  &:hover {
+    background-color: $color-primary-hover;
+  }
+
+  &:disabled {
+    background-color: $color-disabled;
+    cursor: not-allowed;
+  }
+}
