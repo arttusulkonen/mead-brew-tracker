@@ -16,32 +16,38 @@ const Profile: React.FC = () => {
 
   const [newBreweryName, setNewBreweryName] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogout = async () => {
-    if (!auth) return;
     try {
       await signOut(auth);
       navigate('/register');
-    } catch (error) {
-      return;
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || t('An error occurred during logout'));
     }
   };
 
   const handleCreateBrewery = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newBreweryName || !user?.uid) return;
+    const trimmedName = newBreweryName.trim();
+    if (!trimmedName || !user?.uid) return;
 
     setIsLoading(true);
+    setError(null);
     try {
-      const newBrewery = await createSharedBrewery(user.uid, newBreweryName);
+      const newBrewery = await createSharedBrewery(user.uid, trimmedName);
       if (newBrewery) {
         const updatedBreweries = [...breweries, newBrewery];
         setBreweries(updatedBreweries);
         setActiveBrewery(newBrewery);
         setNewBreweryName('');
+      } else {
+        setError(t('Failed to create brewery'));
       }
-    } catch (error) {
-      return;
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || t('An unknown error occurred'));
     } finally {
       setIsLoading(false);
     }
@@ -61,6 +67,8 @@ const Profile: React.FC = () => {
         <h1>{t('Profile')}</h1>
         <p>{user?.email}</p>
       </div>
+
+      {error && <div className="error-message" style={{ backgroundColor: '#ffe6e6', color: '#d93025', padding: '0.75rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</div>}
 
       <h2 className="section-title">{t('My Breweries')}</h2>
       
@@ -100,7 +108,7 @@ const Profile: React.FC = () => {
             required
           />
         </div>
-        <button type="submit" className="btn-submit" disabled={isLoading || !newBreweryName}>
+        <button type="submit" className="btn-submit" disabled={isLoading || !newBreweryName.trim()}>
           {isLoading ? t('Creating...') : t('Create')}
         </button>
       </form>

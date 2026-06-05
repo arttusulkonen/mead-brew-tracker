@@ -12,28 +12,25 @@ import { useAuthStore } from './store/useAuthStore';
 import { useBreweryStore } from './store/useBreweryStore';
 
 const App: React.FC = () => {
-  const { setUser, setLoading } = useAuthStore();
+  const { user, setUser, setLoading } = useAuthStore();
   const { setBreweries, setActiveBrewery } = useBreweryStore();
   const { t } = useTranslation();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       try {
-        setUser(user);
+        setUser(currentUser);
         
-        if (user?.uid) {
-          const userBreweries = await getUserBreweries(user.uid);
+        if (currentUser?.uid) {
+          const userBreweries = await getUserBreweries(currentUser.uid);
           setBreweries(userBreweries);
-          
-          if (userBreweries.length > 0) {
-            setActiveBrewery(userBreweries[0]);
-          }
+          setActiveBrewery(userBreweries.length > 0 ? userBreweries[0] : null);
         } else {
           setBreweries([]);
           setActiveBrewery(null);
         }
       } catch (error) {
-        console.error("Ошибка загрузки данных профиля:", error);
+        console.error(error);
       } finally {
         setLoading(false);
       }
@@ -45,7 +42,7 @@ const App: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/register" element={<Register />} />
+        <Route path="/register" element={user ? <Navigate to="/home" replace /> : <Register />} />
         
         <Route element={<AppLayout />}>
           <Route path="/home" element={<Home />} />

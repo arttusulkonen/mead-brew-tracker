@@ -1,5 +1,5 @@
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -43,7 +43,7 @@ const Register: React.FC = () => {
       if (user?.uid) {
         await setDoc(doc(db, 'users', user.uid), {
           email: user.email,
-          createdAt: new Date().toISOString(),
+          createdAt: serverTimestamp(),
         });
 
         const personalBrewery = await createPersonalBrewery(user.uid, user.email);

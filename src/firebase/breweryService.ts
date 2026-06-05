@@ -5,11 +5,11 @@ import { db } from './config';
 export const createPersonalBrewery = async (userId: string | null | undefined, userEmail: string | null | undefined): Promise<Brewery | null> => {
   if (!userId) return null;
   
-  const breweryId = `personal_${userId}`;
+  const breweryRef = doc(collection(db, 'breweries'));
   const name = userEmail ? userEmail.split('@')[0] : 'Personal';
   
   const newBrewery: Brewery = {
-    id: breweryId,
+    id: breweryRef.id,
     name: name,
     ownerId: userId,
     members: [userId],
@@ -17,9 +17,10 @@ export const createPersonalBrewery = async (userId: string | null | undefined, u
   };
 
   try {
-    await setDoc(doc(db, 'breweries', breweryId), newBrewery);
+    await setDoc(breweryRef, newBrewery);
     return newBrewery;
   } catch (error) {
+    console.error(error);
     return null;
   }
 };
@@ -35,12 +36,13 @@ export const getUserBreweries = async (userId: string | null | undefined): Promi
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
       if (data) {
-        breweries.push(data as Brewery);
+        breweries.push({ ...data, id: docSnap.id } as Brewery);
       }
     });
     
     return breweries;
   } catch (error) {
+    console.error(error);
     return [];
   }
 };
@@ -48,10 +50,10 @@ export const getUserBreweries = async (userId: string | null | undefined): Promi
 export const createSharedBrewery = async (userId: string | null | undefined, name: string | null | undefined): Promise<Brewery | null> => {
   if (!userId || !name) return null;
 
-  const breweryId = `shared_${Date.now()}_${userId}`;
+  const breweryRef = doc(collection(db, 'breweries'));
 
   const newBrewery: Brewery = {
-    id: breweryId,
+    id: breweryRef.id,
     name: name,
     ownerId: userId,
     members: [userId],
@@ -59,9 +61,10 @@ export const createSharedBrewery = async (userId: string | null | undefined, nam
   };
 
   try {
-    await setDoc(doc(db, 'breweries', breweryId), newBrewery);
+    await setDoc(breweryRef, newBrewery);
     return newBrewery;
   } catch (error) {
+    console.error(error);
     return null;
   }
 };
