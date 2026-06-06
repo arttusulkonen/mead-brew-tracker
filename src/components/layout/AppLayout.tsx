@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
-import BottomNav from './BottomNav';
+import Navigation from './Navigation';
 
 export const AppLayout: React.FC = () => {
   const { user, isLoading } = useAuthStore();
@@ -16,10 +16,10 @@ export const AppLayout: React.FC = () => {
 
   return (
     <div className="app-layout">
+      <Navigation />
       <main className="main-content">
         <Outlet />
       </main>
-      <BottomNav />
     </div>
   );
 };

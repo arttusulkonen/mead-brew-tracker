@@ -12,13 +12,10 @@ body {
   background-color: $color-bg;
   color: $color-text-main;
   -webkit-font-smoothing: antialiased;
-  display: flex;
-  justify-content: center;
 }
 
 #root {
   width: 100%;
-  max-width: 600px;
   min-height: 100vh;
   background-color: $color-surface;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);

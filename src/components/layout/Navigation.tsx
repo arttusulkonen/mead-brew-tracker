@@ -3,11 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { FaBook, FaChartLine, FaFlask, FaHome, FaUser } from 'react-icons/fa';
 import { NavLink } from 'react-router-dom';
 
-const BottomNav: React.FC = () => {
+const Navigation: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <nav className="bottom-nav">
+    <nav className="main-nav">
       <NavLink to="/home" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
         <FaHome className="icon" />
         <span>{t('Home')}</span>
@@ -32,4 +32,4 @@ const BottomNav: React.FC = () => {
   );
 };
 
-export default BottomNav;
+export default Navigation;

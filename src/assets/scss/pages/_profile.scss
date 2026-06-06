@@ -5,7 +5,9 @@
 
 
 .profile-container {
-  padding: $spacing-md;
+ padding: $spacing-md;
+  max-width: 800px; 
+  margin: 0 auto; 
 
   .profile-header {
     margin-bottom: $spacing-xl;
@@ -76,6 +78,41 @@
         &:hover {
           background: $color-primary;
           color: $color-surface;
+        }
+      }
+
+      .card-actions {
+        display: flex;
+        gap: $spacing-xs;
+        margin-top: $spacing-sm;
+
+        button {
+          padding: 6px 12px;
+          border-radius: $border-radius-sm;
+          font-size: 0.75rem;
+          font-weight: 600;
+          cursor: pointer;
+          border: none;
+        }
+
+        .btn-switch {
+          background: transparent;
+          border: 1px solid $color-primary;
+          color: $color-primary;
+          &:hover { background: $color-primary; color: $color-surface; }
+        }
+
+        .btn-invite {
+          background: #e2e8f0;
+          color: $color-text-main;
+          &:hover { background: #cbd5e1; }
+        }
+
+        .btn-delete {
+          background: transparent;
+          border: 1px solid $color-error-text;
+          color: $color-error-text;
+          &:hover { background: $color-error-bg; }
         }
       }
     }

@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
-import { getUserBreweries } from './firebase/breweryService';
+import { getUserBreweries, processPendingInvites } from './firebase/breweryService';
 import { auth } from './firebase/config';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
@@ -22,6 +22,12 @@ const App: React.FC = () => {
         setUser(currentUser);
         
         if (currentUser?.uid) {
+          // Сначала проверяем и принимаем новые инвайты
+          if (currentUser.email) {
+            await processPendingInvites(currentUser.uid, currentUser.email);
+          }
+
+          // Затем скачиваем актуальный список пивоварен
           const userBreweries = await getUserBreweries(currentUser.uid);
           setBreweries(userBreweries);
           setActiveBrewery(userBreweries.length > 0 ? userBreweries[0] : null);

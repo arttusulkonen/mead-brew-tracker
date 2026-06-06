@@ -5,6 +5,7 @@ export interface Brewery {
   name: string;
   ownerId: string;
   members: string[];
+  invitedEmails: string[];
   isPersonal: boolean;
 }
 
