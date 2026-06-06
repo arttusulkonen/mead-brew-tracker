@@ -22,15 +22,23 @@ const App: React.FC = () => {
         setUser(currentUser);
         
         if (currentUser?.uid) {
-          // Сначала проверяем и принимаем новые инвайты
           if (currentUser.email) {
             await processPendingInvites(currentUser.uid, currentUser.email);
           }
 
-          // Затем скачиваем актуальный список пивоварен
           const userBreweries = await getUserBreweries(currentUser.uid);
           setBreweries(userBreweries);
-          setActiveBrewery(userBreweries.length > 0 ? userBreweries[0] : null);
+          
+          const currentActiveId = useBreweryStore.getState().activeBreweryId;
+          const freshActiveBrewery = userBreweries.find(b => b.id === currentActiveId);
+          
+          if (freshActiveBrewery) {
+            setActiveBrewery(freshActiveBrewery);
+          } else if (userBreweries.length > 0) {
+            setActiveBrewery(userBreweries[0]);
+          } else {
+            setActiveBrewery(null);
+          }
         } else {
           setBreweries([]);
           setActiveBrewery(null);

@@ -1,19 +1,28 @@
 import i18n from 'i18next';
+import LanguageDetector from 'i18next-browser-languagedetector';
+import HttpBackend from 'i18next-http-backend';
 import { initReactI18next } from 'react-i18next';
+import langsConfig from '../languages.json';
 
 i18n
+  .use(HttpBackend)
+  .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    resources: {
-      en: { translation: {} },
-      ru: { translation: {} },
-      fi: { translation: {} },
-      ko: { translation: {} },
+    fallbackLng: langsConfig.fallbackLng,
+    supportedLngs: langsConfig.supportedLngs,
+    
+    detection: {
+      order: ['localStorage', 'cookie', 'navigator'],
+      caches: ['localStorage'],
     },
-    lng: 'ru', 
-    fallbackLng: 'en',
+
+    backend: {
+      loadPath: '/locales/{{lng}}/translation.json',
+    },
+
     interpolation: {
-      escapeValue: false, 
+      escapeValue: false,
     },
   });
 

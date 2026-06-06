@@ -1,7 +1,8 @@
 @use '../settings/variables' as *;
+@use '../settings/font-family' as *;
+@use '../settings/font-size' as *;
 @use '../mixins/typography' as *;
 @use '../mixins/buttons' as *;
-@use '../settings/font-size' as *;
 
 .profile-container {
   padding: $spacing-md;
@@ -20,13 +21,39 @@
   .profile-header {
     margin-bottom: $spacing-xl;
 
-    h1 {
-      @include heading-1;
+    .header-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: $spacing-xs;
+
+      h1 {
+        @include heading-1;
+        margin-bottom: 0;
+      }
+
+      .lang-switcher {
+        select {
+          padding: $spacing-xs $spacing-sm;
+          border: 1px solid $color-border;
+          border-radius: $border-radius-sm;
+          background-color: $color-surface;
+          color: $color-text-main;
+          font-size: $font-size-sm;
+          font-weight: 500;
+          cursor: pointer;
+          outline: none;
+
+          &:focus {
+            border-color: $color-primary;
+          }
+        }
+      }
     }
 
     p {
       @include text-small;
+      color: $color-text-muted;
     }
   }
 

@@ -1,0 +1,11 @@
+{
+  "supportedLngs": ["en", "ru"],
+  "fallbackLng": "en",
+  "localeNames": {
+    "ru": "Russian"
+  },
+  "uiLabels": {
+    "en": "English",
+    "ru": "Русский"
+  }
+}
