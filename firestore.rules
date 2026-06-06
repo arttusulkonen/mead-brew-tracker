@@ -12,6 +12,14 @@ service cloud.firestore {
         (request.auth.token.email in resource.data.invitedEmails && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'invitedEmails']))
       );
       allow delete: if request.auth != null && request.auth.uid == resource.data.ownerId;
+      
+      match /inventory/{itemId} {
+        allow read, write: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/breweries/$(breweryId)).data.members;
+      }
+    }
+    match /ingredients/{ingredientId} {
+      allow read: if request.auth != null;
+      allow write: if false; 
     }
     match /recipes/{recipeId} {
       allow create: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/breweries/$(request.resource.data.breweryId)).data.members;
