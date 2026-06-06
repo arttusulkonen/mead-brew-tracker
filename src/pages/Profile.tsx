@@ -9,7 +9,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useBreweryStore } from '../store/useBreweryStore';
 
 const Profile: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { breweries, activeBrewery, setActiveBrewery, setBreweries } = useBreweryStore();
@@ -18,6 +18,13 @@ const Profile: React.FC = () => {
   const [inviteEmails, setInviteEmails] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const currentLanguage = i18n.language || 'en';
+
+  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLang = e.target.value;
+    i18n.changeLanguage(newLang);
+  };
 
   const handleLogout = async () => {
     try {
@@ -87,7 +94,15 @@ const Profile: React.FC = () => {
   return (
     <div className="profile-container">
       <div className="profile-header">
-        <h1>{t('Profile')}</h1>
+        <div className="header-main">
+          <h1>{t('Profile')}</h1>
+          <div className="lang-switcher">
+            <select value={currentLanguage} onChange={handleLanguageChange}>
+              <option value="en">English</option>
+              <option value="ru">Русский</option>
+            </select>
+          </div>
+        </div>
         <p>{user?.email}</p>
       </div>
 
