@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:functions": "npm --prefix ai-backend run build",
     "preview": "vite preview",
     "i18n:extract": "npx i18next-parser --config i18next-parser.config.cjs \"src/**/*.{ts,tsx}\"",
     "i18n:translate": "npx tsx --env-file=.env scripts/auto-translate.ts",
@@ -18,7 +19,9 @@
     "lint:types": "tsc --noEmit",
     "lint": "npm run lint:js && npm run lint:css && npm run lint:types",
     "fix": "npm run lint:js:fix && npm run lint:css:fix",
-    "db:seed": "npx tsx scripts/seedIngredients.ts"
+    "db:seed": "npx tsx scripts/seedIngredients.ts",
+    "deploy:prod": "npm run build && firebase deploy",
+    "deploy:all": "npm run deploy:prod"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.28.0",
