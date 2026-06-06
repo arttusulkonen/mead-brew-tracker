@@ -65,8 +65,3 @@
 - [ ] Протестировать PWA на реальном мобильном устройстве.
 - [ ] Включить и протестировать кеширование Firestore (офлайн-запись замеров с последующей синхронизацией).
 - [ ] Релиз: `firebase deploy --only hosting`.
-
----
-
-**Projektisuunnitelman (TODO.md) päivitys ja synkronointi tehtyjen SCSS-, Firebase- ja i18n-arkkitehtuurimuutosten kanssa.**
-**Time spent:** 15 minutes.

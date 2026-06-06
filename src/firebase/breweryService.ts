@@ -1,4 +1,4 @@
-import { arrayUnion, collection, deleteDoc, doc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import type { Brewery } from '../store/useBreweryStore';
 import { db } from './config';
 
@@ -31,7 +31,6 @@ export const createSharedBrewery = async (userId: string | null | undefined, nam
 
   const breweryRef = doc(collection(db, 'breweries'));
   
-  // Очищаем и валидируем email-адреса
   const invitedEmails = emailsToInvite
     .split(',')
     .map(e => e.trim().toLowerCase())
@@ -75,32 +74,29 @@ export const getUserBreweries = async (userId: string | null | undefined): Promi
   }
 };
 
-// Функция, которая вызывается при логине: ищет пивоварни, куда юзера пригласили по email, и добавляет его
-export const processPendingInvites = async (userId: string, email: string | null) => {
+export const processPendingInvites = async (userId: string | null | undefined, email: string | null | undefined) => {
   if (!userId || !email) return;
   try {
-    const q = query(collection(db, 'breweries'), where('invitedEmails', 'array-contains', email));
+    const normalizedEmail = email.trim().toLowerCase();
+    const q = query(collection(db, 'breweries'), where('invitedEmails', 'array-contains', normalizedEmail));
     const snapshot = await getDocs(q);
     
     const updatePromises = snapshot.docs.map(docSnap => {
       const breweryRef = doc(db, 'breweries', docSnap.id);
-      const data = docSnap.data();
-      const newMembers = [...data.members, userId];
-      const newInvitedEmails = data.invitedEmails.filter((e: string) => e !== email);
       
       return updateDoc(breweryRef, {
-        members: newMembers,
-        invitedEmails: newInvitedEmails
+        members: arrayUnion(userId),
+        invitedEmails: arrayRemove(normalizedEmail)
       });
     });
     
     await Promise.all(updatePromises);
   } catch (error) {
-    console.error("Failed to process invites:", error);
+    console.error(error);
   }
 };
 
-export const inviteToBrewery = async (breweryId: string, email: string) => {
+export const inviteToBrewery = async (breweryId: string | null | undefined, email: string | null | undefined) => {
   if (!breweryId || !email) return false;
   try {
     const breweryRef = doc(db, 'breweries', breweryId);
@@ -114,10 +110,9 @@ export const inviteToBrewery = async (breweryId: string, email: string) => {
   }
 };
 
-export const deleteBrewery = async (breweryId: string) => {
+export const deleteBrewery = async (breweryId: string | null | undefined) => {
   if (!breweryId) return false;
   try {
-    // 1. Находим и удаляем все рецепты этой пивоварни
     const recipesQ = query(collection(db, 'recipes'), where('breweryId', '==', breweryId));
     const sessionsQ = query(collection(db, 'brew_sessions'), where('breweryId', '==', breweryId));
     
@@ -127,7 +122,6 @@ export const deleteBrewery = async (breweryId: string) => {
     recipesSnap.forEach(d => deletePromises.push(deleteDoc(d.ref)));
     sessionsSnap.forEach(d => deletePromises.push(deleteDoc(d.ref)));
     
-    // 2. Удаляем саму пивоварню
     deletePromises.push(deleteDoc(doc(db, 'breweries', breweryId)));
     
     await Promise.all(deletePromises);

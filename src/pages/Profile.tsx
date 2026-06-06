@@ -91,7 +91,7 @@ const Profile: React.FC = () => {
         <p>{user?.email}</p>
       </div>
 
-      {error && <div className="error-message" style={{ backgroundColor: '#ffe6e6', color: '#d93025', padding: '0.75rem', borderRadius: '4px', marginBottom: '1rem' }}>{error}</div>}
+      {error && <div className="error-message">{error}</div>}
 
       <h2 className="section-title">{t('My Breweries')}</h2>
       
