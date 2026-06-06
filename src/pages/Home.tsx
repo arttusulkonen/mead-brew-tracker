@@ -1,7 +1,6 @@
 // src/pages/Home.tsx
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import '../assets/scss/pages/_home.scss';
 import { useBreweryStore } from '../store/useBreweryStore';
 
 const Home: React.FC = () => {

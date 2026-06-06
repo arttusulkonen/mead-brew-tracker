@@ -7,8 +7,6 @@ i18n
     resources: {
       en: { translation: {} },
       ru: { translation: {} },
-      fi: { translation: {} },
-      ko: { translation: {} },
     },
     lng: 'ru', 
     fallbackLng: 'en',

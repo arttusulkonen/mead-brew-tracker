@@ -31,11 +31,13 @@ const App: React.FC = () => {
           setBreweries(userBreweries);
           
           const currentActiveId = useBreweryStore.getState().activeBrewery?.id;
-          const isStillMember = userBreweries.find(b => b.id === currentActiveId);
+          const freshActiveBrewery = userBreweries.find(b => b.id === currentActiveId);
           
-          if (!isStillMember && userBreweries.length > 0) {
+          if (freshActiveBrewery) {
+            setActiveBrewery(freshActiveBrewery);
+          } else if (userBreweries.length > 0) {
             setActiveBrewery(userBreweries[0]);
-          } else if (userBreweries.length === 0) {
+          } else {
             setActiveBrewery(null);
           }
         } else {
