@@ -1,0 +1,71 @@
+@use '../settings/variables' as *;
+@use '../mixins/typography' as *;
+@use '../settings/font-size' as *;
+@use '../mixins/buttons' as *;
+
+.register-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: $color-bg;
+  padding: $spacing-md;
+
+  .register-card {
+    background: $color-surface;
+    padding: $spacing-xxl;
+    border-radius: $border-radius-md;
+    box-shadow: $box-shadow-base;
+    width: 100%;
+    max-width: 400px;
+
+    h1 {
+      @include heading-1;
+      margin-bottom: $spacing-xl;
+      text-align: center;
+    }
+
+    .error-message {
+      background-color: $color-error-bg;
+      padding: $spacing-sm;
+      border-radius: $border-radius-sm;
+      margin-bottom: $spacing-md;
+      @include text-small;
+      color: $color-error-text;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: $spacing-lg;
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-xs;
+
+        label {
+          @include text-small;
+          font-weight: 500;
+        }
+
+        input {
+          padding: $spacing-sm;
+          border: 1px solid $color-border;
+          border-radius: $border-radius-sm;
+          font-size: $font-size-base;
+          transition: border-color 0.2s ease;
+
+          &:focus {
+            outline: none;
+            border-color: $color-primary;
+          }
+        }
+      }
+
+      .btn-submit {
+        @include button-primary;
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /breweries/{breweryId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && (request.auth.uid in resource.data.members || request.auth.token.email in resource.data.invitedEmails);
+      allow update: if request.auth != null && (
+        (request.auth.uid in resource.data.members) ||
+        (request.auth.token.email in resource.data.invitedEmails && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'invitedEmails']))
+      );
+      allow delete: if request.auth != null && request.auth.uid == resource.data.ownerId;
+    }
+    match /recipes/{recipeId} {
+      allow create: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/breweries/$(request.resource.data.breweryId)).data.members;
+      allow read, update, delete: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.members;
+    }
+    match /brew_sessions/{sessionId} {
+      allow create: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/breweries/$(request.resource.data.breweryId)).data.members;
+      allow read, update, delete: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.members;
+    }
+  }
+}

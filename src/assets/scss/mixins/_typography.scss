@@ -1,0 +1,22 @@
+@use '../settings/font-family' as *;
+@use '../settings/font-size' as *;
+@use '../settings/variables' as *;
+
+@mixin heading-1 {
+  font-family: $font-family-heading;
+  font-size: $font-size-xl;
+  color: $color-text-main;
+  font-weight: 700;
+}
+
+@mixin text-base {
+  font-family: $font-family-base;
+  font-size: $font-size-base;
+  color: $color-text-main;
+}
+
+@mixin text-small {
+  font-family: $font-family-base;
+  font-size: $font-size-sm;
+  color: $color-text-muted;
+}
