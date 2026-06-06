@@ -13,6 +13,10 @@ if (!fs.existsSync(resolvedKeyPath)) {
   process.exit(1);
 }
 
+const langsConfig = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, '../languages.json'), 'utf8')
+);
+
 try {
   const serviceAccount = JSON.parse(fs.readFileSync(resolvedKeyPath, 'utf8'));
   admin.initializeApp({
@@ -24,11 +28,9 @@ try {
 }
 
 const db = admin.firestore();
-const languages = ['en', 'ru'];
+const languages = langsConfig.supportedLngs;
 
 async function uploadTranslations() {
-  console.log('Starting translation upload...');
-
   for (const lang of languages) {
     try {
       const filePath = path.join(
@@ -41,7 +43,6 @@ async function uploadTranslations() {
       );
 
       if (!fs.existsSync(filePath)) {
-        console.warn(`⚠️ Translation file missing for: ${lang.toUpperCase()}`);
         continue;
       }
 
@@ -49,10 +50,6 @@ async function uploadTranslations() {
       const translations = JSON.parse(fileContent);
       const docRef = db.collection('translations').doc(lang);
       await docRef.set(translations, { merge: true });
-
-      console.log(
-        `✅ Successfully uploaded translations for: ${lang.toUpperCase()}`
-      );
     } catch (error) {
       console.error(error);
     }

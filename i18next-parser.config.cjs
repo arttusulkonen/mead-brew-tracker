@@ -1,3 +1,10 @@
+const fs = require('fs');
+const path = require('path');
+
+const langsConfig = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, 'languages.json'), 'utf8')
+);
+
 module.exports = {
   lexers: {
     js: ['JavascriptLexer'],
@@ -7,7 +14,7 @@ module.exports = {
     default: ['JavascriptLexer']
   },
 
-  locales: ['en', 'ru'],
+  locales: langsConfig.supportedLngs,
 
   output: 'public/locales/$LOCALE/translation.json',
 

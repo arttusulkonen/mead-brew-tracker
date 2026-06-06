@@ -7,30 +7,35 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const apiKey = process.env.GOOGLE_GENAI_API_KEY;
+if (!apiKey) {
+  console.error('Missing GOOGLE_GENAI_API_KEY environment variable.');
+  process.exit(1);
+}
+
+const langsConfig = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, '../languages.json'), 'utf8')
+);
+
 const ai = genkit({
   plugins: [
     googleAI({
-      apiKey: process.env.VITE_GOOGLE_GENAI_API_KEY,
+      apiKey: apiKey,
     }),
   ],
   model: 'googleai/gemini-3.1-flash-lite', 
 });
 
 const localesDir = path.resolve(__dirname, '../public/locales');
-const targetLocales = ['ru', 'fi', 'en'];
-
-const localeNames: Record<string, string> = {
-  ru: 'Russian',
-  fi: 'Finnish',
-  en: 'English',
-};
+const targetLocales = Object.keys(langsConfig.localeNames);
+const localeNames: Record<string, string> = langsConfig.localeNames;
 
 async function translateMissing() {
   for (const locale of targetLocales) {
     const filePath = path.join(localesDir, locale, 'translation.json');
 
     if (!fs.existsSync(filePath)) {
-      console.warn(`⚠️ Файл не найден: ${filePath}`);
+      console.warn(`⚠️ File not found: ${filePath}`);
       continue;
     }
 
@@ -42,13 +47,11 @@ async function translateMissing() {
     );
 
     if (missingKeys.length === 0) {
-      console.log(`✅ Нет пустых строк для перевода в [${locale}]`);
+      console.log(`✅ No empty strings for [${locale}]`);
       continue;
     }
 
-    console.log(
-      `⏳ Переводим ${missingKeys.length} новых строк для [${locale}]...`,
-    );
+    console.log(`⏳ Translating ${missingKeys.length} keys for [${locale}]...`);
 
     const batchSize = 15;
     for (let i = 0; i < missingKeys.length; i += batchSize) {
@@ -60,9 +63,6 @@ async function translateMissing() {
       }));
 
       try {
-        console.log(
-          `   Отправка батча ${Math.floor(i / batchSize) + 1} (${batchKeys.length} строк)...`,
-        );
         const response = await ai.generate({
           prompt: `You are an expert translator specializing in brewing, mead-making, and fermentation terminology. Translate the 'textToTranslate' fields from English to ${localeNames[locale]}. 
           Context: A web application for homebrewing and mead-making (Mead & Brew Tracker). Key features include workspace management (Breweries), recipe formulation, ingredient inventory, detailed fermentation tracking (logs, Specific Gravity, pH, temperature, nutrients), and split batch management.
@@ -88,18 +88,11 @@ async function translateMissing() {
         const translatedBatch = response.output;
 
         if (translatedBatch && Array.isArray(translatedBatch)) {
-          let translatedCount = 0;
-
           translatedBatch.forEach((item) => {
             if (item.originalKey && translations[item.originalKey] === '') {
               translations[item.originalKey] = item.translatedText;
-              translatedCount++;
             }
           });
-
-          console.log(
-            `   -> Получено и сохранено: ${translatedCount} / ${batchKeys.length} переводов.`,
-          );
         }
       } catch (error) {
         console.error(error);
@@ -118,10 +111,9 @@ async function translateMissing() {
       JSON.stringify(sortedTranslations, null, 2) + '\n',
       'utf8',
     );
-    console.log(`🎉 Файл [${locale}] успешно обновлен!\n`);
   }
 }
 
 translateMissing()
-  .then(() => console.log('🚀 Все переводы успешно завершены!'))
+  .then(() => console.log('🚀 Translations completed!'))
   .catch(console.error);

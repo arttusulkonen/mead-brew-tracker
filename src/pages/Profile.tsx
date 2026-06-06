@@ -2,6 +2,7 @@ import { signOut } from 'firebase/auth';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import langsConfig from '../../languages.json';
 import '../assets/scss/pages/_profile.scss';
 import { createSharedBrewery, deleteBrewery, inviteToBrewery } from '../firebase/breweryService';
 import { auth } from '../firebase/config';
@@ -19,7 +20,7 @@ const Profile: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const currentLanguage = i18n.language || 'en';
+  const currentLanguage = (i18n.resolvedLanguage || i18n.language || 'en').split('-')[0];
 
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLang = e.target.value;
@@ -97,9 +98,14 @@ const Profile: React.FC = () => {
         <div className="header-main">
           <h1>{t('Profile')}</h1>
           <div className="lang-switcher">
-            <select value={currentLanguage} onChange={handleLanguageChange}>
-              <option value="en">English</option>
-              <option value="ru">Русский</option>
+            <select 
+              value={currentLanguage} 
+              onChange={handleLanguageChange}
+              aria-label={t('Select Language')}
+            >
+              {Object.entries(langsConfig.uiLabels).map(([code, label]) => (
+                <option key={code} value={code}>{label}</option>
+              ))}
             </select>
           </div>
         </div>

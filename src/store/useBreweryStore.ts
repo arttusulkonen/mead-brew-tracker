@@ -1,4 +1,3 @@
-// src/store/useBreweryStore.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -12,6 +11,7 @@ export interface Brewery {
 }
 
 interface BreweryState {
+  activeBreweryId: string | null;
   activeBrewery: Brewery | null;
   breweries: Brewery[];
   setActiveBrewery: (brewery: Brewery | null) => void;
@@ -21,14 +21,15 @@ interface BreweryState {
 export const useBreweryStore = create<BreweryState>()(
   persist(
     (set) => ({
+      activeBreweryId: null,
       activeBrewery: null,
       breweries: [],
-      setActiveBrewery: (brewery) => set({ activeBrewery: brewery }),
+      setActiveBrewery: (brewery) => set({ activeBrewery: brewery, activeBreweryId: brewery ? brewery.id : null }),
       setBreweries: (breweries) => set({ breweries }),
     }),
     {
       name: 'brewery-storage',
-      partialize: (state) => ({ activeBrewery: state.activeBrewery }),
+      partialize: (state) => ({ activeBreweryId: state.activeBreweryId }),
     }
   )
 );

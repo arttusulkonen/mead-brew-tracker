@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "i18n:extract": "npx i18next-parser --config i18next-parser.config.cjs \"src/**/*.{ts,tsx}\"",
     "i18n:translate": "npx tsx --env-file=.env scripts/auto-translate.ts",
-    "i18n:upload": "npx tsx scripts/uploadTranslations.ts",
+    "i18n:upload": "npx tsx --env-file=.env scripts/uploadTranslations.ts",
     "i18n:sync": "npm run i18n:extract && npm run i18n:translate && npm run i18n:upload"
   },
   "dependencies": {
@@ -38,6 +38,7 @@
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "firebase-admin": "^13.1.0",
     "globals": "^17.6.0",
     "i18next-parser": "^9.4.0",
     "sass": "^1.100.0",

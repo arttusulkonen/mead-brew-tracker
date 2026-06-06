@@ -1,4 +1,3 @@
-// src/App.tsx
 import { onAuthStateChanged } from 'firebase/auth';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,7 +29,7 @@ const App: React.FC = () => {
           const userBreweries = await getUserBreweries(currentUser.uid);
           setBreweries(userBreweries);
           
-          const currentActiveId = useBreweryStore.getState().activeBrewery?.id;
+          const currentActiveId = useBreweryStore.getState().activeBreweryId;
           const freshActiveBrewery = userBreweries.find(b => b.id === currentActiveId);
           
           if (freshActiveBrewery) {
