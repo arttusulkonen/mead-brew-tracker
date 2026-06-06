@@ -1,3 +1,4 @@
+import type { DocumentData, Query } from 'firebase/firestore';
 import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import type { IngredientCategory, IngredientUnion, PopulatedInventoryItem, WorkspaceInventoryItem } from '../types/ingredient';
 import { db } from './config';
@@ -6,11 +7,8 @@ export const getGlobalIngredients = async (category?: IngredientCategory | null)
   if (!db) return [];
   
   try {
-    let q = collection(db, 'ingredients');
-    
-    if (category) {
-      q = query(q, where('category', '==', category));
-    }
+    const collRef = collection(db, 'ingredients');
+    const q: Query<DocumentData, DocumentData> = category ? query(collRef, where('category', '==', category)) : collRef;
     
     const querySnapshot = await getDocs(q);
     const ingredients: IngredientUnion[] = [];
@@ -24,6 +22,7 @@ export const getGlobalIngredients = async (category?: IngredientCategory | null)
     
     return ingredients;
   } catch (error) {
+    console.error(error);
     return [];
   }
 };
@@ -37,26 +36,32 @@ export const getWorkspaceInventory = async (breweryId: string | null | undefined
     
     const populatedItems: PopulatedInventoryItem[] = [];
     
-    for (const docSnap of inventorySnapshot.docs) {
+    const fetchPromises = inventorySnapshot.docs.map(async (docSnap) => {
       const invData = docSnap.data() as WorkspaceInventoryItem;
-      
-      if (!invData || !invData.ingredientId) continue;
+      if (!invData || !invData.ingredientId) return null;
 
       const ingredientRef = doc(db, 'ingredients', invData.ingredientId);
       const ingredientSnap = await getDoc(ingredientRef);
       
       if (ingredientSnap.exists()) {
         const ingredientData = ingredientSnap.data() as IngredientUnion;
-        populatedItems.push({
+        return {
           ...invData,
           id: docSnap.id,
           ingredient: { ...ingredientData, id: ingredientSnap.id }
-        });
+        } as PopulatedInventoryItem;
       }
-    }
+      return null;
+    });
+
+    const results = await Promise.all(fetchPromises);
+    results.forEach(res => {
+      if (res) populatedItems.push(res);
+    });
     
     return populatedItems;
   } catch (error) {
+    console.error(error);
     return [];
   }
 };
@@ -79,6 +84,7 @@ export const addWorkspaceInventoryItem = async (
     await setDoc(inventoryRef, newItem);
     return newItem;
   } catch (error) {
+    console.error(error);
     return null;
   }
 };
@@ -86,7 +92,7 @@ export const addWorkspaceInventoryItem = async (
 export const updateWorkspaceInventoryItem = async (
   breweryId: string | null | undefined,
   itemId: string | null | undefined,
-  updates: Partial<WorkspaceInventoryItem> | null | undefined
+  updates: Omit<Partial<WorkspaceInventoryItem>, 'id' | 'breweryId'> | null | undefined
 ): Promise<boolean> => {
   if (!db || !breweryId || !itemId || !updates) return false;
   
@@ -95,6 +101,7 @@ export const updateWorkspaceInventoryItem = async (
     await updateDoc(itemRef, updates);
     return true;
   } catch (error) {
+    console.error(error);
     return false;
   }
 };
@@ -110,6 +117,24 @@ export const deleteWorkspaceInventoryItem = async (
     await deleteDoc(itemRef);
     return true;
   } catch (error) {
+    console.error(error);
     return false;
+  }
+};
+
+export const addGlobalIngredient = async (ingredientData: Omit<IngredientUnion, 'id' | 'updatedAt'>): Promise<IngredientUnion | null> => {
+  if (!db || !ingredientData) return null;
+  try {
+    const newRef = doc(collection(db, 'ingredients'));
+    const newIngredient = {
+      ...ingredientData,
+      id: newRef.id,
+      updatedAt: new Date().toISOString()
+    } as IngredientUnion;
+    await setDoc(newRef, newIngredient);
+    return newIngredient;
+  } catch (error) {
+    console.error(error);
+    return null;
   }
 };

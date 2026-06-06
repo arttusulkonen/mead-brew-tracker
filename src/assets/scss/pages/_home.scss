@@ -2,9 +2,10 @@
 @use '../settings/variables' as *;
 @use '../mixins/typography' as *;
 @use '../settings/font-size' as *;
+
 .home-container {
-  padding: $spacing-md;
   max-width: 800px;
+  padding: $spacing-md;
   margin: 0 auto;
 
   .home-header {
@@ -12,16 +13,18 @@
 
     h1 {
       @include heading-1;
+
       margin-bottom: $spacing-xs;
     }
 
     p {
       @include text-small;
+
       color: $color-text-muted;
 
       strong {
-        color: $color-text-main;
         font-weight: 600;
+        color: $color-text-main;
       }
     }
   }
@@ -37,15 +40,15 @@
   }
 
   .dashboard-card {
-    background: $color-surface;
-    padding: $spacing-lg;
-    border-radius: $border-radius-md;
-    box-shadow: $box-shadow-base;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    text-align: center;
     gap: $spacing-sm;
+    align-items: center;
+    padding: $spacing-lg;
+    text-align: center;
+    background: $color-surface;
+    border-radius: $border-radius-md;
+    box-shadow: $box-shadow-base;
 
     h3 {
       font-size: $font-size-lg;
@@ -55,6 +58,7 @@
 
     p {
       @include text-small;
+
       color: $color-text-muted;
     }
   }

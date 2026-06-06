@@ -24,6 +24,10 @@ const Navigation: React.FC = () => {
         <FaChartLine className="icon" />
         <span>{t('Journal')}</span>
       </NavLink>
+      <NavLink to="/inventory" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+        <FaChartLine className="icon" />
+        <span>{t('Inventory')}</span>
+      </NavLink>
       <NavLink to="/profile" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
         <FaUser className="icon" />
         <span>{t('Profile')}</span>

@@ -1,25 +1,21 @@
 $breakpoint-md: 768px;
 $breakpoint-lg: 1024px;
-
 $color-primary: #007bff;
 $color-primary-hover: #0056b3;
 $color-bg: #f4f7f6;
-$color-surface: #ffffff;
-$color-text-main: #333333;
-$color-text-muted: #555555;
+$color-surface: #fff;
+$color-text-main: #333;
+$color-text-muted: #555;
 $color-error-bg: #ffe6e6;
 $color-error-text: #d93025;
-$color-border: #cccccc;
-$color-disabled: #cccccc;
-
+$color-border: #ccc;
+$color-disabled: #ccc;
 $spacing-xs: 0.5rem;
 $spacing-sm: 0.75rem;
 $spacing-md: 1rem;
 $spacing-lg: 1.25rem;
 $spacing-xl: 1.5rem;
 $spacing-xxl: 2rem;
-
 $border-radius-sm: 4px;
 $border-radius-md: 8px;
-
-$box-shadow-base: 0 4px 12px rgba(0, 0, 0, 0.1);
+$box-shadow-base: 0 4px 12px rgb(0 0 0 / 10%);

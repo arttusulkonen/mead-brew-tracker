@@ -5,8 +5,8 @@
 @mixin heading-1 {
   font-family: $font-family-heading;
   font-size: $font-size-xl;
-  color: $color-text-main;
   font-weight: 700;
+  color: $color-text-main;
 }
 
 @mixin text-base {

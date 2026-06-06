@@ -5,17 +5,17 @@
 @use '../mixins/buttons' as *;
 
 .profile-container {
-  padding: $spacing-md;
   max-width: 800px;
+  padding: $spacing-md;
   margin: 0 auto;
 
   .error-message {
-    background-color: $color-error-bg;
-    color: $color-error-text;
     padding: $spacing-sm;
-    border-radius: $border-radius-sm;
     margin-bottom: $spacing-md;
     font-size: $font-size-sm;
+    color: $color-error-text;
+    background-color: $color-error-bg;
+    border-radius: $border-radius-sm;
   }
 
   .profile-header {
@@ -23,25 +23,26 @@
 
     .header-main {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       margin-bottom: $spacing-xs;
 
       h1 {
         @include heading-1;
+
         margin-bottom: 0;
       }
 
       .lang-switcher {
         select {
           padding: $spacing-xs $spacing-sm;
-          border: 1px solid $color-border;
-          border-radius: $border-radius-sm;
-          background-color: $color-surface;
-          color: $color-text-main;
           font-size: $font-size-sm;
           font-weight: 500;
+          color: $color-text-main;
           cursor: pointer;
+          background-color: $color-surface;
+          border: 1px solid $color-border;
+          border-radius: $border-radius-sm;
           outline: none;
 
           &:focus {
@@ -53,14 +54,15 @@
 
     p {
       @include text-small;
+
       color: $color-text-muted;
     }
   }
 
   .section-title {
+    margin-bottom: $spacing-md;
     font-size: $font-size-lg;
     font-weight: 600;
-    margin-bottom: $spacing-md;
     color: $color-text-main;
   }
 
@@ -71,14 +73,14 @@
     margin-bottom: $spacing-xl;
 
     .brewery-card {
-      background: $color-surface;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       padding: $spacing-md;
+      background: $color-surface;
+      border: 2px solid transparent;
       border-radius: $border-radius-md;
       box-shadow: $box-shadow-base;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border: 2px solid transparent;
       transition: border-color 0.2s ease;
 
       &.active {
@@ -97,6 +99,7 @@
 
         .brewery-type {
           @include text-small;
+
           font-size: 0.75rem;
         }
       }
@@ -108,30 +111,34 @@
 
         button {
           padding: 6px 12px;
-          border-radius: $border-radius-sm;
           font-size: 0.75rem;
           font-weight: 600;
           cursor: pointer;
           border: none;
+          border-radius: $border-radius-sm;
         }
 
         .btn-switch {
+          color: $color-primary;
           background: transparent;
           border: 1px solid $color-primary;
-          color: $color-primary;
-          &:hover { background: $color-primary; color: $color-surface; }
+
+          &:hover { 
+            color: $color-surface; 
+            background: $color-primary; 
+          }
         }
 
         .btn-invite {
-          background: #e2e8f0;
           color: $color-text-main;
+          background: #e2e8f0;
           &:hover { background: #cbd5e1; }
         }
 
         .btn-delete {
+          color: $color-error-text;
           background: transparent;
           border: 1px solid $color-error-text;
-          color: $color-error-text;
           &:hover { background: $color-error-bg; }
         }
       }
@@ -139,14 +146,14 @@
   }
 
   .create-brewery-form {
-    background: $color-surface;
-    padding: $spacing-md;
-    border-radius: $border-radius-md;
-    box-shadow: $box-shadow-base;
     display: flex;
     flex-direction: column;
     gap: $spacing-md;
+    padding: $spacing-md;
     margin-bottom: $spacing-xl;
+    background: $color-surface;
+    border-radius: $border-radius-md;
+    box-shadow: $box-shadow-base;
 
     .form-group {
       display: flex;
@@ -155,18 +162,19 @@
 
       label {
         @include text-small;
+
         font-weight: 500;
       }
 
       input {
         padding: $spacing-sm;
+        font-size: $font-size-base;
         border: 1px solid $color-border;
         border-radius: $border-radius-sm;
-        font-size: $font-size-base;
 
         &:focus {
-          outline: none;
           border-color: $color-primary;
+          outline: none;
         }
       }
     }
@@ -181,13 +189,13 @@
     text-align: center;
 
     .btn-logout {
-      background-color: transparent;
-      color: $color-error-text;
-      border: 1px solid $color-error-text;
       padding: $spacing-sm $spacing-lg;
-      border-radius: $border-radius-sm;
       font-weight: 600;
+      color: $color-error-text;
       cursor: pointer;
+      background-color: transparent;
+      border: 1px solid $color-error-text;
+      border-radius: $border-radius-sm;
       transition: all 0.2s ease;
 
       &:hover {

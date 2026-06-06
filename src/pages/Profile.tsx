@@ -54,6 +54,7 @@ const Profile: React.FC = () => {
         setError(t('Failed to create brewery'));
       }
     } catch (err: any) {
+      console.error(err);
       setError(t('An unknown error occurred'));
     } finally {
       setIsLoading(false);

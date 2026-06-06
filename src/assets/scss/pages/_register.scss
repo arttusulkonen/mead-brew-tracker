@@ -5,33 +5,35 @@
 
 .register-container {
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   min-height: 100vh;
-  background-color: $color-bg;
   padding: $spacing-md;
+  background-color: $color-bg;
 
   .register-card {
-    background: $color-surface;
-    padding: $spacing-xxl;
-    border-radius: $border-radius-md;
-    box-shadow: $box-shadow-base;
     width: 100%;
     max-width: 400px;
+    padding: $spacing-xxl;
+    background: $color-surface;
+    border-radius: $border-radius-md;
+    box-shadow: $box-shadow-base;
 
     h1 {
       @include heading-1;
+
       margin-bottom: $spacing-xl;
       text-align: center;
     }
 
     .error-message {
-      background-color: $color-error-bg;
       padding: $spacing-sm;
-      border-radius: $border-radius-sm;
       margin-bottom: $spacing-md;
-      @include text-small;
       color: $color-error-text;
+      background-color: $color-error-bg;
+      border-radius: $border-radius-sm;
+
+      @include text-small;
     }
 
     form {
@@ -46,19 +48,20 @@
 
         label {
           @include text-small;
+
           font-weight: 500;
         }
 
         input {
           padding: $spacing-sm;
+          font-size: $font-size-base;
           border: 1px solid $color-border;
           border-radius: $border-radius-sm;
-          font-size: $font-size-base;
           transition: border-color 0.2s ease;
 
           &:focus {
-            outline: none;
             border-color: $color-primary;
+            outline: none;
           }
         }
       }
