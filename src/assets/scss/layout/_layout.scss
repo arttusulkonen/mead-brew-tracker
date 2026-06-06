@@ -1,19 +1,20 @@
 @use '../settings/variables' as *;
+@use '../settings/font-size' as *;
+@use '../mixins/typography' as *;
 
 .app-layout {
   display: flex;
-  flex-direction: column; // Мобилка: колонка (контент сверху, меню снизу)
+  flex-direction: column;
   height: 100vh;
   overflow: hidden;
   background-color: $color-bg;
 
   @media (min-width: $breakpoint-md) {
-    flex-direction: row; // Десктоп: в ряд (меню слева, контент справа)
+    flex-direction: row;
   }
 }
 
 .main-nav {
-  // --- Мобильный вид (Нижнее меню) ---
   position: absolute;
   right: 0;
   bottom: 0;
@@ -21,14 +22,13 @@
   z-index: 1000;
   display: flex;
   flex-direction: row;
-  align-items: center;
-  justify-content: space-around;
+  align-items: stretch; 
+  justify-content: space-between;
   height: 65px;
   padding-bottom: env(safe-area-inset-bottom);
   background-color: $color-surface;
   box-shadow: 0 -2px 10px rgb(0 0 0 / 5%);
 
-  // --- Десктопный вид (Боковое меню) ---
   @media (min-width: $breakpoint-md) {
     position: relative;
     flex-direction: column;
@@ -39,20 +39,15 @@
     box-shadow: 2px 0 15px rgb(0 0 0 / 5%);
   }
 
-  .nav-item {
+  .nav-item, .lang-switcher {
     display: flex;
-    flex: 1;
-
-    // Мобилка
+    flex: 1; // Равномерное распределение
     flex-direction: column;
-    gap: 4px;
     align-items: center;
     justify-content: center;
-    color: $color-text-muted;
     text-decoration: none;
     transition: all 0.2s ease;
 
-    // Десктоп
     @media (min-width: $breakpoint-md) {
       flex: none;
       flex-direction: row;
@@ -60,8 +55,14 @@
       justify-content: flex-start;
       width: 100%;
       padding: $spacing-md $spacing-xl;
+    }
+  }
 
-      &:hover {
+  .nav-item {
+    color: $color-text-muted;
+
+    &:hover {
+      @media (min-width: $breakpoint-md) {
         background-color: rgba($color-primary, 0.05);
       }
     }
@@ -73,18 +74,66 @@
     span {
       font-size: 0.7rem;
       font-weight: 500;
-      
+
       @media (min-width: $breakpoint-md) {
-        font-size: 1rem; // Текст побольше на компах
+        font-size: 1rem;
       }
     }
 
     &.active {
       color: $color-primary;
-      
+
       @media (min-width: $breakpoint-md) {
         background-color: rgba($color-primary, 0.1);
         border-right: 4px solid $color-primary;
+      }
+    }
+  }
+
+  .lang-switcher {
+    cursor: pointer;
+
+    .lang-btn-mobile {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: center;
+      color: $color-text-muted;
+      cursor: pointer;
+      background: none;
+      border: none;
+
+      .icon {
+        font-size: 1.25rem;
+      }
+
+      span {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+    }
+
+    .lang-select-desktop {
+      display: none;
+    }
+
+    @media (min-width: $breakpoint-md) {
+      flex: none;
+      width: 100%;
+      padding: $spacing-md;
+      margin-top: auto;
+
+      .lang-btn-mobile {
+        display: none;
+      }
+
+      .lang-select-desktop {
+        display: block;
+        width: 100%;
+        padding: $spacing-xs;
+        border: 1px solid $color-border;
+        border-radius: $border-radius-sm;
       }
     }
   }
@@ -93,11 +142,11 @@
 .main-content {
   flex: 1;
   padding-top: $spacing-md;
-  padding-bottom: 80px; // Отступ для нижнего меню на мобилке
+  padding-bottom: 80px;
   overflow-y: auto;
 
   @media (min-width: $breakpoint-md) {
     padding: $spacing-xl;
-    padding-bottom: $spacing-xl; // Убираем огромный отступ снизу на десктопе
+    padding-bottom: $spacing-xl;
   }
 }

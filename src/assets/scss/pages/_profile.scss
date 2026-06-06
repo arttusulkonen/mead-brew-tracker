@@ -32,24 +32,6 @@
 
         margin-bottom: 0;
       }
-
-      .lang-switcher {
-        select {
-          padding: $spacing-xs $spacing-sm;
-          font-size: $font-size-sm;
-          font-weight: 500;
-          color: $color-text-main;
-          cursor: pointer;
-          background-color: $color-surface;
-          border: 1px solid $color-border;
-          border-radius: $border-radius-sm;
-          outline: none;
-
-          &:focus {
-            border-color: $color-primary;
-          }
-        }
-      }
     }
 
     p {

@@ -2,7 +2,6 @@ import { signOut } from 'firebase/auth';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import langsConfig from '../../languages.json';
 import '../assets/scss/pages/_profile.scss';
 import { createSharedBrewery, deleteBrewery, inviteToBrewery } from '../firebase/breweryService';
 import { auth } from '../firebase/config';
@@ -10,7 +9,6 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useBreweryStore } from '../store/useBreweryStore';
 
 const Profile: React.FC = () => {
-  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { breweries, activeBrewery, setActiveBrewery, setBreweries } = useBreweryStore();
@@ -20,12 +18,8 @@ const Profile: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const currentLanguage = (i18n.resolvedLanguage || i18n.language || 'en').split('-')[0];
+  const { t } = useTranslation();
 
-  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newLang = e.target.value;
-    i18n.changeLanguage(newLang);
-  };
 
   const handleLogout = async () => {
     try {
@@ -98,17 +92,6 @@ const Profile: React.FC = () => {
       <div className="profile-header">
         <div className="header-main">
           <h1>{t('Profile')}</h1>
-          <div className="lang-switcher">
-            <select 
-              value={currentLanguage} 
-              onChange={handleLanguageChange}
-              aria-label={t('Select Language')}
-            >
-              {Object.entries(langsConfig.uiLabels).map(([code, label]) => (
-                <option key={code} value={code}>{label}</option>
-              ))}
-            </select>
-          </div>
         </div>
         <p>{user?.email}</p>
       </div>
