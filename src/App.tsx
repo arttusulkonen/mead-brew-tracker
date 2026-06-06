@@ -1,3 +1,4 @@
+// src/App.tsx
 import { onAuthStateChanged } from 'firebase/auth';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,15 +23,21 @@ const App: React.FC = () => {
         setUser(currentUser);
         
         if (currentUser?.uid) {
-          // Сначала проверяем и принимаем новые инвайты
           if (currentUser.email) {
             await processPendingInvites(currentUser.uid, currentUser.email);
           }
 
-          // Затем скачиваем актуальный список пивоварен
           const userBreweries = await getUserBreweries(currentUser.uid);
           setBreweries(userBreweries);
-          setActiveBrewery(userBreweries.length > 0 ? userBreweries[0] : null);
+          
+          const currentActiveId = useBreweryStore.getState().activeBrewery?.id;
+          const isStillMember = userBreweries.find(b => b.id === currentActiveId);
+          
+          if (!isStillMember && userBreweries.length > 0) {
+            setActiveBrewery(userBreweries[0]);
+          } else if (userBreweries.length === 0) {
+            setActiveBrewery(null);
+          }
         } else {
           setBreweries([]);
           setActiveBrewery(null);
