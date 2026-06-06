@@ -9,6 +9,7 @@ export interface BaseIngredient {
   notes?: string;
   origin?: string;
   updatedAt: string;
+  createdBy?: string;
 }
 
 export interface HoneyIngredient extends BaseIngredient {

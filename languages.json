@@ -1,11 +1,13 @@
 {
-  "supportedLngs": ["en", "ru"],
+  "supportedLngs": ["en", "ru", "ee"],
   "fallbackLng": "en",
   "localeNames": {
-    "ru": "Russian"
+    "ru": "Russian",
+    "ee": "Estonian"
   },
   "uiLabels": {
     "en": "English",
-    "ru": "Русский"
+    "ru": "Русский",
+    "ee": "Eesti"
   }
 }

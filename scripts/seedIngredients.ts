@@ -6,7 +6,6 @@ import type { IngredientUnion } from '../src/types/ingredient';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 const resolvedKeyPath = path.resolve(__dirname, '../serviceAccountKey.json');
 
 if (!fs.existsSync(resolvedKeyPath)) {
@@ -24,51 +23,56 @@ const db = admin.firestore();
 const seedData: (IngredientUnion & { id: string })[] = [
   {
     id: 'honey_orange_blossom',
-    name: 'Orange Blossom Honey',
+    name: 'Orange Blossom',
     category: 'Honey',
     sugarContentBrix: 80.0,
     moistureContentPct: 18.0,
     origin: 'USA',
     updatedAt: new Date().toISOString(),
+    createdBy: 'system'
   },
   {
     id: 'honey_wildflower',
-    name: 'Wildflower Honey',
+    name: 'Wildflower',
     category: 'Honey',
     sugarContentBrix: 82.0,
     moistureContentPct: 17.0,
     origin: 'Global',
     updatedAt: new Date().toISOString(),
+    createdBy: 'system'
   },
   {
     id: 'yeast_lalvin_d47',
-    name: 'Lalvin ICV D47',
+    name: 'ICV D47',
     category: 'Yeast',
     tempMinC: 15,
     tempMaxC: 20,
     alcoholTolerancePct: 14.0,
     nitrogenDemand: 'Low',
     updatedAt: new Date().toISOString(),
+    createdBy: 'system'
   },
   {
     id: 'yeast_lalvin_ec1118',
-    name: 'Lalvin EC-1118',
+    name: 'EC-1118',
     category: 'Yeast',
     tempMinC: 10,
     tempMaxC: 30,
     alcoholTolerancePct: 18.0,
     nitrogenDemand: 'Low',
     updatedAt: new Date().toISOString(),
+    createdBy: 'system'
   },
   {
     id: 'yeast_lalvin_71b',
-    name: 'Lalvin 71B',
+    name: '71B',
     category: 'Yeast',
     tempMinC: 15,
     tempMaxC: 30,
     alcoholTolerancePct: 14.0,
     nitrogenDemand: 'Medium',
     updatedAt: new Date().toISOString(),
+    createdBy: 'system'
   },
   {
     id: 'additive_fermaid_o',
@@ -77,6 +81,7 @@ const seedData: (IngredientUnion & { id: string })[] = [
     additiveType: 'Nutrient',
     yanValuePerGramPerLiter: 40.0,
     updatedAt: new Date().toISOString(),
+    createdBy: 'system'
   },
   {
     id: 'additive_go_ferm',
@@ -84,6 +89,7 @@ const seedData: (IngredientUnion & { id: string })[] = [
     category: 'Additive',
     additiveType: 'Nutrient',
     updatedAt: new Date().toISOString(),
+    createdBy: 'system'
   },
   {
     id: 'additive_pectic_enzyme',
@@ -91,6 +97,7 @@ const seedData: (IngredientUnion & { id: string })[] = [
     category: 'Additive',
     additiveType: 'Clarifier',
     updatedAt: new Date().toISOString(),
+    createdBy: 'system'
   },
   {
     id: 'additive_k_sorbate',
@@ -98,6 +105,7 @@ const seedData: (IngredientUnion & { id: string })[] = [
     category: 'Additive',
     additiveType: 'Stabilizer',
     updatedAt: new Date().toISOString(),
+    createdBy: 'system'
   }
 ];
 
@@ -105,6 +113,7 @@ async function seedIngredients() {
   const batch = db.batch();
 
   for (const ingredient of seedData) {
+    if (!ingredient || !ingredient.id) continue;
     const docRef = db.collection('ingredients').doc(ingredient.id);
     batch.set(docRef, ingredient, { merge: true });
   }
