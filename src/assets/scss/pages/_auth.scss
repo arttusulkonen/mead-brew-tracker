@@ -1,0 +1,46 @@
+@use '../settings/variables' as *;
+
+.auth-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: $color-bg;
+
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    width: 100%;
+    max-width: 400px;
+    padding: $spacing-xl;
+    background: $color-surface;
+    border-radius: $border-radius-md;
+    box-shadow: $box-shadow-base;
+
+    input {
+      padding: $spacing-sm;
+      border: 1px solid $color-border;
+      border-radius: $border-radius-sm;
+    }
+
+    button {
+      padding: $spacing-sm;
+      color: #fff;
+      cursor: pointer;
+      background: $color-primary;
+      border: none;
+      border-radius: $border-radius-sm;
+    }
+
+    .error {
+      font-size: 0.8rem;
+      color: $color-error-text;
+    }
+
+    .auth-footer {
+      font-size: 0.9rem;
+      text-align: center;
+    }
+  }
+}

@@ -6,6 +6,8 @@ import { AppLayout } from './components/layout/AppLayout';
 import { getUserBreweries, processPendingInvites } from './firebase/breweryService';
 import { auth } from './firebase/config';
 import Home from './pages/Home';
+import Inventory from './pages/Inventory';
+import Login from './pages/Login';
 import Profile from './pages/Profile';
 import Register from './pages/Register';
 import { useAuthStore } from './store/useAuthStore';
@@ -56,17 +58,20 @@ const App: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/login" element={user ? <Navigate to="/home" replace /> : <Login />} />
         <Route path="/register" element={user ? <Navigate to="/home" replace /> : <Register />} />
         
-        <Route element={<AppLayout />}>
+        <Route element={user ? <AppLayout /> : <Navigate to="/login" replace />}>
           <Route path="/home" element={<Home />} />
           <Route path="/recipes" element={<div style={{ padding: '2rem' }}>{t('Recipes Page')}</div>} />
           <Route path="/brew" element={<div style={{ padding: '2rem' }}>{t('Brew Day Page')}</div>} />
           <Route path="/journal" element={<div style={{ padding: '2rem' }}>{t('Journal Page')}</div>} />
+          <Route path="/inventory" element={<Inventory />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="*" element={<Navigate to="/home" replace />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/home" replace />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );

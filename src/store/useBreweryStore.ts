@@ -10,7 +10,7 @@ export interface Brewery {
   isPersonal: boolean;
 }
 
-interface BreweryState {
+export interface BreweryState {
   activeBreweryId: string | null;
   activeBrewery: Brewery | null;
   breweries: Brewery[];
@@ -24,7 +24,10 @@ export const useBreweryStore = create<BreweryState>()(
       activeBreweryId: null,
       activeBrewery: null,
       breweries: [],
-      setActiveBrewery: (brewery) => set({ activeBrewery: brewery, activeBreweryId: brewery ? brewery.id : null }),
+      setActiveBrewery: (brewery) => set({ 
+        activeBrewery: brewery, 
+        activeBreweryId: brewery ? brewery.id : null 
+      }),
       setBreweries: (breweries) => set({ breweries }),
     }),
     {

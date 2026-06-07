@@ -3,29 +3,29 @@
 
 * {
   box-sizing: border-box;
-  margin: 0;
   padding: 0;
+  margin: 0;
 }
 
 body {
   font-family: $font-family-base;
-  background-color: $color-bg;
   color: $color-text-main;
+  background-color: $color-bg;
   -webkit-font-smoothing: antialiased;
 }
 
 #root {
+  position: relative;
   width: 100%;
   min-height: 100vh;
   background-color: $color-surface;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
-  position: relative;
+  box-shadow: 0 0 20px rgb(0 0 0 / 5%);
 }
 
 .global-loader {
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   min-height: 100vh;
 
   .spinner {

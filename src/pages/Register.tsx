@@ -2,7 +2,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import '../assets/scss/pages/_register.scss';
 import { createPersonalBrewery } from '../firebase/breweryService';
 import { auth, db } from '../firebase/config';
@@ -73,7 +73,7 @@ const Register: React.FC = () => {
         
         {error && <div className="error-message">{error}</div>}
         
-        <form onSubmit={handleRegister}>
+        <form className='auth-form' onSubmit={handleRegister}>
           <div className="form-group">
             <label htmlFor="email">{t('Email')}</label>
             <input
@@ -110,6 +110,10 @@ const Register: React.FC = () => {
           <button type="submit" className="btn-submit" disabled={isLoading}>
             {isLoading ? t('Loading...') : t('Register')}
           </button>
+
+          <p className="auth-footer">
+          {t('Already registered?')} <Link to="/login">{t('Login here')}</Link>
+        </p>
         </form>
       </div>
     </div>

@@ -2,26 +2,26 @@
 @use '../settings/font-size' as *;
 
 @mixin button-primary {
-  background-color: $color-primary;
-  color: $color-surface;
-  border: none;
+  display: flex;
+  gap: $spacing-xs;
+  align-items: center;
+  justify-content: center;
   padding: $spacing-sm $spacing-md;
-  border-radius: $border-radius-sm;
   font-size: $font-size-base;
   font-weight: 600;
+  color: $color-surface;
   cursor: pointer;
+  background-color: $color-primary;
+  border: none;
+  border-radius: $border-radius-sm;
   transition: background-color 0.2s ease;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: $spacing-xs;
 
   &:hover {
     background-color: $color-primary-hover;
   }
 
   &:disabled {
-    background-color: $color-disabled;
     cursor: not-allowed;
+    background-color: $color-disabled;
   }
 }
