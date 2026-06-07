@@ -124,19 +124,21 @@ export const deleteWorkspaceInventoryItem = async (
 
 export const addGlobalIngredient = async (ingredientData: Omit<IngredientUnion, 'id' | 'updatedAt'>): Promise<IngredientUnion | null> => {
   if (!db || !ingredientData) throw new Error('Missing parameters');
+  if (!auth.currentUser?.uid) throw new Error('Unauthorized');
+  
   try {
     const newRef = doc(collection(db, 'ingredients'));
     const newIngredient = {
       ...ingredientData,
       id: newRef.id,
-      createdBy: auth.currentUser?.uid || 'system',
+      createdBy: auth.currentUser.uid,
       updatedAt: new Date().toISOString()
     } as IngredientUnion;
     
     await setDoc(newRef, newIngredient);
     return newIngredient;
   } catch (error) {
-    console.error('addGlobalIngredient failed:', error);
+    console.error(error);
     throw error;
   }
 };

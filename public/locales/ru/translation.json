@@ -50,6 +50,7 @@
   "Low": "Низкий",
   "Max Temp": "Макс. темп.",
   "Medium": "Средний",
+  "members": "участники",
   "Min Temp": "Мин. темп.",
   "Moisture": "Влажность",
   "Moisture level in honey. Usually 17-18%. Crucial for calculating volume and stability.": "Уровень влажности меда. Обычно 17-18%. Важен для расчета объема и стабильности.",
@@ -74,8 +75,8 @@
   "Register here": "Зарегистрироваться здесь",
   "Remove": "Удалить",
   "Select": "Выбрать",
-  "Select Language": "Выберите язык",
   "Select an ingredient...": "Выберите ингредиент...",
+  "Select Language": "Выберите язык",
   "Shared": "Общие",
   "Temp": "Температура",
   "The maximum alcohol percentage (ABV) this yeast can ferment before it stops. Look on the packaging.": "Максимальный процент алкоголя (ABV), который могут набродить эти дрожжи до остановки брожения. Ищите на упаковке.",
@@ -87,6 +88,5 @@
   "Workspace Inventory": "Инвентарь рабочей области",
   "Yeast requirement for nutrients (YAN). Check the manufacturer's specifications (Low, Medium, High).": "Потребность дрожжей в питательных веществах (YAN). Проверьте спецификации производителя (Низкая, Средняя, Высокая).",
   "Your inventory is empty.": "Ваш инвентарь пуст.",
-  "Your latest recipes will appear here.": "Здесь будут отображаться ваши последние рецепты.",
-  "members": "участники"
+  "Your latest recipes will appear here.": "Здесь будут отображаться ваши последние рецепты."
 }

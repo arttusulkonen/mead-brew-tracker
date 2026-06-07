@@ -178,7 +178,7 @@ const Inventory: React.FC = () => {
                               if (!ing || !ing.id) return null;
                               return (
                                 <option key={ing.id} value={ing.id}>
-                                  {t(ing.name)}
+                                  {ing.name}
                                 </option>
                               );
                             })}
@@ -372,7 +372,7 @@ const Inventory: React.FC = () => {
                         &times;
                       </button>
                     </div>
-                    <h3 className="ingredient-name">{t(item?.ingredient?.name || 'Unknown')}</h3>
+                    <h3 className="ingredient-name">{item?.ingredient?.name || 'Unknown'}</h3>
                     <div className="ingredient-meta">
                       {renderIngredientMeta(item?.ingredient)}
                     </div>

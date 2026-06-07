@@ -44,7 +44,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
   fetchInventory: async (breweryId) => {
     if (!breweryId) {
-      set({ inventory: [] });
+      set({ inventory: [], error: null, isLoading: false });
       return;
     }
     set({ isLoading: true, error: null });
