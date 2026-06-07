@@ -336,22 +336,6 @@
   }
 }
 
-/* Логика для появления подсказок */
-.tooltip-icon {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  font-size: 10px;
-  font-weight: bold;
-  color: $color-text-muted;
-  cursor: help;
-  border: 1px solid $color-border;
-  border-radius: 50%;
-}
-
 /* Скрываем подсказку по умолчанию */
 .tooltip-icon::before,
 .tooltip-icon::after {

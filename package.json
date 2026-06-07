@@ -16,7 +16,7 @@
     "lint:css:fix": "stylelint \"src/**/*.css\" \"src/**/*.scss\" --fix --quiet",
     "lint:js": "eslint \"src/**/*.{js,jsx,ts,tsx}\" --quiet",
     "lint:js:fix": "eslint \"src/**/*.{js,jsx,ts,tsx}\" --fix --quiet",
-    "lint:types": "tsc --noEmit",
+    "lint:types": "tsc -b --noEmit",
     "lint": "npm run lint:js && npm run lint:css && npm run lint:types",
     "fix": "npm run lint:js:fix && npm run lint:css:fix",
     "db:seed": "npx tsx scripts/seedIngredients.ts",

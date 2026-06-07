@@ -1,5 +1,6 @@
 import { onAuthStateChanged } from 'firebase/auth';
 import React, { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
 import { getUserBreweries, processPendingInvites } from './firebase/breweryService';
@@ -15,6 +16,7 @@ import { useBreweryStore } from './store/useBreweryStore';
 const App: React.FC = () => {
   const { user, setUser, setLoading } = useAuthStore();
   const { setBreweries, setActiveBrewery } = useBreweryStore();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -61,6 +63,9 @@ const App: React.FC = () => {
         
         <Route element={user ? <AppLayout /> : <Navigate to="/login" replace />}>
           <Route path="/home" element={<Home />} />
+          <Route path="/recipes" element={<div style={{ padding: '2rem' }}>{t('Recipes Page')}</div>} />
+          <Route path="/brew" element={<div style={{ padding: '2rem' }}>{t('Brew Day Page')}</div>} />
+          <Route path="/journal" element={<div style={{ padding: '2rem' }}>{t('Journal Page')}</div>} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<Navigate to="/home" replace />} />
