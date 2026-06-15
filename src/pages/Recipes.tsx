@@ -1,58 +1,70 @@
+import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaExclamationTriangle, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaChevronDown, FaChevronUp, FaPlus, FaTrash } from 'react-icons/fa';
+import { auth, db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
-import { useInventoryStore } from '../store/useInventoryStore';
-import type { HoneyIngredient, YeastIngredient } from '../types/ingredient';
+import type { BaseIngredient, HoneyIngredient, IngredientCategory, YeastIngredient } from '../types/ingredient';
 import { calculateAbvCrouch, calculateTosna, estimateOG } from '../utils/calculations';
 
 interface RecipeIngredientEntry {
   id: string;
   globalIngredientId: string;
   name: string;
-  category: string;
+  category: IngredientCategory;
   quantity: number;
   note: string;
+  showNote: boolean;
 }
+
+export type StepPhase = 'Preparation' | 'Fermentation' | 'Aging';
+export type TimeUnit = 'minutes' | 'days';
 
 interface RecipeStep {
   id: string;
   stepNumber: number;
+  phase: StepPhase;
+  title: string;
   description: string;
-  durationMinutes: number;
+  durationValue: number;
+  durationUnit: TimeUnit;
   targetTempC: number | null;
+  isExpanded: boolean;
 }
 
 const Recipes: React.FC = () => {
   const { t } = useTranslation();
   const { activeBreweryId } = useBreweryStore();
-  const { inventory, fetchInventory } = useInventoryStore();
 
   const [recipeName, setRecipeName] = useState('');
   const [batchSizeLiters, setBatchSizeLiters] = useState<number>(10);
+  
+  const [globalCatalog, setGlobalCatalog] = useState<BaseIngredient[]>([]);
   const [selectedIngredientId, setSelectedIngredientId] = useState<string>('');
+  
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredientEntry[]>([]);
   const [recipeSteps, setRecipeSteps] = useState<RecipeStep[]>([]);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
 
   useEffect(() => {
-    if (activeBreweryId) {
-      fetchInventory(activeBreweryId);
-    }
-  }, [activeBreweryId, fetchInventory]);
-
-  const availableTemplates = useMemo(() => {
-    const templates = new Map();
-    inventory?.forEach(item => {
-      if (item?.ingredient && !templates.has(item.ingredient.id)) {
-        templates.set(item.ingredient.id, item.ingredient);
+    const fetchCatalog = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'ingredients'));
+        const catalogData = querySnapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id
+        })) as BaseIngredient[];
+        setGlobalCatalog(catalogData);
+      } catch (error) {
+        console.error("Error fetching global catalog:", error);
       }
-    });
-    return Array.from(templates.values());
-  }, [inventory]);
+    };
+    fetchCatalog();
+  }, []);
 
   const handleAddIngredient = () => {
     if (!selectedIngredientId) return;
-    const template = availableTemplates.find(i => i.id === selectedIngredientId);
+    const template = globalCatalog.find(i => i.id === selectedIngredientId);
     if (!template) return;
 
     setRecipeIngredients(prev => [
@@ -63,53 +75,51 @@ const Recipes: React.FC = () => {
         name: template.name,
         category: template.category,
         quantity: 0,
-        note: '' 
+        note: '',
+        showNote: false
       }
     ]);
     setSelectedIngredientId('');
   };
 
   const handleRemoveIngredient = (id: string) => {
+    if (!id) return;
     setRecipeIngredients(prev => prev.filter(item => item.id !== id));
   };
 
-  const handleQuantityChange = (id: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
-    setRecipeIngredients(prev => prev.map(item => 
-      item.id === id ? { ...item, quantity: numValue } : item
-    ));
+  const updateIngredient = (id: string, updates: Partial<RecipeIngredientEntry>) => {
+    if (!id) return;
+    setRecipeIngredients(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
   };
 
-  const handleNoteChange = (id: string, value: string) => {
-    setRecipeIngredients(prev => prev.map(item => 
-      item.id === id ? { ...item, note: value } : item
-    ));
-  };
-
-  const handleAddStep = () => {
+  const handleAddStep = (phase: StepPhase = 'Preparation') => {
     setRecipeSteps(prev => [
       ...prev,
       {
         id: crypto.randomUUID(),
         stepNumber: prev.length + 1,
+        phase,
+        title: '',
         description: '',
-        durationMinutes: 0,
-        targetTempC: null
+        durationValue: 0,
+        durationUnit: phase === 'Preparation' ? 'minutes' : 'days',
+        targetTempC: null,
+        isExpanded: true
       }
     ]);
   };
 
   const handleRemoveStep = (id: string) => {
+    if (!id) return;
     setRecipeSteps(prev => {
       const filtered = prev.filter(step => step.id !== id);
       return filtered.map((step, index) => ({ ...step, stepNumber: index + 1 }));
     });
   };
 
-  const handleStepChange = (id: string, field: keyof RecipeStep, value: string | number | null) => {
-    setRecipeSteps(prev => prev.map(step => 
-      step.id === id ? { ...step, [field]: value } : step
-    ));
+  const updateStep = (id: string, updates: Partial<RecipeStep>) => {
+    if (!id) return;
+    setRecipeSteps(prev => prev.map(step => step.id === id ? { ...step, ...updates } : step));
   };
 
   const recipeDetails = useMemo(() => {
@@ -119,8 +129,8 @@ const Recipes: React.FC = () => {
     let honeyCount = 0;
     let totalBrix = 0;
 
-    recipeIngredients?.forEach(item => {
-      const template = availableTemplates.find(t => t.id === item.globalIngredientId);
+    recipeIngredients.forEach(item => {
+      const template = globalCatalog.find(t => t.id === item.globalIngredientId);
       if (!template) return;
 
       if (template.category === 'Honey') {
@@ -147,7 +157,47 @@ const Recipes: React.FC = () => {
     }
 
     return { og: estimatedOg, abv: estimatedAbv, tosna: tosnaData };
-  }, [recipeIngredients, batchSizeLiters, availableTemplates]);
+  }, [recipeIngredients, batchSizeLiters, globalCatalog]);
+
+  const handleSaveRecipe = async () => {
+    if (!activeBreweryId || !recipeName || recipeIngredients.length === 0 || !db || !auth?.currentUser) return;
+
+    setIsSaving(true);
+    try {
+      const recipeId = crypto.randomUUID();
+      const recipeRef = doc(db, 'recipes', recipeId);
+      
+      const cleanIngredients = recipeIngredients.map(({ showNote, ...rest }) => rest);
+      const cleanSteps = recipeSteps.map(({ isExpanded, ...rest }) => rest);
+
+      const newRecipe = {
+        id: recipeId,
+        breweryId: activeBreweryId,
+        name: recipeName,
+        expectedBatchSizeLiters: batchSizeLiters,
+        targetOriginalGravity: recipeDetails.og,
+        targetFinalGravity: 1.000,
+        targetAbv: recipeDetails.abv,
+        ingredients: cleanIngredients,
+        steps: cleanSteps,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: auth.currentUser.uid
+      };
+
+      await setDoc(recipeRef, newRecipe);
+      
+      setRecipeName('');
+      setRecipeIngredients([]);
+      setRecipeSteps([]);
+      alert(t('Recipe saved successfully!'));
+    } catch (error) {
+      console.error('Error saving recipe:', error);
+      alert(t('Error saving recipe'));
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (!activeBreweryId) return null;
 
@@ -159,6 +209,7 @@ const Recipes: React.FC = () => {
 
       <div className="recipe-grid">
         <div className="recipe-form-section">
+          
           <div className="card">
             <div className="form-group">
               <label>{t('Recipe Name')}</label>
@@ -188,62 +239,67 @@ const Recipes: React.FC = () => {
                 value={selectedIngredientId} 
                 onChange={(e) => setSelectedIngredientId(e.target.value)}
               >
-                <option value="" disabled>{t('Select ingredient template...')}</option>
-                {availableTemplates.map(template => (
+                <option value="" disabled>{t('Select an ingredient...')}</option>
+                {globalCatalog.map(template => (
                   <option key={template.id} value={template.id}>
                     {template.name} ({t(template.category)})
                   </option>
                 ))}
               </select>
-              <button className="btn-primary" onClick={handleAddIngredient} disabled={!selectedIngredientId}>
+              <button className="btn-primary" onClick={handleAddIngredient} disabled={!selectedIngredientId || isSaving}>
                 <FaPlus /> {t('Add')}
               </button>
             </div>
 
             <div className="ingredients-list">
-              {recipeIngredients.map(item => {
-                const stockItems = inventory?.filter(inv => inv.ingredientId === item.globalIngredientId) || [];
-                const totalInStock = stockItems.reduce((sum, inv) => sum + inv.quantityOnHand, 0);
-                const isShortage = item.quantity > totalInStock;
-
-                return (
-                  <div key={item.id} className="ingredient-row">
-                    <div className="ingredient-main-row">
-                      <div className="ingredient-info">
-                        <span className="category-tag" data-category={item.category}>{t(item.category)}</span>
-                        <span className="name">{item.name}</span>
-                        {isShortage && item.quantity > 0 && (
-                          <span className="warning-text" title={t('Not enough in stock')}>
-                            <FaExclamationTriangle /> {t('Stock:')} {totalInStock}
-                          </span>
-                        )}
-                      </div>
-                      <div className="ingredient-controls">
-                        <input 
-                          type="number" 
-                          min="0" 
-                          value={item.quantity || ''} 
-                          onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                          placeholder="0"
-                        />
-                        <span className="unit">{t('g')}</span>
-                        <button className="btn-icon danger" onClick={() => handleRemoveIngredient(item.id)}>
-                          <FaTrash />
-                        </button>
-                      </div>
+              {recipeIngredients.map(item => (
+                <div key={item.id} className="ingredient-row">
+                  <div className="ingredient-main-row">
+                    <div className="ingredient-info">
+                      <span className="category-tag" data-category={item.category}>{t(item.category)}</span>
+                      <span className="name">{item.name}</span>
                     </div>
-                    <div className="ingredient-note">
+                    <div className="ingredient-controls">
+                      <button 
+                        className="btn-text-small" 
+                        onClick={() => updateIngredient(item.id, { showNote: !item.showNote })}
+                        disabled={isSaving}
+                      >
+                        {item.showNote ? t('- Note') : t('+ Note')}
+                      </button>
                       <input 
-                        type="text" 
-                        value={item.note}
-                        onChange={(e) => handleNoteChange(item.id, e.target.value)}
-                        placeholder={t('Add a note (e.g., boil for 5 mins, dry hop)...')}
-                        className="note-input"
+                        type="number" 
+                        min="0" 
+                        value={item.quantity === 0 ? '' : item.quantity} 
+                        onChange={(e) => updateIngredient(item.id, { quantity: parseFloat(e.target.value) || 0 })}
+                        placeholder="0"
+                        disabled={isSaving}
                       />
+                      <span className="unit">{t('g')}</span>
+                      <button 
+                        className="btn-icon danger" 
+                        onClick={() => handleRemoveIngredient(item.id)} 
+                        disabled={isSaving}
+                        aria-label={t('Remove')}
+                      >
+                        <FaTrash />
+                      </button>
                     </div>
                   </div>
-                );
-              })}
+                  {item.showNote && (
+                    <div className="ingredient-note-container">
+                      <textarea 
+                        value={item.note}
+                        onChange={(e) => updateIngredient(item.id, { note: e.target.value })}
+                        placeholder={t('Add detailed notes for this ingredient...')}
+                        className="note-textarea"
+                        rows={2}
+                        disabled={isSaving}
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
               {recipeIngredients.length === 0 && (
                 <div className="empty-text">{t('No ingredients added yet.')}</div>
               )}
@@ -254,45 +310,91 @@ const Recipes: React.FC = () => {
             <h3>{t('Brewing Steps')}</h3>
             <div className="steps-list">
               {recipeSteps.map((step) => (
-                <div key={step.id} className="step-row">
-                  <div className="step-number">{step.stepNumber}</div>
-                  <div className="step-content">
-                    <input 
-                      type="text" 
-                      value={step.description}
-                      onChange={(e) => handleStepChange(step.id, 'description', e.target.value)}
-                      placeholder={t('Step description (e.g., Boil honey and water)')}
-                      className="step-desc-input"
-                    />
-                    <div className="step-metrics">
-                      <div className="metric-input">
-                        <label>{t('Time (min)')}</label>
-                        <input 
-                          type="number" 
-                          min="0"
-                          value={step.durationMinutes || ''}
-                          onChange={(e) => handleStepChange(step.id, 'durationMinutes', parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
-                      <div className="metric-input">
-                        <label>{t('Target °C')}</label>
-                        <input 
-                          type="number" 
-                          value={step.targetTempC || ''}
-                          onChange={(e) => handleStepChange(step.id, 'targetTempC', parseFloat(e.target.value) || null)}
-                          placeholder="—"
-                        />
-                      </div>
+                <div key={step.id} className="step-card">
+                  <div className="step-header">
+                    <div className="step-header-left">
+                      <span className="step-number">{step.stepNumber}</span>
+                      <select 
+                        className="phase-selector"
+                        value={step.phase}
+                        onChange={(e) => updateStep(step.id, { phase: e.target.value as StepPhase })}
+                        disabled={isSaving}
+                      >
+                        <option value="Preparation">{t('Preparation')}</option>
+                        <option value="Fermentation">{t('Fermentation')}</option>
+                        <option value="Aging">{t('Aging')}</option>
+                      </select>
+                    </div>
+                    <div className="step-header-right">
+                      <button className="btn-icon transparent" onClick={() => updateStep(step.id, { isExpanded: !step.isExpanded })}>
+                        {step.isExpanded ? <FaChevronUp /> : <FaChevronDown />}
+                      </button>
+                      <button className="btn-icon danger" onClick={() => handleRemoveStep(step.id)} disabled={isSaving} aria-label={t('Remove')}>
+                        <FaTrash />
+                      </button>
                     </div>
                   </div>
-                  <button className="btn-icon danger" onClick={() => handleRemoveStep(step.id)}>
-                    <FaTrash />
-                  </button>
+
+                  {step.isExpanded && (
+                    <div className="step-body">
+                      <input 
+                        type="text" 
+                        value={step.title}
+                        onChange={(e) => updateStep(step.id, { title: e.target.value })}
+                        placeholder={t('Step Title')}
+                        className="step-title-input"
+                        disabled={isSaving}
+                      />
+                      <textarea 
+                        value={step.description}
+                        onChange={(e) => updateStep(step.id, { description: e.target.value })}
+                        placeholder={t('Detailed instructions...')}
+                        className="step-desc-textarea"
+                        rows={3}
+                        disabled={isSaving}
+                      />
+                      
+                      <div className="step-metrics-grid">
+                        <div className="metric-group">
+                          <label>{t('Duration')}</label>
+                          <div className="duration-inputs">
+                            <input 
+                              type="number" 
+                              min="0"
+                              value={step.durationValue === 0 ? '' : step.durationValue}
+                              onChange={(e) => updateStep(step.id, { durationValue: parseFloat(e.target.value) || 0 })}
+                              disabled={isSaving}
+                            />
+                            <select 
+                              value={step.durationUnit}
+                              onChange={(e) => updateStep(step.id, { durationUnit: e.target.value as TimeUnit })}
+                              disabled={isSaving}
+                            >
+                              <option value="minutes">{t('Minutes')}</option>
+                              <option value="days">{t('Days')}</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="metric-group">
+                          <label>{t('Target Temp (°C)')}</label>
+                          <input 
+                            type="number" 
+                            value={step.targetTempC || ''}
+                            onChange={(e) => updateStep(step.id, { targetTempC: parseFloat(e.target.value) || null })}
+                            placeholder="Optional"
+                            disabled={isSaving}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
-              <button className="btn-secondary" onClick={handleAddStep}>
-                <FaPlus /> {t('Add Step')}
-              </button>
+              <div className="step-add-buttons">
+                <button className="btn-secondary" onClick={() => handleAddStep('Preparation')} disabled={isSaving}>
+                  <FaPlus /> {t('Add Step')}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -318,33 +420,25 @@ const Recipes: React.FC = () => {
           </div>
 
           <div className="card stat-card secondary">
-            <h3>{t('TOSNA 3.0 Requirements')}</h3>
+            <h3>{t('TOSNA 3.0')}</h3>
             {!recipeDetails.tosna ? (
-              <div className="empty-text">{t('Add honey and yeast to calculate nutrients.')}</div>
+              <div className="empty-text">{t('Add honey & yeast')}</div>
             ) : (
               <div className="tosna-grid">
-                <div className="tosna-row">
-                  <span>{t('Total Yeast Needed')}</span>
-                  <strong>{recipeDetails.tosna.totalYeastGrams} {t('g')}</strong>
-                </div>
-                <div className="tosna-row">
-                  <span>{t('Go-Ferm Protect')}</span>
-                  <strong>{recipeDetails.tosna.goFermGrams} {t('g')}</strong>
-                </div>
-                <div className="tosna-row">
-                  <span>{t('Total Fermaid-O')}</span>
-                  <strong>{recipeDetails.tosna.totalFermaidOGrams} {t('g')}</strong>
-                </div>
-                <div className="tosna-row highlight">
-                  <span>{t('Per Addition (x4)')}</span>
-                  <strong>{recipeDetails.tosna.dosePerAdditionGrams} {t('g')}</strong>
-                </div>
+                <div className="tosna-row"><span>{t('Total Yeast')}</span><strong>{recipeDetails.tosna.totalYeastGrams} g</strong></div>
+                <div className="tosna-row"><span>{t('Go-Ferm')}</span><strong>{recipeDetails.tosna.goFermGrams} g</strong></div>
+                <div className="tosna-row"><span>{t('Fermaid-O')}</span><strong>{recipeDetails.tosna.totalFermaidOGrams} g</strong></div>
+                <div className="tosna-row highlight"><span>{t('Per Addition (x4)')}</span><strong>{recipeDetails.tosna.dosePerAdditionGrams} g</strong></div>
               </div>
             )}
           </div>
 
-          <button className="btn-primary full-width" disabled={!recipeName || recipeIngredients.length === 0}>
-            {t('Save Recipe')}
+          <button 
+            className="btn-primary full-width" 
+            onClick={handleSaveRecipe}
+            disabled={!recipeName || recipeIngredients.length === 0 || isSaving}
+          >
+            {isSaving ? t('Saving...') : t('Save Recipe')}
           </button>
         </div>
       </div>

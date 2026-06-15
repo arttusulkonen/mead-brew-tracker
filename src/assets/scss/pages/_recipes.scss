@@ -9,7 +9,7 @@
 
   .page-header {
     margin-bottom: $spacing-xxl;
-    
+
     h1 {
       font-size: 2rem;
       color: $color-text-main;
@@ -118,12 +118,6 @@
   background-color: $color-bg;
   border: 1px solid $color-border;
   border-radius: $border-radius-md;
-
-  @media (min-width: $breakpoint-md) {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
 }
 
 .ingredient-info {
@@ -165,7 +159,7 @@
   align-items: center;
   margin-left: $spacing-md;
   font-size: 0.8rem;
-  color: #d97706; 
+  color: #d97706;
 }
 
 .ingredient-note {
@@ -383,9 +377,193 @@
     background-color: $color-error-bg;
     border: none;
     border-radius: $border-radius-sm;
-    
+
     &:hover {
       opacity: 0.8;
+    }
+  }
+}
+
+.btn-text-small {
+  padding: 0 $spacing-sm;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: $color-primary;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.ingredient-note-container {
+  width: 100%;
+  padding-top: $spacing-sm;
+  margin-top: $spacing-sm;
+  border-top: 1px dashed $color-border;
+
+  .note-textarea {
+    width: 100%;
+    padding: $spacing-sm;
+    font-family: inherit;
+    font-size: 0.9rem;
+    resize: vertical;
+    background-color: var(--surface-hover);
+    border: 1px solid $color-border;
+    border-radius: $border-radius-sm;
+
+    &:focus {
+      border-color: $color-primary;
+      outline: none;
+    }
+  }
+}
+
+.step-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--surface-hover, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: $border-radius-md;
+
+  .step-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-sm $spacing-md;
+    background-color: $color-surface;
+    border-bottom: 1px solid $color-border;
+
+    .step-header-left {
+      display: flex;
+      gap: $spacing-sm;
+      align-items: center;
+
+      .step-number {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        font-size: 0.85rem;
+        font-weight: bold;
+        color: white;
+        background-color: $color-primary;
+        border-radius: 50%;
+      }
+
+      .phase-selector {
+        padding: 4px 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: $color-text-main;
+        cursor: pointer;
+        background-color: transparent;
+        border: none;
+        outline: none;
+      }
+    }
+
+    .step-header-right {
+      display: flex;
+      gap: $spacing-xs;
+
+      .btn-icon.transparent {
+        padding: 4px 8px;
+        color: $color-text-muted;
+        cursor: pointer;
+        background: transparent;
+        border: none;
+      }
+    }
+  }
+
+  .step-body {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    padding: $spacing-md;
+
+    .step-title-input {
+      width: 100%;
+      padding: $spacing-sm;
+      font-weight: 600;
+      border: 1px solid $color-border;
+      border-radius: $border-radius-sm;
+    }
+
+    .step-desc-textarea {
+      width: 100%;
+      padding: $spacing-sm;
+      font-family: inherit;
+      resize: vertical;
+      border: 1px solid $color-border;
+      border-radius: $border-radius-sm;
+    }
+
+    .step-metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: $spacing-md;
+
+      .metric-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        label {
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: $color-text-muted;
+        }
+
+        input,
+        select {
+          padding: $spacing-sm;
+          border: 1px solid $color-border;
+          border-radius: $border-radius-sm;
+        }
+
+        .duration-inputs {
+          display: flex;
+          gap: 4px;
+
+          input {
+            width: 80px;
+          }
+
+          select {
+            flex: 1;
+          }
+        }
+      }
+    }
+  }
+}
+
+.step-add-buttons {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-sm;
+
+  .btn-secondary {
+    display: flex;
+    flex: 1;
+    gap: $spacing-sm;
+    align-items: center;
+    justify-content: center;
+    padding: $spacing-sm;
+    color: $color-primary;
+    cursor: pointer;
+    background-color: transparent;
+    border: 1px dashed $color-primary;
+    border-radius: $border-radius-sm;
+
+    &:hover {
+      background-color: rgba($color-primary, 0.05);
     }
   }
 }
