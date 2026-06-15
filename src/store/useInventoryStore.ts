@@ -1,7 +1,8 @@
+import { collection, doc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { create } from 'zustand';
+import { db } from '../firebase/config';
 import {
   addGlobalIngredient,
-  addWorkspaceInventoryItem,
   deleteWorkspaceInventoryItem,
   getGlobalIngredients,
   getWorkspaceInventory,
@@ -59,27 +60,41 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   },
 
   addInventoryItem: async (breweryId, itemData) => {
-    if (!breweryId || !itemData) return false;
+    if (!breweryId) return false;
+    
     set({ isLoading: true, error: null });
     try {
-      const newItem = await addWorkspaceInventoryItem(breweryId, itemData);
-      if (newItem) {
-        const globalIng = get().globalIngredients.find(g => g.id === newItem.ingredientId);
-        if (globalIng) {
-          const populated: PopulatedInventoryItem = { ...newItem, ingredient: globalIng };
-          set(state => ({ inventory: [...state.inventory, populated] }));
-        } else {
-          const items = await getWorkspaceInventory(breweryId);
-          set({ inventory: items });
-        }
-        return true;
+      const inventoryRef = collection(db, `breweries/${breweryId}/inventory`);
+      
+      const q = query(inventoryRef, where('ingredientId', '==', itemData.ingredientId));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const existingDoc = querySnapshot.docs[0]; 
+        const existingData = existingDoc.data();
+        
+        const newQuantity = (existingData.quantityOnHand || 0) + itemData.quantityOnHand;
+        
+        await updateDoc(existingDoc.ref, { 
+          quantityOnHand: newQuantity,
+          unit: itemData.unit
+        });
+        
+      } else {
+        const newItemRef = doc(inventoryRef);
+        await setDoc(newItemRef, {
+          id: newItemRef.id,
+          breweryId,
+          ...itemData,
+        });
       }
+
+      get().fetchInventory(breweryId);
+      return true;
+    } catch (error: any) {
+      console.error('Error adding/updating inventory item:', error);
+      set({ error: error.message, isLoading: false });
       return false;
-    } catch (err: any) {
-      set({ error: err.message || 'Failed to add inventory item' });
-      return false;
-    } finally {
-      set({ isLoading: false });
     }
   },
 

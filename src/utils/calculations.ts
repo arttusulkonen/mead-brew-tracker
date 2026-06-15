@@ -1,6 +1,7 @@
 export const sgToBrix = (sg: number | null | undefined): number => {
   if (!sg || sg < 1) return 0;
-  return 135.997 * Math.pow(sg, 3) - 630.272 * Math.pow(sg, 2) + 1111.14 * sg - 616.868;
+  const brix = 135.997 * Math.pow(sg, 3) - 630.272 * Math.pow(sg, 2) + 1111.14 * sg - 616.868;
+  return Math.max(0, brix); 
 };
 
 export const brixToSg = (brix: number | null | undefined): number => {

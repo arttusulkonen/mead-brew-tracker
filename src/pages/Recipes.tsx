@@ -5,6 +5,7 @@ import { FaChevronDown, FaChevronUp, FaPlus, FaTrash } from 'react-icons/fa';
 import { auth, db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
 import type { BaseIngredient, HoneyIngredient, IngredientCategory, YeastIngredient } from '../types/ingredient';
+import type { StepPhase, TimeUnit } from '../types/recipe';
 import { calculateAbvCrouch, calculateTosna, estimateOG } from '../utils/calculations';
 
 interface RecipeIngredientEntry {
@@ -16,9 +17,6 @@ interface RecipeIngredientEntry {
   note: string;
   showNote: boolean;
 }
-
-export type StepPhase = 'Preparation' | 'Fermentation' | 'Aging';
-export type TimeUnit = 'minutes' | 'days';
 
 interface RecipeStep {
   id: string;
@@ -49,6 +47,7 @@ const Recipes: React.FC = () => {
   useEffect(() => {
     const fetchCatalog = async () => {
       try {
+        if (!db) return;
         const querySnapshot = await getDocs(collection(db, 'ingredients'));
         const catalogData = querySnapshot.docs.map(doc => ({
           ...doc.data(),
@@ -56,7 +55,7 @@ const Recipes: React.FC = () => {
         })) as BaseIngredient[];
         setGlobalCatalog(catalogData);
       } catch (error) {
-        console.error("Error fetching global catalog:", error);
+        console.error(error);
       }
     };
     fetchCatalog();
@@ -73,7 +72,7 @@ const Recipes: React.FC = () => {
         id: crypto.randomUUID(), 
         globalIngredientId: template.id, 
         name: template.name,
-        category: template.category,
+        category: template.category as IngredientCategory,
         quantity: 0,
         note: '',
         showNote: false
@@ -134,12 +133,12 @@ const Recipes: React.FC = () => {
       if (!template) return;
 
       if (template.category === 'Honey') {
-        const honey = template as HoneyIngredient;
+        const honey = template as unknown as HoneyIngredient;
         totalHoneyGrams += item.quantity;
         totalBrix += (honey.sugarContentBrix || 80);
         honeyCount++;
       } else if (template.category === 'Yeast') {
-        selectedYeast = template as YeastIngredient;
+        selectedYeast = template as unknown as YeastIngredient;
       }
     });
 
@@ -150,9 +149,10 @@ const Recipes: React.FC = () => {
 
     let tosnaData = null;
     if (selectedYeast && estimatedOg > 1.000) {
+      const yeast = selectedYeast as YeastIngredient;
       let nFactor = 0.90;
-      if (selectedYeast.nitrogenDemand === 'Low') nFactor = 0.75;
-      else if (selectedYeast.nitrogenDemand === 'High' || selectedYeast.nitrogenDemand === 'Very High') nFactor = 1.25;
+      if (yeast.nitrogenDemand === 'Low') nFactor = 0.75;
+      else if (yeast.nitrogenDemand === 'High' || yeast.nitrogenDemand === 'Very High') nFactor = 1.25;
       tosnaData = calculateTosna(batchSizeLiters, estimatedOg, nFactor);
     }
 
@@ -167,8 +167,25 @@ const Recipes: React.FC = () => {
       const recipeId = crypto.randomUUID();
       const recipeRef = doc(db, 'recipes', recipeId);
       
-      const cleanIngredients = recipeIngredients.map(({ showNote, ...rest }) => rest);
-      const cleanSteps = recipeSteps.map(({ isExpanded, ...rest }) => rest);
+      const cleanIngredients = recipeIngredients.map(item => ({
+        id: item.id,
+        globalIngredientId: item.globalIngredientId,
+        name: item.name,
+        category: item.category,
+        quantity: item.quantity,
+        note: item.note
+      }));
+      
+      const cleanSteps = recipeSteps.map(step => ({
+        id: step.id,
+        stepNumber: step.stepNumber,
+        phase: step.phase,
+        title: step.title,
+        description: step.description,
+        durationValue: step.durationValue,
+        durationUnit: step.durationUnit,
+        targetTempC: step.targetTempC
+      }));
 
       const newRecipe = {
         id: recipeId,
@@ -192,7 +209,7 @@ const Recipes: React.FC = () => {
       setRecipeSteps([]);
       alert(t('Recipe saved successfully!'));
     } catch (error) {
-      console.error('Error saving recipe:', error);
+      console.error(error);
       alert(t('Error saving recipe'));
     } finally {
       setIsSaving(false);
@@ -326,13 +343,23 @@ const Recipes: React.FC = () => {
                       </select>
                     </div>
                     <div className="step-header-right">
-                      <button className="btn-icon transparent" onClick={() => updateStep(step.id, { isExpanded: !step.isExpanded })}>
-                        {step.isExpanded ? <FaChevronUp /> : <FaChevronDown />}
-                      </button>
-                      <button className="btn-icon danger" onClick={() => handleRemoveStep(step.id)} disabled={isSaving} aria-label={t('Remove')}>
-                        <FaTrash />
-                      </button>
-                    </div>
+                    <button 
+                      className="btn-icon transparent" 
+                      onClick={() => updateStep(step.id, { isExpanded: !step.isExpanded })}
+                      aria-expanded={step.isExpanded}
+                      aria-label={step.isExpanded ? t('Collapse step') : t('Expand step')}
+                    >
+                      {step.isExpanded ? <FaChevronUp /> : <FaChevronDown />}
+                    </button>
+                    <button 
+                      className="btn-icon danger" 
+                      onClick={() => handleRemoveStep(step.id)} 
+                      disabled={isSaving} 
+                      aria-label={t('Remove step')}
+                    >
+                      <FaTrash />
+                    </button>
+                  </div>
                   </div>
 
                   {step.isExpanded && (
@@ -379,9 +406,9 @@ const Recipes: React.FC = () => {
                           <label>{t('Target Temp (°C)')}</label>
                           <input 
                             type="number" 
-                            value={step.targetTempC || ''}
-                            onChange={(e) => updateStep(step.id, { targetTempC: parseFloat(e.target.value) || null })}
-                            placeholder="Optional"
+                            value={step.targetTempC ?? ''} 
+                            onChange={(e) => updateStep(step.id, { targetTempC: e.target.value === '' ? null : parseFloat(e.target.value) })}
+                            placeholder={t('Optional')}
                             disabled={isSaving}
                           />
                         </div>

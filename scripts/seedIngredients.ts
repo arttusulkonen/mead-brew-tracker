@@ -2,7 +2,6 @@ import admin from 'firebase-admin';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import type { IngredientUnion } from '../src/types/ingredient';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,81 +21,27 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-const seedData: (IngredientUnion & { id: string })[] = [
-  {
-    id: 'honey_oiemesi',
-    name: 'Õiemesi (Эстонское разнотравье)',
-    category: 'Honey',
-    sugarContentBrix: 80.0,
-    moistureContentPct: 18.0,
-    origin: 'Estonia',
-    updatedAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'yeast_s04',
-    name: 'Fermentis SafAle S-04',
-    category: 'Yeast',
-    tempMinC: 15,
-    tempMaxC: 20,
-    alcoholTolerancePct: 11.0,
-    nitrogenDemand: 'Medium',
-    updatedAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'hops_saaz_2024',
-    name: 'Saaz 2024',
-    category: 'Hops',
-    alphaAcidPct: 2.9,
-    origin: 'Czech Republic',
-    updatedAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'additive_lalbrew_nutrient',
-    name: 'LalBrew Yeast Nutrition',
-    category: 'Additive',
-    additiveType: 'Nutrient',
-    yanValuePerGramPerLiter: 40.0,
-    updatedAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'additive_cinnamon',
-    name: 'Корица (Cinnamon)',
-    category: 'Additive',
-    additiveType: 'Spice',
-    updatedAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'additive_nutmeg',
-    name: 'Мускатный орех (Nutmeg)',
-    category: 'Additive',
-    additiveType: 'Spice',
-    updatedAt: new Date().toISOString(),
-    createdBy: 'system'
-  }
-];
-
-async function seedIngredients() {
-  if (!db) return;
+async function clearIngredients() {
   const batch = db.batch();
-
-  for (const ingredient of seedData) {
-    if (!ingredient || !ingredient.id) continue;
-    const docRef = db.collection('ingredients').doc(ingredient.id);
-    batch.set(docRef, ingredient, { merge: true });
-  }
-
+  
   try {
+    const snapshot = await db.collection('ingredients').get();
+    if (snapshot.empty) {
+      console.log('No ingredients found to clean.');
+      return;
+    }
+
+    const batch = db.batch();
+    snapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
     await batch.commit();
-    console.log('Ingredients seeded successfully.');
+    console.log('All placeholder ingredients deleted from global catalog.');
   } catch (error) {
-    console.error('Seeding failed:', error);
+    console.error('Failed to clean ingredients collection:', error);
     process.exit(1);
   }
 }
 
-seedIngredients();
+clearIngredients();

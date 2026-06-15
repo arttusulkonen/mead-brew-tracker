@@ -1,10 +1,25 @@
-import { IngredientCategory, UnitType } from './ingredient';
+import type { IngredientCategory } from './ingredient';
 
 export interface RecipeIngredientReference {
-  ingredientId: string;
-  quantity: number;
-  unit: UnitType;
+  globalIngredientId: string;
+  name: string;
   category: IngredientCategory;
+  quantity: number;
+  note: string;
+}
+
+export type StepPhase = 'Preparation' | 'Fermentation' | 'Aging';
+export type TimeUnit = 'minutes' | 'days';
+
+export interface RecipeStep {
+  id: string;
+  stepNumber: number;
+  phase: StepPhase;
+  title: string;
+  description: string;
+  durationValue: number;
+  durationUnit: TimeUnit;
+  targetTempC: number | null;
 }
 
 export interface IdealTargetCurves {
@@ -22,8 +37,8 @@ export interface Recipe {
   targetFinalGravity: number;
   targetAbv: number;
   ingredients: RecipeIngredientReference[];
+  steps: RecipeStep[];
   targetCurves?: IdealTargetCurves;
-  instructions: string;
   createdAt: string;
   updatedAt: string;
   createdBy: string;
