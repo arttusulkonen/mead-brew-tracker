@@ -14,69 +14,48 @@ if (!fs.existsSync(resolvedKeyPath)) {
 
 const serviceAccount = JSON.parse(fs.readFileSync(resolvedKeyPath, 'utf8'));
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+}
 
 const db = admin.firestore();
 
 const seedData: (IngredientUnion & { id: string })[] = [
   {
-    id: 'honey_orange_blossom',
-    name: 'Orange Blossom',
+    id: 'honey_oiemesi',
+    name: 'Õiemesi (Эстонское разнотравье)',
     category: 'Honey',
     sugarContentBrix: 80.0,
     moistureContentPct: 18.0,
-    origin: 'USA',
+    origin: 'Estonia',
     updatedAt: new Date().toISOString(),
     createdBy: 'system'
   },
   {
-    id: 'honey_wildflower',
-    name: 'Wildflower',
-    category: 'Honey',
-    sugarContentBrix: 82.0,
-    moistureContentPct: 17.0,
-    origin: 'Global',
-    updatedAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'yeast_lalvin_d47',
-    name: 'ICV D47',
+    id: 'yeast_s04',
+    name: 'Fermentis SafAle S-04',
     category: 'Yeast',
     tempMinC: 15,
     tempMaxC: 20,
-    alcoholTolerancePct: 14.0,
-    nitrogenDemand: 'Low',
-    updatedAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'yeast_lalvin_ec1118',
-    name: 'EC-1118',
-    category: 'Yeast',
-    tempMinC: 10,
-    tempMaxC: 30,
-    alcoholTolerancePct: 18.0,
-    nitrogenDemand: 'Low',
-    updatedAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'yeast_lalvin_71b',
-    name: '71B',
-    category: 'Yeast',
-    tempMinC: 15,
-    tempMaxC: 30,
-    alcoholTolerancePct: 14.0,
+    alcoholTolerancePct: 11.0,
     nitrogenDemand: 'Medium',
     updatedAt: new Date().toISOString(),
     createdBy: 'system'
   },
   {
-    id: 'additive_fermaid_o',
-    name: 'Fermaid O',
+    id: 'hops_saaz_2024',
+    name: 'Saaz 2024',
+    category: 'Hops',
+    alphaAcidPct: 2.9,
+    origin: 'Czech Republic',
+    updatedAt: new Date().toISOString(),
+    createdBy: 'system'
+  },
+  {
+    id: 'additive_lalbrew_nutrient',
+    name: 'LalBrew Yeast Nutrition',
     category: 'Additive',
     additiveType: 'Nutrient',
     yanValuePerGramPerLiter: 40.0,
@@ -84,32 +63,25 @@ const seedData: (IngredientUnion & { id: string })[] = [
     createdBy: 'system'
   },
   {
-    id: 'additive_go_ferm',
-    name: 'Go-Ferm Protect Evolution',
+    id: 'additive_cinnamon',
+    name: 'Корица (Cinnamon)',
     category: 'Additive',
-    additiveType: 'Nutrient',
+    additiveType: 'Spice',
     updatedAt: new Date().toISOString(),
     createdBy: 'system'
   },
   {
-    id: 'additive_pectic_enzyme',
-    name: 'Pectic Enzyme',
+    id: 'additive_nutmeg',
+    name: 'Мускатный орех (Nutmeg)',
     category: 'Additive',
-    additiveType: 'Clarifier',
-    updatedAt: new Date().toISOString(),
-    createdBy: 'system'
-  },
-  {
-    id: 'additive_k_sorbate',
-    name: 'Potassium Sorbate',
-    category: 'Additive',
-    additiveType: 'Stabilizer',
+    additiveType: 'Spice',
     updatedAt: new Date().toISOString(),
     createdBy: 'system'
   }
 ];
 
 async function seedIngredients() {
+  if (!db) return;
   const batch = db.batch();
 
   for (const ingredient of seedData) {
@@ -120,7 +92,9 @@ async function seedIngredients() {
 
   try {
     await batch.commit();
+    console.log('Ingredients seeded successfully.');
   } catch (error) {
+    console.error('Seeding failed:', error);
     process.exit(1);
   }
 }
