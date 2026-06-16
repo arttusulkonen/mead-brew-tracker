@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocs, increment, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { create } from 'zustand';
 import { db } from '../firebase/config';
 import {
@@ -60,7 +60,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   },
 
   addInventoryItem: async (breweryId, itemData) => {
-    if (!breweryId) return false;
+    if (!breweryId || !itemData || !db) return false;
     
     set({ isLoading: true, error: null });
     try {
@@ -71,12 +71,9 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
       if (!querySnapshot.empty) {
         const existingDoc = querySnapshot.docs[0]; 
-        const existingData = existingDoc.data();
-        
-        const newQuantity = (existingData.quantityOnHand || 0) + itemData.quantityOnHand;
         
         await updateDoc(existingDoc.ref, { 
-          quantityOnHand: newQuantity,
+          quantityOnHand: increment(itemData.quantityOnHand),
           unit: itemData.unit
         });
         
@@ -89,12 +86,13 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         });
       }
 
-      get().fetchInventory(breweryId);
+      await get().fetchInventory(breweryId);
       return true;
     } catch (error: any) {
-      console.error('Error adding/updating inventory item:', error);
       set({ error: error.message, isLoading: false });
       return false;
+    } finally {
+      set({ isLoading: false });
     }
   },
 

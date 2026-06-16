@@ -1,6 +1,7 @@
 import admin from 'firebase-admin';
 import fs from 'fs';
 import path from 'path';
+import readline from 'readline';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -22,26 +23,38 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 async function clearIngredients() {
-  const batch = db.batch();
-  
-  try {
-    const snapshot = await db.collection('ingredients').get();
-    if (snapshot.empty) {
-      console.log('No ingredients found to clean.');
+  if (!db) return;
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  rl.question('Are you sure you want to delete ALL ingredients? (y/N) ', async (answer) => {
+    if (answer.toLowerCase() !== 'y') {
+      rl.close();
       return;
     }
 
-    const batch = db.batch();
-    snapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
+    try {
+      const snapshot = await db.collection('ingredients').get();
+      if (snapshot.empty) {
+        rl.close();
+        return;
+      }
 
-    await batch.commit();
-    console.log('All placeholder ingredients deleted from global catalog.');
-  } catch (error) {
-    console.error('Failed to clean ingredients collection:', error);
-    process.exit(1);
-  }
+      const batch = db.batch();
+      snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
+      await batch.commit();
+    } catch (error) {
+      process.exit(1);
+    } finally {
+      rl.close();
+    }
+  });
 }
 
 clearIngredients();
