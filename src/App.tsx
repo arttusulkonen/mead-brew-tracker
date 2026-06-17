@@ -9,6 +9,7 @@ import Home from './pages/Home';
 import Inventory from './pages/Inventory';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
+import RecipeDetails from './pages/RecipeDetails';
 import Recipes from './pages/Recipes';
 import Register from './pages/Register';
 import { useAuthStore } from './store/useAuthStore';
@@ -65,6 +66,7 @@ const App: React.FC = () => {
         <Route element={user ? <AppLayout /> : <Navigate to="/login" replace />}>
           <Route path="/home" element={<Home />} />
           <Route path="/recipes" element={<Recipes />} />
+          <Route path="/recipes/:id" element={<RecipeDetails />} />
           <Route path="/brew" element={<div style={{ padding: '2rem' }}>{t('Brew Day Page')}</div>} />
           <Route path="/journal" element={<div style={{ padding: '2rem' }}>{t('Journal Page')}</div>} />
           <Route path="/inventory" element={<Inventory />} />
