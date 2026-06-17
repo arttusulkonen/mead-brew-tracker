@@ -1,3 +1,4 @@
+// scripts/clearIngredients.ts
 import admin from 'firebase-admin';
 import fs from 'fs';
 import path from 'path';
@@ -49,7 +50,9 @@ async function clearIngredients() {
       });
 
       await batch.commit();
+      console.log('All ingredients deleted.');
     } catch (error) {
+      console.error('Error clearing ingredients:', error);
       process.exit(1);
     } finally {
       rl.close();
