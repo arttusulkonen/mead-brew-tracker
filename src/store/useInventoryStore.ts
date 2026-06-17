@@ -1,4 +1,3 @@
-// src/store/useInventoryStore.ts
 import { collection, doc, getDocs, increment, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { create } from 'zustand';
 import { db } from '../firebase/config';
@@ -63,7 +62,6 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   addInventoryItem: async (breweryId, itemData) => {
     if (!breweryId || !itemData || !db) return false;
     
-    // Validate quantity to prevent NaN/Infinity errors with Firestore increment
     const qty = Number(itemData.quantityOnHand);
     if (!Number.isFinite(qty) || qty < 0) {
       set({ error: 'Invalid quantity provided', isLoading: false });
@@ -72,18 +70,27 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     
     set({ isLoading: true, error: null });
     try {
-      // Use deterministic document ID based on ingredientId to prevent duplicates during concurrent writes
       const inventoryRef = collection(db, `breweries/${breweryId}/inventory`);
-      const deterministicDocId = itemData.ingredientId; 
-      const itemDocRef = doc(inventoryRef, deterministicDocId);
+      const q = query(inventoryRef, where('ingredientId', '==', itemData.ingredientId));
+      const querySnapshot = await getDocs(q);
 
-      await setDoc(itemDocRef, {
-        id: deterministicDocId,
-        breweryId,
-        ingredientId: itemData.ingredientId,
-        unit: itemData.unit,
-        quantityOnHand: increment(qty)
-      }, { merge: true });
+      if (!querySnapshot.empty) {
+        const existingDoc = querySnapshot.docs[0]; 
+        await updateDoc(existingDoc.ref, { 
+          quantityOnHand: increment(qty),
+          unit: itemData.unit
+        });
+      } else {
+        const deterministicDocId = itemData.ingredientId; 
+        const itemDocRef = doc(inventoryRef, deterministicDocId);
+        await setDoc(itemDocRef, {
+          id: deterministicDocId,
+          breweryId,
+          ingredientId: itemData.ingredientId,
+          unit: itemData.unit,
+          quantityOnHand: increment(qty)
+        }, { merge: true });
+      }
 
       await get().fetchInventory(breweryId);
       return true;

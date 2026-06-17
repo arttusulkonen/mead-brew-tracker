@@ -125,8 +125,7 @@ const Recipes: React.FC = () => {
     let totalHoneyGrams = 0;
     let averageBrix = 80;
     let selectedYeast: YeastIngredient | null = null;
-    let honeyCount = 0;
-    let totalBrix = 0;
+    let totalWeightedBrix = 0;
 
     recipeIngredients.forEach(item => {
       const template = globalCatalog.find(t => t.id === item.globalIngredientId);
@@ -134,15 +133,19 @@ const Recipes: React.FC = () => {
 
       if (template.category === 'Honey') {
         const honey = template as unknown as HoneyIngredient;
-        totalHoneyGrams += item.quantity;
-        totalBrix += (honey.sugarContentBrix || 80);
-        honeyCount++;
+        const brix = honey.sugarContentBrix || 80;
+        const qty = item.quantity || 0;
+        
+        totalHoneyGrams += qty;
+        totalWeightedBrix += (brix * qty);
       } else if (template.category === 'Yeast') {
         selectedYeast = template as unknown as YeastIngredient;
       }
     });
 
-    if (honeyCount > 0) averageBrix = totalBrix / honeyCount;
+    if (totalHoneyGrams > 0) {
+      averageBrix = totalWeightedBrix / totalHoneyGrams;
+    }
 
     const estimatedOg = estimateOG(batchSizeLiters, totalHoneyGrams, averageBrix);
     const estimatedAbv = calculateAbvCrouch(estimatedOg, 1.000);

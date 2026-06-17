@@ -1,4 +1,3 @@
-// scripts/clearIngredients.ts
 import admin from 'firebase-admin';
 import fs from 'fs';
 import path from 'path';
@@ -44,15 +43,18 @@ async function clearIngredients() {
         return;
       }
 
-      const batch = db.batch();
-      snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-
-      await batch.commit();
+      const docs = snapshot.docs;
+      for (let i = 0; i < docs.length; i += 500) {
+        const batch = db.batch();
+        const chunk = docs.slice(i, i + 500);
+        chunk.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+        await batch.commit();
+      }
       console.log('All ingredients deleted.');
     } catch (error) {
-      console.error('Error clearing ingredients:', error);
+      console.error(error);
       process.exit(1);
     } finally {
       rl.close();
