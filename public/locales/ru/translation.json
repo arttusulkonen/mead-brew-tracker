@@ -131,6 +131,7 @@
   "Recent Recipes": "Последние рецепты",
   "Recipe Builder": "Конструктор рецептов",
   "Recipe Name": "Название рецепта",
+  "Recipe not found": "Рецепт не найден",
   "Recipe saved successfully!": "Рецепт успешно сохранен!",
   "Recipes": "Рецепты",
   "Recipes Page": "Страница рецептов",
@@ -182,5 +183,6 @@
   "g": "г",
   "in stock": "в наличии",
   "members": "участники",
-  "💡 For Session Meads, the 1/3 sugar break occurs rapidly. Monitor gravity closely from Day 2 to avoid missing nutrient additions.": "💡 Для легких медовух (Session Meads) порог сбраживания 1/3 сахара наступает быстро. Внимательно следите за плотностью со 2-го дня, чтобы не пропустить внесение подкормки."
+  "💡 For Session Meads, the 1/3 sugar break occurs rapidly. Monitor gravity closely from Day 2 to avoid missing nutrient additions.": "💡 Для легких медовух (Session Meads) порог сбраживания 1/3 сахара наступает быстро. Внимательно следите за плотностью со 2-го дня, чтобы не пропустить внесение подкормки.",
+  "💡 For Session Meads, the 1/3 sugar break occurs rapidly. Monitor gravity closely from Day 2.": "💡 Для сессионных мидов момент 1/3 сбраживания сахара наступает быстро. Внимательно следите за плотностью со 2-го дня."
 }

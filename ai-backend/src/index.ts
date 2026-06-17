@@ -1,10 +1,63 @@
+import { generate } from "@genkit-ai/ai";
+import { configureGenkit } from "@genkit-ai/core";
+import { gemini15Flash, googleAI } from "@genkit-ai/googleai";
 import * as logger from "firebase-functions/logger";
 import { setGlobalOptions } from "firebase-functions/v2";
-import { onRequest } from "firebase-functions/v2/https";
+import { onCall } from "firebase-functions/v2/https";
+import { z } from "zod";
 
-setGlobalOptions({ maxInstances: 10 });
+configureGenkit({
+  plugins: [googleAI()],
+  logLevel: "info",
+  enableTracingAndMetrics: true,
+});
 
-export const healthCheck = onRequest((request, response) => {
-  logger.info("AI Backend is running!", { structuredData: true });
-  response.send({ status: "ok" });
+setGlobalOptions({ maxInstances: 10, region: "europe-west1" });
+
+const RecipeGenerationSchema = z.object({
+  ingredientQuantities: z.array(z.object({
+    ingredientId: z.string(),
+    suggestedQuantityGrams: z.number(),
+    aiNote: z.string()
+  })),
+  steps: z.array(z.object({
+    phase: z.enum(["Preparation", "Fermentation", "Aging"]),
+    title: z.string(),
+    description: z.string(),
+    durationValue: z.number(),
+    durationUnit: z.enum(["minutes", "days"]),
+    targetTempC: z.number().nullable()
+  }))
+});
+
+export const generateRecipeAI = onCall(async (request) => {
+  const { style, volumeLiters, selectedIngredients } = request.data;
+
+  const prompt = `
+    Ты — профессиональный мастер-технолог классических медовух.
+    Пользователь хочет сварить ${volumeLiters} литров медовухи в стиле "${style}".
+    
+    Вот ингредиенты, которые есть у пользователя (с их характеристиками):
+    ${JSON.stringify(selectedIngredients, null, 2)}
+    
+    Твоя задача:
+    1. Рассчитать идеальные граммовки для хмеля (опираясь на Альфа-кислотность), дрожжей и добавок (мёд мы уже рассчитали).
+    2. Расписать подробные технологические шаги (Preparation, Fermentation, Aging).
+    3. Обязательно учитывай температурные режимы (Толерантность дрожжей).
+    
+    Верни результат СТРОГО в указанном JSON формате.
+  `;
+
+  try {
+    const aiResponse = await generate({
+      model: gemini15Flash, 
+      prompt: prompt,
+      output: { schema: RecipeGenerationSchema }
+    });
+
+    return { status: "success", data: aiResponse.output() };
+  } catch (error) {
+    logger.error("AI Generation failed", error);
+    throw new Error("Failed to generate recipe");
+  }
 });

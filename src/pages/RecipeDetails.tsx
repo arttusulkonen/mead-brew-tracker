@@ -41,7 +41,7 @@ const RecipeDetails: React.FC = () => {
     if (!currentRecipe || globalCatalog.length === 0) return null;
     let selectedYeastTemplate = null;
     let yeastAddedGrams = 0;
-    
+
     currentRecipe.ingredients.forEach(item => {
       if (item.category === 'Yeast') {
         yeastAddedGrams += item.quantity;
@@ -54,7 +54,7 @@ const RecipeDetails: React.FC = () => {
       let nFactor = 0.90;
       if (yeast.nitrogenDemand === 'Low') nFactor = 0.75;
       else if (yeast.nitrogenDemand === 'High' || yeast.nitrogenDemand === 'Very High') nFactor = 1.25;
-      
+
       return {
         ...calculateTosna(currentRecipe.expectedBatchSizeLiters, currentRecipe.targetOriginalGravity, nFactor),
         yeastAdded: yeastAddedGrams
@@ -67,8 +67,19 @@ const RecipeDetails: React.FC = () => {
     alert(t('Live Brew Session feature is coming in the next module!'));
   };
 
-  if (isLoading || !currentRecipe) {
+  if (isLoading) {
     return <div className="loading-text" style={{ padding: '2rem' }}>{t('Loading recipe...')}</div>;
+  }
+
+  if (!currentRecipe) {
+    return (
+      <div className="recipes-page" style={{ padding: '20px', textAlign: 'center' }}>
+        <h2>{t('Recipe not found')}</h2>
+        <button className="btn-secondary" onClick={() => navigate('/recipes')} style={{ marginTop: '16px' }}>
+          {t('Back to list')}
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -84,7 +95,7 @@ const RecipeDetails: React.FC = () => {
       </header>
 
       <div className="recipe-grid" style={{ display: 'grid', gap: '24px', gridTemplateColumns: '2fr 1fr', alignItems: 'start', marginTop: '24px' }}>
-        
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div className="card">
             <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid #eee', paddingBottom: '12px' }}>{t('Ingredients')}</h3>
@@ -128,8 +139,8 @@ const RecipeDetails: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <button 
-            className="btn-primary" 
+          <button
+            className="btn-primary"
             style={{ width: '100%', padding: '16px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             onClick={startBrewSession}
           >
@@ -189,7 +200,7 @@ const RecipeDetails: React.FC = () => {
                       <strong>{t('Addition 3')}</strong> ({t('72h')}): <strong style={{ color: 'var(--color-primary)' }}>{selectedRecipeTosna.dosePerAdditionGrams} g</strong>
                     </li>
                     <li>
-                      <strong>{t('Addition 4')}</strong> ({t('1/3 Sugar Break')}): <strong style={{ color: 'var(--color-primary)' }}>{selectedRecipeTosna.dosePerAdditionGrams} g</strong><br/>
+                      <strong>{t('Addition 4')}</strong> ({t('1/3 Sugar Break')}): <strong style={{ color: 'var(--color-primary)' }}>{selectedRecipeTosna.dosePerAdditionGrams} g</strong><br />
                       <span style={{ color: '#888', fontSize: '0.8rem' }}>
                         {t('Target SG for final addition')}: {(currentRecipe.targetOriginalGravity - ((currentRecipe.targetOriginalGravity - 1.000) / 3)).toFixed(3)}
                       </span>

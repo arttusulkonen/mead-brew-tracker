@@ -131,6 +131,7 @@
   "Recent Recipes": "Hiljutised retseptid",
   "Recipe Builder": "Retsepti koostaja",
   "Recipe Name": "Retsepti nimi",
+  "Recipe not found": "Retsepti ei leitud",
   "Recipe saved successfully!": "Retsept edukalt salvestatud!",
   "Recipes": "Retseptid",
   "Recipes Page": "Retseptide leht",
@@ -182,5 +183,6 @@
   "g": "g",
   "in stock": "laos",
   "members": "liikmed",
-  "💡 For Session Meads, the 1/3 sugar break occurs rapidly. Monitor gravity closely from Day 2 to avoid missing nutrient additions.": "💡 Kergete mõdude puhul saabub 1/3 suhkru lagunemise etapp kiiresti. Jälgi tihedust tähelepanelikult alates 2. päevast, et mitte maha magada toitainete lisamist."
+  "💡 For Session Meads, the 1/3 sugar break occurs rapidly. Monitor gravity closely from Day 2 to avoid missing nutrient additions.": "💡 Kergete mõdude puhul saabub 1/3 suhkru lagunemise etapp kiiresti. Jälgi tihedust tähelepanelikult alates 2. päevast, et mitte maha magada toitainete lisamist.",
+  "💡 For Session Meads, the 1/3 sugar break occurs rapidly. Monitor gravity closely from Day 2.": "💡 Kergete mõdujookide (Session Meads) puhul saabub 1/3 suhkru lagunemise etapp kiiresti. Jälgi tihedust tähelepanelikult alates 2. päevast."
 }

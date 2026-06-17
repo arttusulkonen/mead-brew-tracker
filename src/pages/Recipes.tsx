@@ -1,7 +1,7 @@
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaChevronDown, FaChevronUp, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaChevronDown, FaChevronUp, FaExclamationTriangle, FaMagic, FaPlay, FaPlus, FaTrash } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
@@ -44,6 +44,9 @@ const Recipes: React.FC = () => {
   const [batchSizeLiters, setBatchSizeLiters] = useState<number>(10);
   const [targetStyle, setTargetStyle] = useState<MeadStyleTarget>('Session (4-6%)');
   
+  // Новое состояние для умного калькулятора
+  const [targetAutoAbv, setTargetAutoAbv] = useState<number>(5.0);
+
   const [globalCatalog, setGlobalCatalog] = useState<BaseIngredient[]>([]);
   const [selectedIngredientId, setSelectedIngredientId] = useState<string>('');
   
@@ -132,6 +135,54 @@ const Recipes: React.FC = () => {
   const updateStep = (id: string, updates: Partial<RecipeStep>) => {
     if (!id) return;
     setRecipeSteps(prev => prev.map(step => step.id === id ? { ...step, ...updates } : step));
+  };
+
+  // 🪄 Умный калькулятор: Алгоритм бинарного поиска для идеального веса мёда
+  const handleAutoCalculateHoney = () => {
+    const honeyItems = recipeIngredients.filter(i => i.category === 'Honey');
+    
+    if (honeyItems.length === 0) {
+      alert(t('Please add at least one Honey ingredient to the recipe first.'));
+      return;
+    }
+    
+    if (honeyItems.length > 1) {
+      alert(t('Auto-calculation currently supports recipes with a single type of honey.'));
+      return;
+    }
+
+    const honeyEntry = honeyItems[0];
+    const template = globalCatalog.find(t => t.id === honeyEntry.globalIngredientId) as unknown as HoneyIngredient;
+    const brix = template?.sugarContentBrix || 80;
+
+    // Бинарный поиск: ищем вес от 100 г до 20 000 г
+    let minGrams = 100;
+    let maxGrams = 20000;
+    let bestGrams = 1000;
+    let iterations = 0;
+
+    while (minGrams <= maxGrams && iterations < 50) {
+      const midGrams = Math.floor((minGrams + maxGrams) / 2);
+      const testOG = estimateOG(batchSizeLiters, midGrams, brix);
+      const testABV = calculateAbvCrouch(testOG, 1.000);
+
+      if (Math.abs(testABV - targetAutoAbv) < 0.05) {
+        bestGrams = midGrams;
+        break; // Нашли идеальное значение
+      }
+
+      if (testABV < targetAutoAbv) {
+        minGrams = midGrams + 1; // Нужно больше мёда
+      } else {
+        maxGrams = midGrams - 1; // Нужно меньше мёда
+      }
+      bestGrams = midGrams;
+      iterations++;
+    }
+
+    // Округляем до десятков грамм для реалистичности
+    const roundedGrams = Math.round(bestGrams / 10) * 10;
+    updateIngredient(honeyEntry.id, { quantity: roundedGrams });
   };
 
   const recipeDetails = useMemo(() => {
@@ -268,8 +319,16 @@ const Recipes: React.FC = () => {
               <div 
                 key={recipe.id} 
                 className="card recipe-card" 
+                role="button"
+                tabIndex={0}
                 style={{ padding: '20px', border: '1px solid #eee', borderRadius: '12px', cursor: 'pointer', transition: 'box-shadow 0.2s' }}
                 onClick={() => navigate(`/recipes/${recipe.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/recipes/${recipe.id}`);
+                  }
+                }}
               >
                 <h3 style={{ margin: '0 0 12px 0' }}>{recipe.name}</h3>
                 <div className="recipe-meta" style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem', color: '#666' }}>
@@ -342,7 +401,30 @@ const Recipes: React.FC = () => {
           </div>
 
           <div className="card">
-            <h3>{t('Ingredients')}</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0 }}>{t('Ingredients')}</h3>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#f0f4f8', padding: '6px 12px', borderRadius: '8px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#444' }}>{t('Target ABV')}:</span>
+                <input 
+                  type="number" 
+                  step="0.1"
+                  min="1"
+                  max="20"
+                  value={targetAutoAbv} 
+                  onChange={(e) => setTargetAutoAbv(parseFloat(e.target.value) || 5.0)}
+                  style={{ width: '60px', padding: '4px', fontSize: '0.85rem' }}
+                />
+                <button 
+                  className="btn-text-small" 
+                  onClick={handleAutoCalculateHoney}
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)' }}
+                  title={t('Auto-calculate honey grams needed for this ABV')}
+                >
+                  <FaMagic /> {t('Auto-Honey')}
+                </button>
+              </div>
+            </div>
             
             <div className="ingredient-selector">
               <select 
@@ -539,6 +621,38 @@ const Recipes: React.FC = () => {
                 </span>
               </div>
             </div>
+            {isAbvMismatch && targetStyle !== 'Custom' && (
+              <div className="abv-warning-msg" style={{ marginTop: '16px', color: '#d9534f', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FaExclamationTriangle /> {t('The calculated ABV does not match your selected Target Style. Adjust honey amount.')}
+              </div>
+            )}
+          </div>
+
+          <div className="card stat-card secondary">
+            <h3>{t('TOSNA 3.0 Guide')}</h3>
+            {!recipeDetails.tosna ? (
+              <div className="empty-text">{t('Add honey & yeast')}</div>
+            ) : (
+              <>
+                <div className="tosna-grid">
+                  <div className="tosna-row">
+                    <span>{t('Required Yeast')}</span>
+                    <div style={{ textAlign: 'right' }}>
+                      <strong>{recipeDetails.tosna.totalYeastGrams} g</strong>
+                      {recipeDetails.yeastAdded > 0 && <div style={{ fontSize: '0.75rem', color: '#666' }}>({t('Added')}: {recipeDetails.yeastAdded}g)</div>}
+                    </div>
+                  </div>
+                  <div className="tosna-row"><span>{t('Go-Ferm')}</span><strong>{recipeDetails.tosna.goFermGrams} g</strong></div>
+                  <div className="tosna-row"><span>{t('Fermaid-O')}</span><strong>{recipeDetails.tosna.totalFermaidOGrams} g</strong></div>
+                  <div className="tosna-row highlight"><span>{t('Per Addition (x4)')}</span><strong>{recipeDetails.tosna.dosePerAdditionGrams} g</strong></div>
+                </div>
+                {targetStyle === 'Session (4-6%)' && (
+                  <div style={{ marginTop: '16px', fontSize: '0.85rem', color: '#666' }}>
+                    {t('💡 For Session Meads, the 1/3 sugar break occurs rapidly. Monitor gravity closely from Day 2.')}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           <button 

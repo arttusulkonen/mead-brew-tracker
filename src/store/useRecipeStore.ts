@@ -29,7 +29,14 @@ export const useRecipeStore = create<RecipeState>((set) => ({
     try {
       const q = query(collection(db, 'recipes'), where('breweryId', '==', breweryId));
       const snapshot = await getDocs(q);
-      const fetchedRecipes = snapshot.docs.map(doc => doc.data() as Recipe);
+      const fetchedRecipes = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: doc.id,
+          targetStyle: data.targetStyle || 'Session (4-6%)'
+        } as Recipe;
+      });
       
       fetchedRecipes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
@@ -51,7 +58,15 @@ export const useRecipeStore = create<RecipeState>((set) => ({
       const docSnap = await getDoc(docRef);
       
       if (docSnap.exists()) {
-        set({ currentRecipe: docSnap.data() as Recipe, isLoading: false });
+        const data = docSnap.data();
+        set({ 
+          currentRecipe: {
+            ...data,
+            id: docSnap.id,
+            targetStyle: data.targetStyle || 'Session (4-6%)'
+          } as Recipe, 
+          isLoading: false 
+        });
       } else {
         set({ currentRecipe: null, error: 'Recipe not found', isLoading: false });
       }

@@ -10,9 +10,7 @@ const Home: React.FC = () => {
   const { recipes, fetchRecipes, isLoading } = useRecipeStore();
 
   useEffect(() => {
-    if (activeBreweryId) {
-      fetchRecipes(activeBreweryId);
-    }
+    fetchRecipes(activeBreweryId);
   }, [activeBreweryId, fetchRecipes]);
 
   const recentRecipes = recipes.slice(0, 3);
@@ -49,7 +47,7 @@ const Home: React.FC = () => {
               {recentRecipes.map(recipe => (
                 <Link 
                   key={recipe.id} 
-                  to="/recipes" 
+                  to={`/recipes/${recipe.id}`} 
                   style={{ 
                     display: 'block', 
                     padding: '12px', 
