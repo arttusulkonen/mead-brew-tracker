@@ -1,11 +1,13 @@
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaChevronDown, FaChevronUp, FaExclamationTriangle, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaChevronDown, FaChevronUp, FaPlus, FaTrash } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
+import { useRecipeStore } from '../store/useRecipeStore';
 import type { BaseIngredient, HoneyIngredient, IngredientCategory, YeastIngredient } from '../types/ingredient';
-import type { StepPhase, TimeUnit } from '../types/recipe';
+import type { MeadStyleTarget, StepPhase, TimeUnit } from '../types/recipe';
 import { calculateAbvCrouch, calculateTosna, estimateOG } from '../utils/calculations';
 
 interface RecipeIngredientEntry {
@@ -30,11 +32,13 @@ interface RecipeStep {
   isExpanded: boolean;
 }
 
-export type MeadStyleTarget = 'Session (4-6%)' | 'Standard (7-10%)' | 'Wine/Sack (11%+)' | 'Custom';
-
 const Recipes: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { activeBreweryId } = useBreweryStore();
+  const { recipes, fetchRecipes, isLoading: isRecipesLoading } = useRecipeStore();
+
+  const [view, setView] = useState<'list' | 'builder'>('list');
 
   const [recipeName, setRecipeName] = useState('');
   const [batchSizeLiters, setBatchSizeLiters] = useState<number>(10);
@@ -63,6 +67,12 @@ const Recipes: React.FC = () => {
     };
     fetchCatalog();
   }, []);
+
+  useEffect(() => {
+    if (activeBreweryId) {
+      fetchRecipes(activeBreweryId);
+    }
+  }, [activeBreweryId, fetchRecipes]);
 
   const handleAddIngredient = () => {
     if (!selectedIngredientId) return;
@@ -128,6 +138,7 @@ const Recipes: React.FC = () => {
     let totalHoneyGrams = 0;
     let averageBrix = 80;
     let selectedYeast: YeastIngredient | null = null;
+    let yeastAddedGrams = 0;
     let totalWeightedBrix = 0;
 
     recipeIngredients.forEach(item => {
@@ -143,6 +154,7 @@ const Recipes: React.FC = () => {
         totalWeightedBrix += (brix * qty);
       } else if (template.category === 'Yeast') {
         selectedYeast = template as unknown as YeastIngredient;
+        yeastAddedGrams += item.quantity || 0;
       }
     });
 
@@ -162,7 +174,7 @@ const Recipes: React.FC = () => {
       tosnaData = calculateTosna(batchSizeLiters, estimatedOg, nFactor);
     }
 
-    return { og: estimatedOg, abv: estimatedAbv, tosna: tosnaData };
+    return { og: estimatedOg, abv: estimatedAbv, tosna: tosnaData, yeastAdded: yeastAddedGrams };
   }, [recipeIngredients, batchSizeLiters, globalCatalog]);
 
   const isAbvMismatch = useMemo(() => {
@@ -221,7 +233,9 @@ const Recipes: React.FC = () => {
       setRecipeName('');
       setRecipeIngredients([]);
       setRecipeSteps([]);
-      alert(t('Recipe saved successfully!'));
+      
+      await fetchRecipes(activeBreweryId);
+      setView('list');
     } catch (error) {
       console.error(error);
       alert(t('Error saving recipe'));
@@ -232,10 +246,61 @@ const Recipes: React.FC = () => {
 
   if (!activeBreweryId) return null;
 
+  if (view === 'list') {
+    return (
+      <div className="recipes-page">
+        <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h1>{t('Recipes')}</h1>
+          <button className="btn-primary" onClick={() => setView('builder')}>
+            <FaPlus /> {t('Create Recipe')}
+          </button>
+        </header>
+        
+        {isRecipesLoading ? (
+          <div className="loading-text">{t('Loading recipes...')}</div>
+        ) : recipes.length === 0 ? (
+          <div className="empty-state">
+            <p>{t('No recipes found. Create your first recipe!')}</p>
+          </div>
+        ) : (
+          <div className="recipes-grid" style={{ display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', marginTop: '24px' }}>
+            {recipes.map(recipe => (
+              <div 
+                key={recipe.id} 
+                className="card recipe-card" 
+                style={{ padding: '20px', border: '1px solid #eee', borderRadius: '12px', cursor: 'pointer', transition: 'box-shadow 0.2s' }}
+                onClick={() => navigate(`/recipes/${recipe.id}`)}
+              >
+                <h3 style={{ margin: '0 0 12px 0' }}>{recipe.name}</h3>
+                <div className="recipe-meta" style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem', color: '#666' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontWeight: 'bold' }}>{recipe.targetStyle}</span>
+                    <span style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>{recipe.targetAbv?.toFixed(1)}% ABV</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{t('Batch Size')}</span>
+                    <span>{recipe.expectedBatchSizeLiters} {t('L')}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{t('Original Gravity')}</span>
+                    <span>{recipe.targetOriginalGravity?.toFixed(3)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="recipes-page">
-      <header className="page-header">
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>{t('Recipe Builder')}</h1>
+        <button className="btn-secondary" onClick={() => setView('list')}>
+          {t('Cancel')}
+        </button>
       </header>
 
       <div className="recipe-grid">
@@ -474,32 +539,6 @@ const Recipes: React.FC = () => {
                 </span>
               </div>
             </div>
-            {isAbvMismatch && targetStyle !== 'Custom' && (
-              <div className="abv-warning-msg">
-                <FaExclamationTriangle /> {t('The calculated ABV does not match your selected Target Style. Adjust honey amount.')}
-              </div>
-            )}
-          </div>
-
-          <div className="card stat-card secondary">
-            <h3>{t('TOSNA 3.0')}</h3>
-            {!recipeDetails.tosna ? (
-              <div className="empty-text">{t('Add honey & yeast')}</div>
-            ) : (
-              <>
-                <div className="tosna-grid">
-                  <div className="tosna-row"><span>{t('Total Yeast')}</span><strong>{recipeDetails.tosna.totalYeastGrams} g</strong></div>
-                  <div className="tosna-row"><span>{t('Go-Ferm')}</span><strong>{recipeDetails.tosna.goFermGrams} g</strong></div>
-                  <div className="tosna-row"><span>{t('Fermaid-O')}</span><strong>{recipeDetails.tosna.totalFermaidOGrams} g</strong></div>
-                  <div className="tosna-row highlight"><span>{t('Per Addition (x4)')}</span><strong>{recipeDetails.tosna.dosePerAdditionGrams} g</strong></div>
-                </div>
-                {targetStyle === 'Session (4-6%)' && (
-                  <div className="session-mead-tip">
-                    <small>{t('💡 For Session Meads, the 1/3 sugar break occurs rapidly. Monitor gravity closely from Day 2 to avoid missing nutrient additions.')}</small>
-                  </div>
-                )}
-              </>
-            )}
           </div>
 
           <button 

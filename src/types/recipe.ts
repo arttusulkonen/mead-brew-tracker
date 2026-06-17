@@ -11,6 +11,7 @@ export interface RecipeIngredientReference {
 
 export type StepPhase = 'Preparation' | 'Fermentation' | 'Aging';
 export type TimeUnit = 'minutes' | 'days';
+export type MeadStyleTarget = 'Session (4-6%)' | 'Standard (7-10%)' | 'Wine/Sack (11%+)' | 'Custom';
 
 export interface RecipeStep {
   id: string;
@@ -39,6 +40,7 @@ export interface Recipe {
   id: string;
   breweryId: string;
   name: string;
+  targetStyle: MeadStyleTarget;
   expectedBatchSizeLiters: number;
   targetOriginalGravity: number;
   targetFinalGravity: number;
@@ -66,6 +68,7 @@ export interface BrewSession {
   parentSessionId: string | null;
   childSessionIds: string[];
   status: BrewSessionStage;
+  targetStyle: MeadStyleTarget;
   actualBatchSizeLiters: number;
   actualOriginalGravity: number | null;
   actualFinalGravity: number | null;
