@@ -1,7 +1,7 @@
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaChevronDown, FaChevronUp, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaChevronDown, FaChevronUp, FaExclamationTriangle, FaPlus, FaTrash } from 'react-icons/fa';
 import { auth, db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
 import type { BaseIngredient, HoneyIngredient, IngredientCategory, YeastIngredient } from '../types/ingredient';
@@ -30,12 +30,15 @@ interface RecipeStep {
   isExpanded: boolean;
 }
 
+export type MeadStyleTarget = 'Session (4-6%)' | 'Standard (7-10%)' | 'Wine/Sack (11%+)' | 'Custom';
+
 const Recipes: React.FC = () => {
   const { t } = useTranslation();
   const { activeBreweryId } = useBreweryStore();
 
   const [recipeName, setRecipeName] = useState('');
   const [batchSizeLiters, setBatchSizeLiters] = useState<number>(10);
+  const [targetStyle, setTargetStyle] = useState<MeadStyleTarget>('Session (4-6%)');
   
   const [globalCatalog, setGlobalCatalog] = useState<BaseIngredient[]>([]);
   const [selectedIngredientId, setSelectedIngredientId] = useState<string>('');
@@ -162,6 +165,13 @@ const Recipes: React.FC = () => {
     return { og: estimatedOg, abv: estimatedAbv, tosna: tosnaData };
   }, [recipeIngredients, batchSizeLiters, globalCatalog]);
 
+  const isAbvMismatch = useMemo(() => {
+    if (targetStyle === 'Session (4-6%)' && recipeDetails.abv > 6.5) return true;
+    if (targetStyle === 'Standard (7-10%)' && (recipeDetails.abv < 6.5 || recipeDetails.abv > 10.5)) return true;
+    if (targetStyle === 'Wine/Sack (11%+)' && recipeDetails.abv < 10.5) return true;
+    return false;
+  }, [targetStyle, recipeDetails.abv]);
+
   const handleSaveRecipe = async () => {
     if (!activeBreweryId || !recipeName || recipeIngredients.length === 0 || !db || !auth?.currentUser) return;
 
@@ -194,6 +204,7 @@ const Recipes: React.FC = () => {
         id: recipeId,
         breweryId: activeBreweryId,
         name: recipeName,
+        targetStyle,
         expectedBatchSizeLiters: batchSizeLiters,
         targetOriginalGravity: recipeDetails.og,
         targetFinalGravity: 1.000,
@@ -240,14 +251,28 @@ const Recipes: React.FC = () => {
                 placeholder={t('e.g. Traditional Wildflower Mead')}
               />
             </div>
-            <div className="form-group">
-              <label>{t('Target Batch Size (Liters)')}</label>
-              <input 
-                type="number" 
-                min="1" 
-                value={batchSizeLiters || ''} 
-                onChange={(e) => setBatchSizeLiters(parseFloat(e.target.value) || 0)} 
-              />
+            <div className="form-row">
+              <div className="form-group">
+                <label>{t('Target Style')}</label>
+                <select 
+                  value={targetStyle}
+                  onChange={(e) => setTargetStyle(e.target.value as MeadStyleTarget)}
+                >
+                  <option value="Session (4-6%)">{t('Session (4-6%) - Light & Drinkable')}</option>
+                  <option value="Standard (7-10%)">{t('Standard (7-10%) - Traditional')}</option>
+                  <option value="Wine/Sack (11%+)">{t('Wine/Sack (11%+) - Strong & Sweet')}</option>
+                  <option value="Custom">{t('Custom')}</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>{t('Batch Size (Liters)')}</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  value={batchSizeLiters || ''} 
+                  onChange={(e) => setBatchSizeLiters(parseFloat(e.target.value) || 0)} 
+                />
+              </div>
             </div>
           </div>
 
@@ -444,9 +469,16 @@ const Recipes: React.FC = () => {
               </div>
               <div className="stat-box">
                 <span className="label">{t('Estimated ABV')}</span>
-                <span className="value">{recipeDetails.abv.toFixed(1)}%</span>
+                <span className={`value ${isAbvMismatch ? 'text-warning' : ''}`}>
+                  {recipeDetails.abv.toFixed(1)}%
+                </span>
               </div>
             </div>
+            {isAbvMismatch && targetStyle !== 'Custom' && (
+              <div className="abv-warning-msg">
+                <FaExclamationTriangle /> {t('The calculated ABV does not match your selected Target Style. Adjust honey amount.')}
+              </div>
+            )}
           </div>
 
           <div className="card stat-card secondary">
@@ -454,12 +486,19 @@ const Recipes: React.FC = () => {
             {!recipeDetails.tosna ? (
               <div className="empty-text">{t('Add honey & yeast')}</div>
             ) : (
-              <div className="tosna-grid">
-                <div className="tosna-row"><span>{t('Total Yeast')}</span><strong>{recipeDetails.tosna.totalYeastGrams} g</strong></div>
-                <div className="tosna-row"><span>{t('Go-Ferm')}</span><strong>{recipeDetails.tosna.goFermGrams} g</strong></div>
-                <div className="tosna-row"><span>{t('Fermaid-O')}</span><strong>{recipeDetails.tosna.totalFermaidOGrams} g</strong></div>
-                <div className="tosna-row highlight"><span>{t('Per Addition (x4)')}</span><strong>{recipeDetails.tosna.dosePerAdditionGrams} g</strong></div>
-              </div>
+              <>
+                <div className="tosna-grid">
+                  <div className="tosna-row"><span>{t('Total Yeast')}</span><strong>{recipeDetails.tosna.totalYeastGrams} g</strong></div>
+                  <div className="tosna-row"><span>{t('Go-Ferm')}</span><strong>{recipeDetails.tosna.goFermGrams} g</strong></div>
+                  <div className="tosna-row"><span>{t('Fermaid-O')}</span><strong>{recipeDetails.tosna.totalFermaidOGrams} g</strong></div>
+                  <div className="tosna-row highlight"><span>{t('Per Addition (x4)')}</span><strong>{recipeDetails.tosna.dosePerAdditionGrams} g</strong></div>
+                </div>
+                {targetStyle === 'Session (4-6%)' && (
+                  <div className="session-mead-tip">
+                    <small>{t('💡 For Session Meads, the 1/3 sugar break occurs rapidly. Monitor gravity closely from Day 2 to avoid missing nutrient additions.')}</small>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
