@@ -19,7 +19,7 @@
     "lint:types": "tsc -b --noEmit",
     "lint": "npm run lint:js && npm run lint:css && npm run lint:types",
     "fix": "npm run lint:js:fix && npm run lint:css:fix",
-    "db:seed": "npx tsx scripts/seedIngredients.ts",
+    "db:clear": "npx tsx scripts/clearIngredients.ts",
     "deploy:prod": "npm run build && firebase deploy",
     "deploy:all": "npm run deploy:prod"
   },

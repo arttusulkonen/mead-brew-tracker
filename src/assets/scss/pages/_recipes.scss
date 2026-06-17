@@ -1,0 +1,569 @@
+@use '../settings/variables' as *;
+@use '../settings/font-size' as *;
+@use '../mixins/buttons' as *;
+
+.recipes-page {
+  max-width: 1200px;
+  padding: $spacing-xl;
+  margin: 0 auto;
+
+  .page-header {
+    margin-bottom: $spacing-xxl;
+
+    h1 {
+      font-size: 2rem;
+      color: $color-text-main;
+    }
+  }
+}
+
+.recipe-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: $spacing-xxl;
+  align-items: start;
+
+  @media (min-width: $breakpoint-md) {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.card {
+  padding: $spacing-xl;
+  margin-bottom: $spacing-xl;
+  background-color: $color-surface;
+  border-radius: $border-radius-md;
+  box-shadow: $box-shadow-base;
+
+  h3 {
+    margin-bottom: $spacing-md;
+    font-size: 1.25rem;
+    color: $color-text-main;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  margin-bottom: $spacing-lg;
+
+  label {
+    font-weight: 600;
+    color: $color-text-muted;
+  }
+
+  input {
+    padding: $spacing-sm $spacing-md;
+    font-size: 1rem;
+    background-color: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-sm;
+    transition: border-color 0.2s ease;
+
+    &:focus {
+      border-color: $color-primary;
+      outline: none;
+    }
+  }
+}
+
+.ingredient-selector {
+  display: flex;
+  gap: $spacing-md;
+  margin-bottom: $spacing-xl;
+
+  select {
+    flex: 1;
+    padding: $spacing-sm $spacing-md;
+    font-size: 1rem;
+    background-color: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-sm;
+
+    &:focus {
+      border-color: $color-primary;
+      outline: none;
+    }
+  }
+}
+
+.btn-primary {
+  @include button-primary;
+}
+
+.full-width {
+  width: 100%;
+  margin-top: $spacing-lg;
+}
+
+.ingredients-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+
+  .empty-text {
+    padding: $spacing-xl 0;
+    font-style: italic;
+    color: $color-text-muted;
+    text-align: center;
+  }
+}
+
+.ingredient-row {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  padding: $spacing-md;
+  background-color: $color-bg;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+}
+
+.ingredient-info {
+  display: flex;
+  gap: $spacing-md;
+  align-items: center;
+
+  .category-tag {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: $color-primary;
+    background-color: rgba($color-primary, 0.1);
+    border-radius: $border-radius-sm;
+  }
+
+  .name {
+    font-weight: 500;
+    color: $color-text-main;
+  }
+}
+
+.ingredient-main-row {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+  width: 100%;
+
+  @media (min-width: $breakpoint-md) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.warning-text {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-left: $spacing-md;
+  font-size: 0.8rem;
+  color: #d97706;
+}
+
+.ingredient-note {
+  width: 100%;
+  margin-top: $spacing-sm;
+
+  .note-input {
+    width: 100%;
+    padding: $spacing-xs $spacing-sm;
+    font-size: 0.85rem;
+    font-style: italic;
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px dashed $color-border;
+    border-radius: 0;
+
+    &:focus {
+      border-bottom-color: $color-primary;
+      outline: none;
+    }
+  }
+}
+
+.ingredient-controls {
+  display: flex;
+  gap: $spacing-sm;
+  align-items: center;
+
+  input {
+    width: 100px;
+    padding: $spacing-sm;
+    text-align: right;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-sm;
+
+    &:focus {
+      border-color: $color-primary;
+      outline: none;
+    }
+  }
+
+  .unit {
+    font-weight: 500;
+    color: $color-text-muted;
+  }
+
+  .btn-icon.danger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    color: $color-error-text;
+    cursor: pointer;
+    background-color: $color-error-bg;
+    border: none;
+    border-radius: $border-radius-sm;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+}
+
+.stat-card {
+  h3 {
+    margin-bottom: $spacing-xl;
+    text-align: center;
+  }
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $spacing-md;
+  text-align: center;
+}
+
+.stat-box {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+
+  .label {
+    font-size: 0.85rem;
+    color: $color-text-muted;
+  }
+
+  .value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: $color-primary;
+  }
+}
+
+.tosna-grid {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.tosna-row {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: $spacing-sm;
+  color: $color-text-main;
+  border-bottom: 1px dashed $color-border;
+
+  &.highlight {
+    padding: $spacing-sm $spacing-md;
+    color: #166534;
+    background-color: rgba(#22c55e, 0.1);
+    border: none;
+    border-radius: $border-radius-sm;
+
+    strong {
+      font-size: 1.1rem;
+    }
+  }
+}
+
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+
+  .btn-secondary {
+    display: flex;
+    gap: $spacing-xs;
+    align-items: center;
+    justify-content: center;
+    padding: $spacing-sm;
+    color: $color-primary;
+    cursor: pointer;
+    background-color: transparent;
+    border: 1px dashed $color-primary;
+    border-radius: $border-radius-sm;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background-color: rgba($color-primary, 0.05);
+    }
+  }
+}
+
+.step-row {
+  display: flex;
+  gap: $spacing-md;
+  align-items: flex-start;
+  padding: $spacing-md;
+  background-color: var(--surface-hover, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: $border-radius-md;
+
+  .step-number {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    font-weight: 700;
+    color: white;
+    background-color: $color-primary;
+    border-radius: 50%;
+  }
+
+  .step-content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: $spacing-sm;
+
+    .step-desc-input {
+      width: 100%;
+      padding: $spacing-sm;
+      border: 1px solid $color-border;
+      border-radius: $border-radius-sm;
+    }
+
+    .step-metrics {
+      display: flex;
+      gap: $spacing-md;
+
+      .metric-input {
+        display: flex;
+        gap: $spacing-xs;
+        align-items: center;
+
+        label {
+          font-size: 0.85rem;
+          color: $color-text-muted;
+        }
+
+        input {
+          width: 70px;
+          padding: $spacing-xs $spacing-sm;
+          border: 1px solid $color-border;
+          border-radius: $border-radius-sm;
+        }
+      }
+    }
+  }
+
+  .btn-icon.danger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin-top: 4px;
+    color: $color-error-text;
+    cursor: pointer;
+    background-color: $color-error-bg;
+    border: none;
+    border-radius: $border-radius-sm;
+
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+}
+
+.btn-text-small {
+  padding: 0 $spacing-sm;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: $color-primary;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.ingredient-note-container {
+  width: 100%;
+  padding-top: $spacing-sm;
+  margin-top: $spacing-sm;
+  border-top: 1px dashed $color-border;
+
+  .note-textarea {
+    width: 100%;
+    padding: $spacing-sm;
+    font-family: inherit;
+    font-size: 0.9rem;
+    resize: vertical;
+    background-color: var(--surface-hover);
+    border: 1px solid $color-border;
+    border-radius: $border-radius-sm;
+
+    &:focus {
+      border-color: $color-primary;
+      outline: none;
+    }
+  }
+}
+
+.step-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--surface-hover, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: $border-radius-md;
+
+  .step-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-sm $spacing-md;
+    background-color: $color-surface;
+    border-bottom: 1px solid $color-border;
+
+    .step-header-left {
+      display: flex;
+      gap: $spacing-sm;
+      align-items: center;
+
+      .step-number {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        font-size: 0.85rem;
+        font-weight: bold;
+        color: white;
+        background-color: $color-primary;
+        border-radius: 50%;
+      }
+
+      .phase-selector {
+        padding: 4px 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: $color-text-main;
+        cursor: pointer;
+        background-color: transparent;
+        border: none;
+        outline: none;
+      }
+    }
+
+    .step-header-right {
+      display: flex;
+      gap: $spacing-xs;
+
+      .btn-icon.transparent {
+        padding: 4px 8px;
+        color: $color-text-muted;
+        cursor: pointer;
+        background: transparent;
+        border: none;
+      }
+    }
+  }
+
+  .step-body {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    padding: $spacing-md;
+
+    .step-title-input {
+      width: 100%;
+      padding: $spacing-sm;
+      font-weight: 600;
+      border: 1px solid $color-border;
+      border-radius: $border-radius-sm;
+    }
+
+    .step-desc-textarea {
+      width: 100%;
+      padding: $spacing-sm;
+      font-family: inherit;
+      resize: vertical;
+      border: 1px solid $color-border;
+      border-radius: $border-radius-sm;
+    }
+
+    .step-metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: $spacing-md;
+
+      .metric-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        label {
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: $color-text-muted;
+        }
+
+        input,
+        select {
+          padding: $spacing-sm;
+          border: 1px solid $color-border;
+          border-radius: $border-radius-sm;
+        }
+
+        .duration-inputs {
+          display: flex;
+          gap: 4px;
+
+          input {
+            width: 80px;
+          }
+
+          select {
+            flex: 1;
+          }
+        }
+      }
+    }
+  }
+}
+
+.step-add-buttons {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-sm;
+
+  .btn-secondary {
+    display: flex;
+    flex: 1;
+    gap: $spacing-sm;
+    align-items: center;
+    justify-content: center;
+    padding: $spacing-sm;
+    color: $color-primary;
+    cursor: pointer;
+    background-color: transparent;
+    border: 1px dashed $color-primary;
+    border-radius: $border-radius-sm;
+
+    &:hover {
+      background-color: rgba($color-primary, 0.05);
+    }
+  }
+}

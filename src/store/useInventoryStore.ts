@@ -1,7 +1,8 @@
+import { collection, doc, getDocs, increment, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { create } from 'zustand';
+import { db } from '../firebase/config';
 import {
   addGlobalIngredient,
-  addWorkspaceInventoryItem,
   deleteWorkspaceInventoryItem,
   getGlobalIngredients,
   getWorkspaceInventory,
@@ -59,24 +60,42 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   },
 
   addInventoryItem: async (breweryId, itemData) => {
-    if (!breweryId || !itemData) return false;
+    if (!breweryId || !itemData || !db) return false;
+    
+    const qty = Number(itemData.quantityOnHand);
+    if (!Number.isFinite(qty) || qty < 0) {
+      set({ error: 'Invalid quantity provided', isLoading: false });
+      return false;
+    }
+    
     set({ isLoading: true, error: null });
     try {
-      const newItem = await addWorkspaceInventoryItem(breweryId, itemData);
-      if (newItem) {
-        const globalIng = get().globalIngredients.find(g => g.id === newItem.ingredientId);
-        if (globalIng) {
-          const populated: PopulatedInventoryItem = { ...newItem, ingredient: globalIng };
-          set(state => ({ inventory: [...state.inventory, populated] }));
-        } else {
-          const items = await getWorkspaceInventory(breweryId);
-          set({ inventory: items });
-        }
-        return true;
+      const inventoryRef = collection(db, `breweries/${breweryId}/inventory`);
+      const q = query(inventoryRef, where('ingredientId', '==', itemData.ingredientId));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const existingDoc = querySnapshot.docs[0]; 
+        await updateDoc(existingDoc.ref, { 
+          quantityOnHand: increment(qty),
+          unit: itemData.unit
+        });
+      } else {
+        const deterministicDocId = itemData.ingredientId; 
+        const itemDocRef = doc(inventoryRef, deterministicDocId);
+        await setDoc(itemDocRef, {
+          id: deterministicDocId,
+          breweryId,
+          ingredientId: itemData.ingredientId,
+          unit: itemData.unit,
+          quantityOnHand: increment(qty)
+        }, { merge: true });
       }
-      return false;
-    } catch (err: any) {
-      set({ error: err.message || 'Failed to add inventory item' });
+
+      await get().fetchInventory(breweryId);
+      return true;
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
       return false;
     } finally {
       set({ isLoading: false });

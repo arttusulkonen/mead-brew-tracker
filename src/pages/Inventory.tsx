@@ -57,12 +57,12 @@ const Inventory: React.FC = () => {
 
     if (wasCreatingCustom) {
       if (!customName || !customName.trim()) return;
-      
-      const fullData: any = { 
-        name: customName.trim(), 
-        category: customCategory 
+
+      const fullData: any = {
+        name: customName.trim(),
+        category: customCategory
       };
-      
+
       if (customCategory === 'Honey') {
         fullData.sugarContentBrix = Number(honeyBrix) || 79;
         fullData.moistureContentPct = Number(honeyMoisture) || 18;
@@ -84,7 +84,7 @@ const Inventory: React.FC = () => {
         fullData.additiveType = 'Nutrient';
         fullData.yanValuePerGramPerLiter = 0;
       }
-      
+
       const newIng = await addCustomIngredient(fullData);
       if (newIng && newIng.id) {
         targetIngredientId = newIng.id;
@@ -190,7 +190,7 @@ const Inventory: React.FC = () => {
                       + {t('New')}
                     </button>
                   </div>
-                  
+
                   {selectedIng && (
                     <div className="ingredient-preview-panel">
                       <h4>{t('Composition Details')}</h4>
@@ -363,7 +363,7 @@ const Inventory: React.FC = () => {
               {inventory.map((item) => {
                 if (!item || !item.id) return null;
                 return (
-                  <div key={item.id} className="inventory-card">
+                  <div key={item.id} className={`inventory-card ${item.quantityOnHand <= 0 ? 'out-of-stock' : ''}`}>
                     <div className="card-header">
                       <span className="category-badge" data-category={item?.ingredient?.category}>
                         {t(item?.ingredient?.category || 'Unknown')}
@@ -377,8 +377,14 @@ const Inventory: React.FC = () => {
                       {renderIngredientMeta(item?.ingredient)}
                     </div>
                     <div className="stock-amount">
-                      <span className="value">{item.quantityOnHand}</span>
-                      <span className="unit">{t(item.unit)}</span>
+                      {item.quantityOnHand <= 0 ? (
+                        <span className="value out-of-stock-text">{t('Out of stock')}</span>
+                      ) : (
+                        <>
+                          <span className="value">{item.quantityOnHand}</span>
+                          <span className="unit">{t(item.unit)}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
