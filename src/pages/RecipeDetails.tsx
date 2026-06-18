@@ -83,11 +83,15 @@ const RecipeDetails: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!currentRecipe || !currentRecipe.id || !currentRecipe.breweryId) return;
+    if (!currentRecipe || !currentRecipe.id) return;
     
     if (window.confirm(t('Are you sure you want to delete this recipe?'))) {
-      await deleteRecipe(currentRecipe.id, currentRecipe.breweryId);
-      navigate('/recipes');
+      try {
+        await deleteRecipe(currentRecipe.id);
+        navigate('/recipes');
+      } catch (error) {
+        alert(t('Failed to delete recipe. Check your permissions.'));
+      }
     }
   };
 

@@ -153,8 +153,19 @@ const BrewSessionSetup: React.FC = () => {
     }
   };
 
-  if (isLoading || !currentRecipe) {
-    return <div className="loading-text" style={{ padding: '2rem' }}>{t('Preparing session...')}</div>;
+  if (isLoading) {
+      return <div className="loading-text" style={{ padding: '2rem' }}>{t('Preparing session...')}</div>;
+    }
+
+  if (!currentRecipe) {
+    return (
+      <div className="recipes-page" style={{ padding: '20px', textAlign: 'center' }}>
+        <h2>{t('Recipe not found')}</h2>
+        <button className="btn-secondary" onClick={() => navigate('/recipes')} style={{ marginTop: '16px' }}>
+          {t('Back to list')}
+        </button>
+      </div>
+    );
   }
 
   const boilOffAmount = Math.max(0, preBoilVolume - actualVolume).toFixed(1);

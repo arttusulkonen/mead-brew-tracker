@@ -11,7 +11,7 @@ export interface RecipeState {
   fetchRecipes: (breweryId: string | null | undefined) => Promise<void>;
   fetchRecipeById: (recipeId: string | undefined) => Promise<void>;
   clearCurrentRecipe: () => void;
-  deleteRecipe: (recipeId: string, breweryId: string) => Promise<void>;
+  deleteRecipe: (recipeId: string) => Promise<void>;
 }
 
 export const useRecipeStore = create<RecipeState>((set) => ({
@@ -78,8 +78,8 @@ export const useRecipeStore = create<RecipeState>((set) => ({
 
   clearCurrentRecipe: () => set({ currentRecipe: null, error: null }),
 
-  deleteRecipe: async (recipeId, breweryId) => {
-    if (!recipeId || !breweryId || !db) return;
+  deleteRecipe: async (recipeId) => {
+    if (!recipeId || !db) return;
     
     set({ isLoading: true, error: null });
     try {
@@ -93,6 +93,7 @@ export const useRecipeStore = create<RecipeState>((set) => ({
       }));
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
+      throw error; // Пробрасываем ошибку, чтобы UI мог ее поймать
     }
   }
 }));

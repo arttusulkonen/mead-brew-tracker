@@ -400,7 +400,7 @@ const Recipes: React.FC = () => {
         targetTempC: step.targetTempC
       }));
 
-      const recipeData = {
+      const recipeData: any = {
         id: recipeId,
         breweryId: activeBreweryId,
         name: recipeName,
@@ -411,12 +411,13 @@ const Recipes: React.FC = () => {
         targetAbv: recipeDetails.abv,
         ingredients: cleanIngredients,
         steps: cleanSteps,
-        updatedAt: new Date().toISOString(),
-        createdBy: auth.currentUser.uid
+        updatedAt: new Date().toISOString()
       };
 
       if (!editingRecipeId) {
-        await setDoc(recipeRef, { ...recipeData, createdAt: new Date().toISOString() });
+        recipeData.createdAt = new Date().toISOString();
+        recipeData.createdBy = auth.currentUser.uid;
+        await setDoc(recipeRef, recipeData);
       } else {
         await setDoc(recipeRef, recipeData, { merge: true });
       }
