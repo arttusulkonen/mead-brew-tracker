@@ -44,9 +44,10 @@ service cloud.firestore {
       allow create: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(request.resource.data.breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(request.resource.data.breweryId)).data.members);
       allow read, update, delete: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.members);
     }
-    match /brew_sessions/{sessionId} {
+    match /sessions/{sessionId} {
       allow create: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(request.resource.data.breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(request.resource.data.breweryId)).data.members);
-      allow read, update, delete: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.members);
+      allow read, update: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.members);
+      allow delete: if request.auth != null && request.auth.uid == get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.ownerId;
     }
   }
 }

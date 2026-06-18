@@ -1,0 +1,225 @@
+@use '../settings/variables' as *;
+@use '../settings/font-family' as *;
+@use '../settings/font-size' as *;
+
+.brew-session-page {
+  max-width: 1200px;
+  padding: 20px;
+  margin: 0 auto;
+
+  &.error-state {
+    padding-top: 40px;
+    text-align: center;
+
+    h2 {
+      margin-bottom: 16px;
+    }
+  }
+
+  .session-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    .header-info {
+      h1 {
+        margin: 0;
+      }
+
+      .meta-tags {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+
+        .status-badge {
+          padding: 4px 8px;
+          font-size: 0.9rem;
+          color: #666;
+          background-color: #e2e8f0;
+          border-radius: 4px;
+        }
+
+        .start-date {
+          font-size: 0.9rem;
+          color: #666;
+        }
+      }
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+  }
+
+  .session-grid {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 24px;
+    margin-top: 24px;
+
+    .main-column,
+    .side-column {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+  }
+
+  .chart-card {
+    .chart-container {
+      width: 100%;
+      height: 400px;
+    }
+
+    .empty-text {
+      padding: 40px 0;
+      color: #888;
+      text-align: center;
+    }
+  }
+
+  .logs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .log-entry {
+      padding: 16px;
+      background-color: #fafafa;
+      border: 1px solid #eee;
+      border-radius: 8px;
+
+      .log-header {
+        display: flex;
+        justify-content: space-between;
+        padding-bottom: 8px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #eee;
+
+        .day-label {
+          color: var(--color-primary);
+        }
+
+        .timestamp {
+          font-size: 0.85rem;
+          color: #888;
+        }
+      }
+
+      .log-metrics {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 12px;
+        font-size: 0.95rem;
+
+        strong {
+          color: #555;
+        }
+      }
+
+      .log-action {
+        margin-bottom: 4px;
+        font-size: 0.9rem;
+      }
+
+      .log-notes {
+        font-size: 0.9rem;
+        font-style: italic;
+        color: #666;
+      }
+    }
+  }
+
+  .measurement-form-card {
+    h3 {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-group {
+      margin-bottom: 0;
+    }
+
+    .full-width {
+      width: 100%;
+    }
+  }
+
+  .stat-card {
+    .stat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+
+      .stat-row {
+        display: flex;
+        justify-content: space-between;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgb(0 0 0 / 5%);
+
+        &:last-child {
+          padding-bottom: 0;
+          border-bottom: none;
+        }
+
+        .label {
+          color: #666;
+        }
+
+        .value {
+          font-weight: bold;
+
+          &.primary-text {
+            color: var(--color-primary);
+          }
+        }
+      }
+    }
+  }
+
+  .warning-banner {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 16px;
+    background-color: #fdf3f4;
+    border: 1px solid #f5c2c7;
+    border-radius: 8px;
+
+    .warning-icon {
+      flex-shrink: 0;
+      margin-top: 4px;
+      font-size: 24px;
+      color: #dc3545;
+    }
+
+    .warning-content {
+      h4 {
+        margin: 0 0 4px;
+        color: #dc3545;
+      }
+
+      p {
+        margin: 0;
+        font-size: 0.85rem;
+        line-height: 1.4;
+        color: #842029;
+      }
+    }
+  }
+}

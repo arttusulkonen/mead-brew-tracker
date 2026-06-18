@@ -90,6 +90,7 @@ const RecipeDetails: React.FC = () => {
         await deleteRecipe(currentRecipe.id);
         navigate('/recipes');
       } catch (error) {
+        console.error(error);
         alert(t('Failed to delete recipe. Check your permissions.'));
       }
     }
@@ -240,6 +241,14 @@ const RecipeDetails: React.FC = () => {
                         {t('Target SG for final addition')}: {(currentRecipe.targetOriginalGravity - ((currentRecipe.targetOriginalGravity - 1.000) / 3)).toFixed(3)}
                       </span>
                     </li>
+                  </ul>
+                </div>
+
+                <div style={{ marginTop: '16px', backgroundColor: '#e8f4f8', padding: '12px', borderRadius: '8px' }}>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '0.95rem', color: '#0056b3' }}>{t('Fermentation Monitoring')}</h4>
+                  <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: '#333', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Density (SG)')}:</strong> {t('Use a hydrometer. Degas sample to avoid false readings from CO2 bubbles.')}</li>
+                    <li><strong>{t('Acidity (pH)')}:</strong> {t('Keep pH between 3.6 and 4.0. If it drops below 3.2, yeast may stall.')}</li>
                   </ul>
                 </div>
 
