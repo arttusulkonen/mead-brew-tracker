@@ -64,7 +64,7 @@ const RecipeDetails: React.FC = () => {
   }, [currentRecipe, globalCatalog]);
 
   const startBrewSession = () => {
-    alert(t('Live Brew Session feature is coming in the next module!'));
+    navigate(`/brew/setup/${currentRecipe?.id}`);
   };
 
   if (isLoading) {
