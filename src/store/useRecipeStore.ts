@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { create } from 'zustand';
 import { db } from '../firebase/config';
 import type { Recipe } from '../types/recipe';
@@ -11,6 +11,7 @@ export interface RecipeState {
   fetchRecipes: (breweryId: string | null | undefined) => Promise<void>;
   fetchRecipeById: (recipeId: string | undefined) => Promise<void>;
   clearCurrentRecipe: () => void;
+  deleteRecipe: (recipeId: string, breweryId: string) => Promise<void>;
 }
 
 export const useRecipeStore = create<RecipeState>((set) => ({
@@ -75,5 +76,23 @@ export const useRecipeStore = create<RecipeState>((set) => ({
     }
   },
 
-  clearCurrentRecipe: () => set({ currentRecipe: null, error: null })
+  clearCurrentRecipe: () => set({ currentRecipe: null, error: null }),
+
+  deleteRecipe: async (recipeId, breweryId) => {
+    if (!recipeId || !breweryId || !db) return;
+    
+    set({ isLoading: true, error: null });
+    try {
+      const docRef = doc(db, 'recipes', recipeId);
+      await deleteDoc(docRef);
+      
+      set(state => ({
+        recipes: state.recipes.filter(r => r.id !== recipeId),
+        currentRecipe: state.currentRecipe?.id === recipeId ? null : state.currentRecipe,
+        isLoading: false
+      }));
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+    }
+  }
 }));

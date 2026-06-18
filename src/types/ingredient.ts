@@ -45,6 +45,8 @@ export interface AdditiveIngredient extends BaseIngredient {
   category: 'Additive';
   additiveType: 'Nutrient' | 'Spice' | 'Fruit' | 'Clarifier' | 'Stabilizer' | 'Acid';
   yanValuePerGramPerLiter?: number;
+  dosagePer10Liters?: number;
+  dosagePerGramYeast?: number;
 }
 
 export type IngredientUnion =

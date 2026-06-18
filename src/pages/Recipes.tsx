@@ -1,13 +1,19 @@
+/*
+ * File: src/pages/Recipes.tsx
+ * This file contains the Recipes component, which manages the recipe list and the recipe builder interface.
+ * It handles ingredient selection, dynamic dosage calculations for additives, and saving recipes to Firestore.
+ */
+
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaChevronDown, FaChevronUp, FaExclamationTriangle, FaMagic, FaPlus, FaTrash } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useRecipeStore } from '../store/useRecipeStore';
 import type { BaseIngredient, HoneyIngredient, IngredientCategory, YeastIngredient } from '../types/ingredient';
-import type { MeadStyleTarget, StepPhase, TimeUnit } from '../types/recipe';
+import type { MeadStyleTarget, Recipe, StepPhase, TimeUnit } from '../types/recipe';
 import { calculateAbvCrouch, calculateTosna, estimateOG } from '../utils/calculations';
 
 interface RecipeIngredientEntry {
@@ -32,19 +38,26 @@ interface RecipeStep {
   isExpanded: boolean;
 }
 
+/**
+ * Main component for managing and building recipes.
+ * Handles the UI for listing recipes and the dynamic form for creating or editing a recipe.
+ * @returns React.FC
+ */
 const Recipes: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { activeBreweryId } = useBreweryStore();
   const { recipes, fetchRecipes, isLoading: isRecipesLoading } = useRecipeStore();
 
   const [view, setView] = useState<'list' | 'builder'>('list');
+  const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
 
   const [recipeName, setRecipeName] = useState('');
   const [batchSizeLiters, setBatchSizeLiters] = useState<number>(10);
   const [targetStyle, setTargetStyle] = useState<MeadStyleTarget>('Session (4-6%)');
+  const [targetFg, setTargetFg] = useState<number>(1.000);
   
-  // Новое состояние для умного калькулятора
   const [targetAutoAbv, setTargetAutoAbv] = useState<number>(5.0);
 
   const [globalCatalog, setGlobalCatalog] = useState<BaseIngredient[]>([]);
@@ -55,13 +68,18 @@ const Recipes: React.FC = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
   useEffect(() => {
+    /**
+     * Fetches the global ingredient catalog from Firestore.
+     * Maps the response to the component's globalCatalog state.
+     * @returns Promise<void>
+     */
     const fetchCatalog = async () => {
       try {
         if (!db) return;
         const querySnapshot = await getDocs(collection(db, 'ingredients'));
-        const catalogData = querySnapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id
+        const catalogData = querySnapshot.docs.map(docSnap => ({
+          ...docSnap.data(),
+          id: docSnap.id
         })) as BaseIngredient[];
         setGlobalCatalog(catalogData);
       } catch (error) {
@@ -77,6 +95,57 @@ const Recipes: React.FC = () => {
     }
   }, [activeBreweryId, fetchRecipes]);
 
+  useEffect(() => {
+    if (location.state && location.state.editRecipe) {
+      const r = location.state.editRecipe as Recipe;
+      setRecipeName(r.name);
+      setBatchSizeLiters(r.expectedBatchSizeLiters);
+      setTargetStyle(r.targetStyle || 'Session (4-6%)');
+      setTargetFg(r.targetFinalGravity || 1.000);
+      
+      const mappedIngredients = r.ingredients.map(ing => ({
+        ...ing,
+        showNote: !!ing.note
+      }));
+      setRecipeIngredients(mappedIngredients);
+      
+      const mappedSteps = r.steps.map(step => ({
+        ...step,
+        isExpanded: false
+      }));
+      setRecipeSteps(mappedSteps);
+      
+      setEditingRecipeId(r.id);
+      setView('builder');
+      
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.state, navigate, location.pathname]);
+
+  /**
+   * Resets all recipe builder form fields to their default state.
+   */
+  const resetForm = () => {
+    setRecipeName('');
+    setBatchSizeLiters(10);
+    setTargetStyle('Session (4-6%)');
+    setTargetFg(1.000);
+    setRecipeIngredients([]);
+    setRecipeSteps([]);
+    setEditingRecipeId(null);
+  };
+
+  /**
+   * Resets the form and returns to the recipe list view.
+   */
+  const handleCancel = () => {
+    resetForm();
+    setView('list');
+  };
+
+  /**
+   * Adds a selected ingredient from the global catalog to the active recipe state.
+   */
   const handleAddIngredient = () => {
     if (!selectedIngredientId) return;
     const template = globalCatalog.find(i => i.id === selectedIngredientId);
@@ -97,16 +166,29 @@ const Recipes: React.FC = () => {
     setSelectedIngredientId('');
   };
 
+  /**
+   * Removes an ingredient from the recipe by its unique entry ID.
+   * @param id - The unique identifier of the recipe ingredient entry.
+   */
   const handleRemoveIngredient = (id: string) => {
     if (!id) return;
     setRecipeIngredients(prev => prev.filter(item => item.id !== id));
   };
 
+  /**
+   * Updates properties of a specific recipe ingredient.
+   * @param id - The unique identifier of the recipe ingredient entry.
+   * @param updates - Partial object containing the properties to update.
+   */
   const updateIngredient = (id: string, updates: Partial<RecipeIngredientEntry>) => {
     if (!id) return;
     setRecipeIngredients(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
   };
 
+  /**
+   * Adds a new brewing step to the recipe sequence.
+   * @param phase - The default brewing phase for the new step.
+   */
   const handleAddStep = (phase: StepPhase = 'Preparation') => {
     setRecipeSteps(prev => [
       ...prev,
@@ -124,6 +206,10 @@ const Recipes: React.FC = () => {
     ]);
   };
 
+  /**
+   * Removes a brewing step by its ID and reorders the remaining steps.
+   * @param id - The unique identifier of the brewing step.
+   */
   const handleRemoveStep = (id: string) => {
     if (!id) return;
     setRecipeSteps(prev => {
@@ -132,12 +218,19 @@ const Recipes: React.FC = () => {
     });
   };
 
+  /**
+   * Updates a specific brewing step by its ID.
+   * @param id - The unique identifier of the brewing step.
+   * @param updates - Partial object containing the properties to update.
+   */
   const updateStep = (id: string, updates: Partial<RecipeStep>) => {
     if (!id) return;
     setRecipeSteps(prev => prev.map(step => step.id === id ? { ...step, ...updates } : step));
   };
 
-  // 🪄 Умный калькулятор: Алгоритм бинарного поиска для идеального веса мёда
+  /**
+   * Calculates the optimal honey quantity using binary search based on target ABV.
+   */
   const handleAutoCalculateHoney = () => {
     const honeyItems = recipeIngredients.filter(i => i.category === 'Honey');
     
@@ -155,7 +248,6 @@ const Recipes: React.FC = () => {
     const template = globalCatalog.find(t => t.id === honeyEntry.globalIngredientId) as unknown as HoneyIngredient;
     const brix = template?.sugarContentBrix || 80;
 
-    // Бинарный поиск: ищем вес от 100 г до 20 000 г
     let minGrams = 100;
     let maxGrams = 20000;
     let bestGrams = 1000;
@@ -164,23 +256,22 @@ const Recipes: React.FC = () => {
     while (minGrams <= maxGrams && iterations < 50) {
       const midGrams = Math.floor((minGrams + maxGrams) / 2);
       const testOG = estimateOG(batchSizeLiters, midGrams, brix);
-      const testABV = calculateAbvCrouch(testOG, 1.000);
+      const testABV = calculateAbvCrouch(testOG, targetFg);
 
       if (Math.abs(testABV - targetAutoAbv) < 0.05) {
         bestGrams = midGrams;
-        break; // Нашли идеальное значение
+        break;
       }
 
       if (testABV < targetAutoAbv) {
-        minGrams = midGrams + 1; // Нужно больше мёда
+        minGrams = midGrams + 1;
       } else {
-        maxGrams = midGrams - 1; // Нужно меньше мёда
+        maxGrams = midGrams - 1;
       }
       bestGrams = midGrams;
       iterations++;
     }
 
-    // Округляем до десятков грамм для реалистичности
     const roundedGrams = Math.round(bestGrams / 10) * 10;
     updateIngredient(honeyEntry.id, { quantity: roundedGrams });
   };
@@ -191,6 +282,8 @@ const Recipes: React.FC = () => {
     let selectedYeast: YeastIngredient | null = null;
     let yeastAddedGrams = 0;
     let totalWeightedBrix = 0;
+    const customNutrientName = '';
+    const dynamicAdditives: Array<{ id: string; name: string; totalGrams: number; rule: string }> = [];
 
     recipeIngredients.forEach(item => {
       const template = globalCatalog.find(t => t.id === item.globalIngredientId);
@@ -206,6 +299,27 @@ const Recipes: React.FC = () => {
       } else if (template.category === 'Yeast') {
         selectedYeast = template as unknown as YeastIngredient;
         yeastAddedGrams += item.quantity || 0;
+      } else if (template.category === 'Additive') {
+        const additive = template as any;
+        let calculatedGrams = 0;
+        let ruleApplied = '';
+
+        if (additive.dosagePerGramYeast && yeastAddedGrams > 0) {
+          calculatedGrams = yeastAddedGrams * additive.dosagePerGramYeast;
+          ruleApplied = `${additive.dosagePerGramYeast}g / 1g Yeast`;
+        } else if (additive.dosagePer10Liters && batchSizeLiters > 0) {
+          calculatedGrams = (batchSizeLiters / 10) * additive.dosagePer10Liters;
+          ruleApplied = `${additive.dosagePer10Liters}g / 10L`;
+        }
+
+        if (calculatedGrams > 0) {
+          dynamicAdditives.push({
+            id: item.id,
+            name: item.name,
+            totalGrams: calculatedGrams,
+            rule: ruleApplied
+          });
+        }
       }
     });
 
@@ -214,7 +328,7 @@ const Recipes: React.FC = () => {
     }
 
     const estimatedOg = estimateOG(batchSizeLiters, totalHoneyGrams, averageBrix);
-    const estimatedAbv = calculateAbvCrouch(estimatedOg, 1.000);
+    const estimatedAbv = calculateAbvCrouch(estimatedOg, targetFg);
 
     let tosnaData = null;
     if (selectedYeast && estimatedOg > 1.000) {
@@ -225,8 +339,15 @@ const Recipes: React.FC = () => {
       tosnaData = calculateTosna(batchSizeLiters, estimatedOg, nFactor);
     }
 
-    return { og: estimatedOg, abv: estimatedAbv, tosna: tosnaData, yeastAdded: yeastAddedGrams };
-  }, [recipeIngredients, batchSizeLiters, globalCatalog]);
+    return { 
+      og: estimatedOg, 
+      abv: estimatedAbv, 
+      tosna: tosnaData, 
+      yeastAdded: yeastAddedGrams, 
+      customNutrientName: customNutrientName || 'Fermaid-O',
+      dynamicAdditives 
+    };
+  }, [recipeIngredients, batchSizeLiters, targetFg, globalCatalog]);
 
   const isAbvMismatch = useMemo(() => {
     if (targetStyle === 'Session (4-6%)' && recipeDetails.abv > 6.5) return true;
@@ -235,12 +356,16 @@ const Recipes: React.FC = () => {
     return false;
   }, [targetStyle, recipeDetails.abv]);
 
+  /**
+   * Saves the current recipe configuration to the Firestore database.
+   * @returns Promise<void>
+   */
   const handleSaveRecipe = async () => {
     if (!activeBreweryId || !recipeName || recipeIngredients.length === 0 || !db || !auth?.currentUser) return;
 
     setIsSaving(true);
     try {
-      const recipeId = crypto.randomUUID();
+      const recipeId = editingRecipeId || crypto.randomUUID();
       const recipeRef = doc(db, 'recipes', recipeId);
       
       const cleanIngredients = recipeIngredients.map(item => ({
@@ -249,7 +374,7 @@ const Recipes: React.FC = () => {
         name: item.name,
         category: item.category,
         quantity: item.quantity,
-        note: item.note
+        note: item.note || ''
       }));
       
       const cleanSteps = recipeSteps.map(step => ({
@@ -263,30 +388,35 @@ const Recipes: React.FC = () => {
         targetTempC: step.targetTempC
       }));
 
-      const newRecipe = {
+      const recipeData = {
         id: recipeId,
         breweryId: activeBreweryId,
         name: recipeName,
         targetStyle,
         expectedBatchSizeLiters: batchSizeLiters,
         targetOriginalGravity: recipeDetails.og,
-        targetFinalGravity: 1.000,
+        targetFinalGravity: targetFg,
         targetAbv: recipeDetails.abv,
         ingredients: cleanIngredients,
         steps: cleanSteps,
-        createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         createdBy: auth.currentUser.uid
       };
 
-      await setDoc(recipeRef, newRecipe);
+      if (!editingRecipeId) {
+        await setDoc(recipeRef, { ...recipeData, createdAt: new Date().toISOString() });
+      } else {
+        await setDoc(recipeRef, recipeData, { merge: true });
+      }
       
-      setRecipeName('');
-      setRecipeIngredients([]);
-      setRecipeSteps([]);
-      
+      resetForm();
       await fetchRecipes(activeBreweryId);
-      setView('list');
+      
+      if (editingRecipeId) {
+        navigate(`/recipes/${recipeId}`);
+      } else {
+        setView('list');
+      }
     } catch (error) {
       console.error(error);
       alert(t('Error saving recipe'));
@@ -356,8 +486,8 @@ const Recipes: React.FC = () => {
   return (
     <div className="recipes-page">
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>{t('Recipe Builder')}</h1>
-        <button className="btn-secondary" onClick={() => setView('list')}>
+        <h1>{editingRecipeId ? t('Edit Recipe') : t('Recipe Builder')}</h1>
+        <button className="btn-secondary" onClick={handleCancel}>
           {t('Cancel')}
         </button>
       </header>
@@ -375,7 +505,7 @@ const Recipes: React.FC = () => {
                 placeholder={t('e.g. Traditional Wildflower Mead')}
               />
             </div>
-            <div className="form-row">
+            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
               <div className="form-group">
                 <label>{t('Target Style')}</label>
                 <select 
@@ -395,6 +525,17 @@ const Recipes: React.FC = () => {
                   min="1" 
                   value={batchSizeLiters || ''} 
                   onChange={(e) => setBatchSizeLiters(parseFloat(e.target.value) || 0)} 
+                />
+              </div>
+              <div className="form-group">
+                <label>{t('Target FG (Gravity)')}</label>
+                <input 
+                  type="number" 
+                  step="0.001" 
+                  min="0.990"
+                  max="1.150"
+                  value={targetFg || ''} 
+                  onChange={(e) => setTargetFg(parseFloat(e.target.value) || 1.000)} 
                 />
               </div>
             </div>
@@ -612,7 +753,7 @@ const Recipes: React.FC = () => {
               </div>
               <div className="stat-box">
                 <span className="label">{t('Target Final Gravity')}</span>
-                <span className="value">1.000</span>
+                <span className="value">{targetFg.toFixed(3)}</span>
               </div>
               <div className="stat-box">
                 <span className="label">{t('Estimated ABV')}</span>
@@ -628,39 +769,39 @@ const Recipes: React.FC = () => {
             )}
           </div>
 
-          <div className="card stat-card secondary">
-            <h3>{t('TOSNA 3.0 Guide')}</h3>
-            {!recipeDetails.tosna ? (
-              <div className="empty-text">{t('Add honey & yeast')}</div>
-            ) : (
-              <>
-                <div className="tosna-grid">
-                  <div className="tosna-row">
-                    <span>{t('Required Yeast')}</span>
-                    <div style={{ textAlign: 'right' }}>
-                      <strong>{recipeDetails.tosna.totalYeastGrams} g</strong>
-                      {recipeDetails.yeastAdded > 0 && <div style={{ fontSize: '0.75rem', color: '#666' }}>({t('Added')}: {recipeDetails.yeastAdded}g)</div>}
+          {recipeDetails.dynamicAdditives.length > 0 && (
+            <div className="card stat-card secondary" style={{ marginTop: '16px' }}>
+              <h3 style={{ margin: '0 0 16px 0' }}>{t('Smart Additive Calculator')}</h3>
+              <div className="tosna-grid">
+                {recipeDetails.dynamicAdditives.map(add => (
+                  <div className="tosna-row" key={add.id} style={{ alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontWeight: 'bold' }}>{add.name}</span>
+                      <span style={{ fontSize: '0.75rem', color: '#666' }}>{add.rule}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <strong style={{ fontSize: '1.1rem', color: 'var(--color-primary)' }}>{add.totalGrams.toFixed(1)} g</strong>
+                      <button 
+                        className="btn-text-small" 
+                        onClick={() => updateIngredient(add.id, { quantity: parseFloat(add.totalGrams.toFixed(1)) })}
+                        style={{ backgroundColor: '#eef', padding: '4px 8px', borderRadius: '4px' }}
+                      >
+                        {t('Apply')}
+                      </button>
                     </div>
                   </div>
-                  <div className="tosna-row"><span>{t('Go-Ferm')}</span><strong>{recipeDetails.tosna.goFermGrams} g</strong></div>
-                  <div className="tosna-row"><span>{t('Fermaid-O')}</span><strong>{recipeDetails.tosna.totalFermaidOGrams} g</strong></div>
-                  <div className="tosna-row highlight"><span>{t('Per Addition (x4)')}</span><strong>{recipeDetails.tosna.dosePerAdditionGrams} g</strong></div>
-                </div>
-                {targetStyle === 'Session (4-6%)' && (
-                  <div style={{ marginTop: '16px', fontSize: '0.85rem', color: '#666' }}>
-                    {t('💡 For Session Meads, the 1/3 sugar break occurs rapidly. Monitor gravity closely from Day 2.')}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <button 
             className="btn-primary full-width" 
             onClick={handleSaveRecipe}
             disabled={!recipeName || recipeIngredients.length === 0 || isSaving}
+            style={{ marginTop: '16px' }}
           >
-            {isSaving ? t('Saving...') : t('Save Recipe')}
+            {isSaving ? t('Saving...') : editingRecipeId ? t('Update Recipe') : t('Save Recipe')}
           </button>
         </div>
       </div>

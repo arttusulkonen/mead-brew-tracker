@@ -30,13 +30,22 @@ const Inventory: React.FC = () => {
   const [customName, setCustomName] = useState('');
   const [customCategory, setCustomCategory] = useState<IngredientCategory>('Honey');
 
+  // Honey states
   const [honeyBrix, setHoneyBrix] = useState<number | ''>(79);
   const [honeyMoisture, setHoneyMoisture] = useState<number | ''>(18);
+  
+  // Yeast states
   const [yeastTempMin, setYeastTempMin] = useState<number | ''>(15);
   const [yeastTempMax, setYeastTempMax] = useState<number | ''>(25);
   const [yeastTolerance, setYeastTolerance] = useState<number | ''>(14);
   const [yeastNitrogen, setYeastNitrogen] = useState<'Low' | 'Medium' | 'High' | 'Very High'>('Low');
+  
+  // Hops states
   const [hopsAlpha, setHopsAlpha] = useState<number | ''>(5);
+
+  // Additive (Nutrient) states
+  const [dosagePer10Liters, setDosagePer10Liters] = useState<number | ''>('');
+  const [dosagePerGramYeast, setDosagePerGramYeast] = useState<number | ''>('');
 
   useEffect(() => {
     fetchGlobalIngredients();
@@ -73,6 +82,11 @@ const Inventory: React.FC = () => {
         fullData.nitrogenDemand = yeastNitrogen || 'Low';
       } else if (customCategory === 'Hops') {
         fullData.alphaAcidPct = Number(hopsAlpha) || 5;
+      } else if (customCategory === 'Additive') {
+        fullData.additiveType = 'Nutrient';
+        // Сохраняем новые поля дозировок в базу
+        if (dosagePer10Liters !== '') fullData.dosagePer10Liters = Number(dosagePer10Liters);
+        if (dosagePerGramYeast !== '') fullData.dosagePerGramYeast = Number(dosagePerGramYeast);
       } else if (customCategory === 'Water Profile') {
         fullData.calciumPpm = 0;
         fullData.magnesiumPpm = 0;
@@ -80,9 +94,6 @@ const Inventory: React.FC = () => {
         fullData.sulfatePpm = 0;
         fullData.chloridePpm = 0;
         fullData.bicarbonatePpm = 0;
-      } else if (customCategory === 'Additive') {
-        fullData.additiveType = 'Nutrient';
-        fullData.yanValuePerGramPerLiter = 0;
       }
 
       const newIng = await addCustomIngredient(fullData);
@@ -125,7 +136,12 @@ const Inventory: React.FC = () => {
     if (ing.category === 'Honey') return `${t('Brix')}: ${ing.sugarContentBrix}%`;
     if (ing.category === 'Yeast') return `${t('Tolerance')}: ${ing.alcoholTolerancePct}% | ${t('Temp')}: ${ing.tempMinC}-${ing.tempMaxC}°C`;
     if (ing.category === 'Hops') return `${t('Alpha')}: ${ing.alphaAcidPct}%`;
-    if (ing.category === 'Additive' && ing.additiveType) return `${t('Type')}: ${t(ing.additiveType)}`;
+    if (ing.category === 'Additive') {
+      const notes = [];
+      if (ing.dosagePer10Liters) notes.push(`${ing.dosagePer10Liters}g/10L`);
+      if (ing.dosagePerGramYeast) notes.push(`${ing.dosagePerGramYeast}g/1g Yeast`);
+      return notes.length > 0 ? notes.join(' | ') : t(ing.additiveType || 'Additive');
+    }
     return null;
   };
 
@@ -212,7 +228,11 @@ const Inventory: React.FC = () => {
                           <div className="preview-item"><span>{t('Alpha Acid')}:</span> {selectedIng.alphaAcidPct}%</div>
                         )}
                         {selectedIng.category === 'Additive' && (
-                          <div className="preview-item"><span>{t('Type')}:</span> {t(selectedIng.additiveType || 'Unknown')}</div>
+                          <>
+                            <div className="preview-item"><span>{t('Type')}:</span> {t(selectedIng.additiveType || 'Unknown')}</div>
+                            {selectedIng.dosagePer10Liters && <div className="preview-item"><span>{t('Dosage')}:</span> {selectedIng.dosagePer10Liters}g per 10L</div>}
+                            {selectedIng.dosagePerGramYeast && <div className="preview-item"><span>{t('Dosage')}:</span> {selectedIng.dosagePerGramYeast}g per 1g Yeast</div>}
+                          </>
                         )}
                       </div>
                     </div>
@@ -242,6 +262,7 @@ const Inventory: React.FC = () => {
                     </button>
                   </div>
 
+                  {/* Дополнительные поля для мёда */}
                   {customCategory === 'Honey' && (
                     <div className="custom-fields-panel">
                       <div className="form-row">
@@ -263,6 +284,7 @@ const Inventory: React.FC = () => {
                     </div>
                   )}
 
+                  {/* Дополнительные поля для дрожжей */}
                   {customCategory === 'Yeast' && (
                     <div className="custom-fields-panel">
                       <div className="form-row">
@@ -305,6 +327,7 @@ const Inventory: React.FC = () => {
                     </div>
                   )}
 
+                  {/* Дополнительные поля для хмеля */}
                   {customCategory === 'Hops' && (
                     <div className="custom-fields-panel">
                       <div className="form-group">
@@ -316,6 +339,43 @@ const Inventory: React.FC = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* НОВЫЕ ПОЛЯ ДЛЯ ДОБАВОК И ПОДКОРМОК */}
+                  {customCategory === 'Additive' && (
+                    <div className="custom-fields-panel">
+                      <div className="form-row">
+                        <div className="form-group">
+                          <div className="label-with-tooltip">
+                            <label>{t('Dosage / 10 Liters')} (g)</label>
+                            <span className="tooltip-icon" data-tooltip={t("e.g., Fermaid-O requires ~3-4g per 10 liters of must. Leave blank if not applicable.")}>?</span>
+                          </div>
+                          <input 
+                            type="number" 
+                            step="0.1" 
+                            min="0"
+                            placeholder={t('Optional')}
+                            value={dosagePer10Liters} 
+                            onChange={(e) => setDosagePer10Liters(e.target.value === '' ? '' : Number(e.target.value))} 
+                          />
+                        </div>
+                        <div className="form-group">
+                          <div className="label-with-tooltip">
+                            <label>{t('Dosage / 1g Yeast')} (g)</label>
+                            <span className="tooltip-icon" data-tooltip={t("e.g., Go-Ferm requires 1.25g for every 1g of dry yeast. Leave blank if not applicable.")}>?</span>
+                          </div>
+                          <input 
+                            type="number" 
+                            step="0.01" 
+                            min="0"
+                            placeholder={t('Optional')}
+                            value={dosagePerGramYeast} 
+                            onChange={(e) => setDosagePerGramYeast(e.target.value === '' ? '' : Number(e.target.value))} 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               )}
             </div>

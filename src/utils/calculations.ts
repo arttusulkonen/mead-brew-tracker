@@ -58,3 +58,25 @@ export const calculateTosna = (
     dosePerAdditionGrams: Number(dosePerAdditionGrams.toFixed(1))
   };
 };
+
+/**
+ * Calculates the required amount of an additive based on the total batch volume.
+ * @param batchSizeLiters - The total expected volume of the batch in liters.
+ * @param dosagePer10L - The recommended dosage in grams per 10 liters.
+ * @returns The total required grams of the additive.
+ */
+export const calculateVolumetricDosage = (batchSizeLiters: number, dosagePer10L: number): number => {
+  if (!batchSizeLiters || !dosagePer10L) return 0;
+  return (batchSizeLiters / 10) * dosagePer10L;
+};
+
+/**
+ * Calculates the required amount of a yeast rehydration nutrient.
+ * @param yeastAmountGrams - The total grams of dry yeast being pitched.
+ * @param dosagePerGramYeast - The recommended dosage in grams per 1 gram of yeast.
+ * @returns The total required grams of the rehydration nutrient.
+ */
+export const calculateYeastDependentDosage = (yeastAmountGrams: number, dosagePerGramYeast: number): number => {
+  if (!yeastAmountGrams || !dosagePerGramYeast) return 0;
+  return yeastAmountGrams * dosagePerGramYeast;
+};
