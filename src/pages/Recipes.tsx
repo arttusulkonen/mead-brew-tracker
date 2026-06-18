@@ -282,9 +282,10 @@ const Recipes: React.FC = () => {
     let selectedYeast: YeastIngredient | null = null;
     let yeastAddedGrams = 0;
     let totalWeightedBrix = 0;
-    const customNutrientName = '';
+    let customNutrientName = '';
     const dynamicAdditives: Array<{ id: string; name: string; totalGrams: number; rule: string }> = [];
 
+    // Проход 1: Собираем базовые данные (мёд и дрожжи)
     recipeIngredients.forEach(item => {
       const template = globalCatalog.find(t => t.id === item.globalIngredientId);
       if (!template) return;
@@ -299,27 +300,38 @@ const Recipes: React.FC = () => {
       } else if (template.category === 'Yeast') {
         selectedYeast = template as unknown as YeastIngredient;
         yeastAddedGrams += item.quantity || 0;
-      } else if (template.category === 'Additive') {
-        const additive = template as any;
-        let calculatedGrams = 0;
-        let ruleApplied = '';
+      }
+    });
 
-        if (additive.dosagePerGramYeast && yeastAddedGrams > 0) {
-          calculatedGrams = yeastAddedGrams * additive.dosagePerGramYeast;
-          ruleApplied = `${additive.dosagePerGramYeast}g / 1g Yeast`;
-        } else if (additive.dosagePer10Liters && batchSizeLiters > 0) {
-          calculatedGrams = (batchSizeLiters / 10) * additive.dosagePer10Liters;
-          ruleApplied = `${additive.dosagePer10Liters}g / 10L`;
-        }
+    // Проход 2: Считаем добавки на основе уже известных данных
+    recipeIngredients.forEach(item => {
+      const template = globalCatalog.find(t => t.id === item.globalIngredientId);
+      if (!template || template.category !== 'Additive') return;
 
-        if (calculatedGrams > 0) {
-          dynamicAdditives.push({
-            id: item.id,
-            name: item.name,
-            totalGrams: calculatedGrams,
-            rule: ruleApplied
-          });
+      const additive = template as any;
+      let calculatedGrams = 0;
+      let ruleApplied = '';
+
+      if (additive.dosagePerGramYeast && yeastAddedGrams > 0) {
+        calculatedGrams = yeastAddedGrams * additive.dosagePerGramYeast;
+        ruleApplied = `${additive.dosagePerGramYeast}g / 1g Yeast`;
+      } else if (additive.dosagePer10Liters && batchSizeLiters > 0) {
+        calculatedGrams = (batchSizeLiters / 10) * additive.dosagePer10Liters;
+        ruleApplied = `${additive.dosagePer10Liters}g / 10L`;
+        
+        // Если это объемная добавка, скорее всего это аналог Fermaid-O, берем её название
+        if (!customNutrientName) {
+          customNutrientName = item.name;
         }
+      }
+
+      if (calculatedGrams > 0) {
+        dynamicAdditives.push({
+          id: item.id,
+          name: item.name,
+          totalGrams: calculatedGrams,
+          rule: ruleApplied
+        });
       }
     });
 

@@ -102,7 +102,9 @@ const BrewSessionSetup: React.FC = () => {
     }
 
     const estimatedOg = estimateOG(actualVolume, totalHoneyGrams, averageBrix);
-    const estimatedAbv = calculateAbvCrouch(estimatedOg, 1.000);
+    
+    const targetFg = currentRecipe?.targetFinalGravity || 1.000;
+    const estimatedAbv = calculateAbvCrouch(estimatedOg, targetFg);
 
     let tosnaData = null;
     if (selectedYeast && estimatedOg > 1.000) {
@@ -115,7 +117,7 @@ const BrewSessionSetup: React.FC = () => {
     }
 
     return { og: estimatedOg, abv: estimatedAbv, tosna: tosnaData };
-  }, [sessionIngredients, actualVolume, globalCatalog]);
+  }, [sessionIngredients, actualVolume, globalCatalog, currentRecipe]);
 
   const handleStartSession = async () => {
     if (!activeBreweryId || !currentRecipe || !db || !auth?.currentUser) return;

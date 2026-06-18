@@ -1,15 +1,12 @@
-import { generate } from "@genkit-ai/ai";
-import { configureGenkit } from "@genkit-ai/core";
 import { gemini15Flash, googleAI } from "@genkit-ai/googleai";
 import * as logger from "firebase-functions/logger";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
-import { z } from "zod";
+import { genkit, z } from "genkit";
 
-configureGenkit({
+// 1. Инициализация инстанса Genkit по новым стандартам v1.x
+const ai = genkit({
   plugins: [googleAI()],
-  logLevel: "info",
-  enableTracingAndMetrics: true,
 });
 
 setGlobalOptions({ maxInstances: 10, region: "europe-west1" });
@@ -30,6 +27,7 @@ const RecipeGenerationSchema = z.object({
   }))
 });
 
+// Схема валидации входящих данных от клиента
 const RequestDataSchema = z.object({
   style: z.string(),
   volumeLiters: z.number().positive(),
@@ -64,13 +62,15 @@ export const generateRecipeAI = onCall(async (request) => {
   `;
 
   try {
-    const aiResponse = await generate({
+    // 2. В v1.x метод generate вызывается у инстанса ai
+    const aiResponse = await ai.generate({
       model: gemini15Flash,
       prompt: prompt,
       output: { schema: RecipeGenerationSchema }
     });
 
-    return { status: "success", data: aiResponse.output() };
+    // В v1.x output - это свойство (геттер), а не функция
+    return { status: "success", data: aiResponse.output };
   } catch (error) {
     logger.error("AI Generation failed", error);
     throw new HttpsError("internal", "Failed to generate recipe. Please try again later.");

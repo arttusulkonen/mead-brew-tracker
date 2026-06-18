@@ -44,11 +44,16 @@ const RecipeDetails: React.FC = () => {
     let customNutrientName = '';
 
     currentRecipe.ingredients.forEach(item => {
+      const template = globalCatalog.find(t => t.id === item.globalIngredientId);
+      
       if (item.category === 'Yeast') {
         yeastAddedGrams += item.quantity;
-        selectedYeastTemplate = globalCatalog.find(t => t.id === item.globalIngredientId);
-      } else if (item.category === 'Additive') {
-        customNutrientName = item.name;
+        selectedYeastTemplate = template;
+      } else if (item.category === 'Additive' && template) {
+        const additive = template as any;
+        if (additive.dosagePer10Liters && !customNutrientName) {
+          customNutrientName = item.name;
+        }
       }
     });
 
