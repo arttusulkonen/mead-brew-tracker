@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore';
+import { arrayUnion, collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { create } from 'zustand';
 import { db } from '../firebase/config';
 import type { BrewLog, BrewSession } from '../types/session';
@@ -32,10 +32,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     try {
       const q = query(collection(db, 'sessions'), where('breweryId', '==', breweryId));
       const snapshot = await getDocs(q);
-      const fetched = snapshot.docs.map(docSnap => ({
-        ...docSnap.data(),
-        id: docSnap.id
-      })) as BrewSession[];
+      const fetched = snapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        return {
+          ...data,
+          id: docSnap.id,
+          logs: data.logs || []
+        } as BrewSession;
+      });
       
       fetched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
@@ -57,7 +61,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const docSnap = await getDoc(docRef);
       
       if (docSnap.exists()) {
-        set({ currentSession: { ...docSnap.data(), id: docSnap.id } as BrewSession, isLoading: false });
+        const data = docSnap.data();
+        set({ 
+          currentSession: { ...data, id: docSnap.id, logs: data.logs || [] } as BrewSession, 
+          isLoading: false 
+        });
       } else {
         set({ currentSession: null, error: 'Session not found', isLoading: false });
       }
@@ -87,17 +95,21 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const docRef = doc(db, 'sessions', sessionId);
+      
+      await updateDoc(docRef, {
+        logs: arrayUnion(log),
+        updatedAt: new Date().toISOString()
+      });
+
       const currentSession = get().currentSession;
       
-      if (!currentSession) throw new Error('No active session');
-
-      const updatedLogs = [...currentSession.logs, log];
-      await setDoc(docRef, { logs: updatedLogs, updatedAt: new Date().toISOString() }, { merge: true });
-
-      set(state => ({
-        currentSession: state.currentSession ? { ...state.currentSession, logs: updatedLogs } : null,
-        isLoading: false
-      }));
+      if (currentSession) {
+        const updatedLogs = [...(currentSession.logs || []), log];
+        set({
+          currentSession: { ...currentSession, logs: updatedLogs },
+          isLoading: false
+        });
+      }
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
       throw error;

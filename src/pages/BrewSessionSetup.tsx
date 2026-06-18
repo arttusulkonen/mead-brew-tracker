@@ -1,4 +1,4 @@
-import { addDoc, collection, getDocs } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaPlay, FaSlidersH, FaWater } from 'react-icons/fa';
@@ -7,7 +7,7 @@ import { auth, db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useRecipeStore } from '../store/useRecipeStore';
 import type { BaseIngredient, HoneyIngredient, YeastIngredient } from '../types/ingredient';
-import type { BrewSession } from '../types/recipe';
+import type { BrewSession } from '../types/session';
 import { calculateAbvCrouch, calculateTosna, estimateOG } from '../utils/calculations';
 
 const BrewSessionSetup: React.FC = () => {
@@ -120,35 +120,35 @@ const BrewSessionSetup: React.FC = () => {
   }, [sessionIngredients, actualVolume, globalCatalog, currentRecipe]);
 
   const handleStartSession = async () => {
-    if (!activeBreweryId || !currentRecipe || !db || !auth?.currentUser) return;
+    if (!currentRecipe || !db || !activeBreweryId || !auth.currentUser) return;
     
     setIsStarting(true);
     try {
-      const sessionsRef = collection(db, 'breweries', activeBreweryId, 'brew_sessions');
-      
-      const newSession: Omit<BrewSession, 'id'> = {
-        recipeId: currentRecipe.id,
+      const sessionId = crypto.randomUUID();
+      const newSession: BrewSession = {
+        id: sessionId,
         breweryId: activeBreweryId,
-        parentSessionId: null,
-        childSessionIds: [],
-        status: 'Brew Day',
-        targetStyle: currentRecipe.targetStyle,
-        actualBatchSizeLiters: actualVolume,
-        actualOriginalGravity: null,
-        actualFinalGravity: null,
-        actualAbv: null,
-        startedAt: new Date().toISOString(),
-        completedAt: null,
-        splitTimestamp: null,
-        sessionIngredients: sessionIngredients,
-        sessionSteps: currentRecipe.steps
+        recipeId: currentRecipe.id,
+        recipeName: currentRecipe.name,
+        status: 'planned',
+        startDate: new Date().toISOString(),
+        completedDate: null,
+        batchSizeLiters: actualVolume,
+        targetOg: currentRecipe.targetOriginalGravity,
+        targetFg: currentRecipe.targetFinalGravity,
+        logs: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: auth.currentUser.uid
       };
 
-      const docRef = await addDoc(sessionsRef, newSession);
-      navigate(`/brew/${docRef.id}`);
+      const sessionRef = doc(db, 'sessions', sessionId);
+      await setDoc(sessionRef, newSession);
+      navigate(`/brew/${sessionId}`);
     } catch (error) {
       console.error(error);
       alert(t('Failed to start session'));
+    } finally {
       setIsStarting(false);
     }
   };
@@ -200,6 +200,7 @@ const BrewSessionSetup: React.FC = () => {
                   value={actualVolume || ''} 
                   onChange={(e) => handleScaleVolume(parseFloat(e.target.value) || 0)}
                   style={{ border: '2px solid var(--color-primary)' }}
+                  disabled={isStarting}
                 />
                 <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
                   {t('Changing this will auto-scale all ingredients below.')}
@@ -215,6 +216,7 @@ const BrewSessionSetup: React.FC = () => {
                   step="0.5"
                   value={preBoilVolume || ''} 
                   onChange={(e) => setPreBoilVolume(parseFloat(e.target.value) || 0)}
+                  disabled={isStarting}
                 />
                 <small style={{ color: '#0066cc', display: 'block', marginTop: '4px', fontWeight: '500' }}>
                   {t('Estimated boil-off')}: {boilOffAmount} {t('L')}
@@ -241,6 +243,7 @@ const BrewSessionSetup: React.FC = () => {
                       value={ing.quantity}
                       onChange={(e) => handleIngredientChange(ing.id, parseFloat(e.target.value) || 0)}
                       style={{ width: '80px', padding: '6px', textAlign: 'right' }}
+                      disabled={isStarting}
                     />
                     <span style={{ fontWeight: 'bold', color: '#666' }}>{t('g')}</span>
                   </div>

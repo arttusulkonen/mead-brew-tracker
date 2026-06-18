@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
 import { getUserBreweries, processPendingInvites } from './firebase/breweryService';
 import { auth } from './firebase/config';
+import BrewSession from './pages/BrewSession';
 import BrewSessionSetup from './pages/BrewSessionSetup';
 import Home from './pages/Home';
 import Inventory from './pages/Inventory';
@@ -69,7 +70,7 @@ const App: React.FC = () => {
           <Route path="/recipes" element={<Recipes />} />
           <Route path="/recipes/:id" element={<RecipeDetails />} />
           <Route path="/brew/setup/:id" element={<BrewSessionSetup />} />
-          <Route path="/brew/:id" element={<div style={{ padding: '2rem' }}>{t('Live Brew Session (Under Construction)')}</div>} />
+          <Route path="/brew/:id" element={<BrewSession />} />
           <Route path="/brew" element={<div style={{ padding: '2rem' }}>{t('Brew Day Page')}</div>} />
           <Route path="/journal" element={<div style={{ padding: '2rem' }}>{t('Journal Page')}</div>} />
           <Route path="/inventory" element={<Inventory />} />

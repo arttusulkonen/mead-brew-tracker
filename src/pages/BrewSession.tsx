@@ -33,7 +33,7 @@ const BrewSession: React.FC = () => {
       const startDate = new Date(currentSession.startDate);
       const now = new Date();
       const diffTime = Math.abs(now.getTime() - startDate.getTime());
-      const dayNumber = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const dayNumber = Math.max(1, Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
 
       const newLog: BrewLog = {
         id: crypto.randomUUID(),
@@ -54,7 +54,6 @@ const BrewSession: React.FC = () => {
       setNotesInput('');
       setActionInput('');
     } catch (error) {
-      console.error(error);
       alert(t('Failed to add log.'));
     } finally {
       setIsSubmitting(false);
@@ -83,7 +82,7 @@ const BrewSession: React.FC = () => {
     );
   }
 
-  const chartData = currentSession.logs
+  const chartData = (currentSession.logs || [])
     .filter(log => log.sg !== null || log.ph !== null)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     .map(log => ({
@@ -93,8 +92,8 @@ const BrewSession: React.FC = () => {
       timestamp: new Date(log.timestamp).toLocaleDateString()
     }));
 
-  const latestLog = currentSession.logs.length > 0 ? [...currentSession.logs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0] : null;
-  const isPhDanger = latestLog?.ph && (latestLog.ph < 3.2);
+  const latestLog = currentSession.logs?.length > 0 ? [...currentSession.logs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0] : null;
+  const isPhDanger = latestLog?.ph !== null && latestLog?.ph !== undefined && latestLog.ph < 3.2;
 
   return (
     <div className="brew-session-page">
@@ -150,7 +149,7 @@ const BrewSession: React.FC = () => {
           <div className="card logs-card">
             <h3>{t('Session Logs')}</h3>
             <div className="logs-list">
-              {currentSession.logs.length === 0 ? (
+              {!currentSession.logs || currentSession.logs.length === 0 ? (
                 <div className="empty-text">{t('No logs recorded yet.')}</div>
               ) : (
                 [...currentSession.logs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(log => (

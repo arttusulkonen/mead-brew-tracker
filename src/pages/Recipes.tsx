@@ -422,11 +422,14 @@ const Recipes: React.FC = () => {
         await setDoc(recipeRef, recipeData, { merge: true });
       }
       
+      const wasEditingId = editingRecipeId;
+      const currentRecipeId = recipeId;
+      
       resetForm();
       await fetchRecipes(activeBreweryId);
       
-      if (editingRecipeId) {
-        navigate(`/recipes/${recipeId}`);
+      if (wasEditingId) {
+        navigate(`/recipes/${currentRecipeId}`);
       } else {
         setView('list');
       }
