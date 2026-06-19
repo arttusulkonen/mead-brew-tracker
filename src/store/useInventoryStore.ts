@@ -167,11 +167,33 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const batch = writeBatch(db);
+      const currentInventory = get().inventory;
       
       for (const ing of ingredientsToConsume) {
         if (ing.quantity > 0) {
-          const itemRef = doc(db, `breweries/${breweryId}/inventory`, ing.globalIngredientId);
-          batch.update(itemRef, { quantityOnHand: increment(-ing.quantity) });
+          const invItem = currentInventory.find(i => i.ingredientId === ing.globalIngredientId);
+          if (invItem) {
+            let decrementQty = ing.quantity;
+            switch (invItem.unit) {
+              case 'kg':
+              case 'L':
+                decrementQty = ing.quantity / 1000;
+                break;
+              case 'oz':
+                decrementQty = ing.quantity / 28.3495;
+                break;
+              case 'lb':
+                decrementQty = ing.quantity / 453.592;
+                break;
+              case 'gal':
+                decrementQty = ing.quantity / 3785.41;
+                break;
+              default:
+                decrementQty = ing.quantity;
+            }
+            const itemRef = doc(db, `breweries/${breweryId}/inventory`, invItem.id);
+            batch.update(itemRef, { quantityOnHand: increment(-decrementQty) });
+          }
         }
       }
       

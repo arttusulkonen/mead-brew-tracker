@@ -33,20 +33,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const sessionsRef = collection(db, `breweries/${breweryId}/brew_sessions`);
       const snapshot = await getDocs(sessionsRef);
       
-      const fetched: BrewSession[] = [];
-      for (const docSnap of snapshot.docs) {
-        const data = docSnap.data();
-        
-        const logsRef = collection(db, `breweries/${breweryId}/brew_sessions/${docSnap.id}/fermentation_logs`);
-        const logsSnap = await getDocs(logsRef);
-        const logs = logsSnap.docs.map(l => l.data() as BrewLog);
-        
-        fetched.push({
-          ...data,
-          id: docSnap.id,
-          logs: logs
-        } as BrewSession);
-      }
+      const fetched: BrewSession[] = snapshot.docs.map(docSnap => ({
+        ...docSnap.data(),
+        id: docSnap.id,
+        logs: [] as BrewLog[]
+      } as unknown as BrewSession));
       
       fetched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       

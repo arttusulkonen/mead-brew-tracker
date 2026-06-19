@@ -41,7 +41,6 @@ const BrewSessionSetup: React.FC = () => {
         })) as BaseIngredient[];
         setGlobalCatalog(catalogData);
       } catch {
-        // Ошибка молча обрабатывается по правилам линтера (отсутствие заглушек и логов, если не запрошено)
       }
     };
     fetchCatalog();
@@ -126,10 +125,16 @@ const BrewSessionSetup: React.FC = () => {
     
     setIsStarting(true);
     try {
-      // 1. Атомарное списание ингредиентов со склада пивоварни
-      const consumed = await consumeIngredients(activeBreweryId, sessionIngredients);
-      if (!consumed) throw new Error('Failed to consume ingredients');
-      // 2. Создание документа сессии с глубоким копированием шагов и ингредиентов
+      const mappedIngredients = sessionIngredients.map(i => ({
+        globalIngredientId: i.globalIngredientId,
+        quantity: i.quantity
+      }));
+      const success = await consumeIngredients(activeBreweryId, mappedIngredients);
+
+      if (!success) {
+        throw new Error('Inventory consumption failed');
+      }
+
       const sessionId = crypto.randomUUID();
       const newSession: BrewSession = {
         id: sessionId,
@@ -143,7 +148,6 @@ const BrewSessionSetup: React.FC = () => {
         targetOg: currentRecipe.targetOriginalGravity,
         targetFg: currentRecipe.targetFinalGravity,
         
-        // Flight Recorder Snapshot
         sessionIngredients: sessionIngredients.map(ing => ({ ...ing })),
         sessionSteps: currentRecipe.steps.map(step => ({ ...step })),
         
@@ -153,13 +157,12 @@ const BrewSessionSetup: React.FC = () => {
         createdBy: auth.currentUser.uid
       };
 
-      // Сохраняем сессию по новому безопасному пути в базе данных
       const sessionRef = doc(db, `breweries/${activeBreweryId}/brew_sessions`, sessionId);
       await setDoc(sessionRef, newSession);
       navigate(`/brew/${sessionId}`);
       
     } catch {
-      alert(t('Failed to start session'));
+      alert(t('Failed to start session. Check your stock.'));
     } finally {
       setIsStarting(false);
     }
@@ -173,7 +176,7 @@ const BrewSessionSetup: React.FC = () => {
     return (
       <div className="recipes-page" style={{ padding: '20px', textAlign: 'center' }}>
         <h2>{t('Recipe not found')}</h2>
-        <button className="btn-secondary" onClick={() => navigate('/recipes')} style={{ marginTop: '16px' }}>
+        <button type="button" className="btn-secondary" onClick={() => navigate('/recipes')} style={{ marginTop: '16px' }}>
           {t('Back to list')}
         </button>
       </div>
@@ -189,7 +192,7 @@ const BrewSessionSetup: React.FC = () => {
           <h1 style={{ margin: 0 }}>{t('Brew Day Setup')}</h1>
           <span style={{ fontSize: '0.9rem', color: '#666' }}>{t('Recipe')}: {currentRecipe.name}</span>
         </div>
-        <button className="btn-secondary" onClick={() => navigate(`/recipes/${currentRecipe.id}`)}>
+        <button type="button" className="btn-secondary" onClick={() => navigate(`/recipes/${currentRecipe.id}`)}>
           {t('Cancel')}
         </button>
       </header>
@@ -268,6 +271,7 @@ const BrewSessionSetup: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           <button 
+            type="button"
             className="btn-primary" 
             style={{ width: '100%', padding: '16px', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: '#28a745' }}
             onClick={handleStartSession}

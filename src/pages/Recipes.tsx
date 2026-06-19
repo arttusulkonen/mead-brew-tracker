@@ -67,7 +67,6 @@ const Recipes: React.FC = () => {
         })) as BaseIngredient[];
         setGlobalCatalog(catalogData);
       } catch {
-        console.assert(false, 'Failed to fetch global ingredient catalog');
       }
     };
     fetchCatalog();
@@ -390,7 +389,7 @@ const Recipes: React.FC = () => {
       <div className="recipes-page">
         <header className="page-header">
           <h1>{t('Recipes')}</h1>
-          <button className="btn-primary" onClick={() => setView('builder')}>
+          <button type="button" className="btn-primary" onClick={() => setView('builder')}>
             <FaPlus /> {t('Create Recipe')}
           </button>
         </header>
@@ -444,7 +443,7 @@ const Recipes: React.FC = () => {
     <div className="recipes-page">
       <header className="page-header">
         <h1>{editingRecipeId ? t('Edit Recipe') : t('Recipe Builder')}</h1>
-        <button className="btn-secondary" onClick={handleCancel}>
+        <button type="button" className="btn-secondary" onClick={handleCancel}>
           {t('Cancel')}
         </button>
       </header>
@@ -514,6 +513,7 @@ const Recipes: React.FC = () => {
                   className="widget-input"
                 />
                 <button 
+                  type="button"
                   className="btn-text-small widget-btn" 
                   onClick={handleAutoCalculateHoney}
                   title={t('Auto-calculate honey grams needed for this ABV')}
@@ -535,7 +535,7 @@ const Recipes: React.FC = () => {
                   </option>
                 ))}
               </select>
-              <button className="btn-primary" onClick={handleAddIngredient} disabled={!selectedIngredientId || isSaving}>
+              <button type="button" className="btn-primary" onClick={handleAddIngredient} disabled={!selectedIngredientId || isSaving}>
                 <FaPlus /> {t('Add')}
               </button>
             </div>
@@ -550,6 +550,7 @@ const Recipes: React.FC = () => {
                     </div>
                     <div className="ingredient-controls">
                       <button 
+                        type="button"
                         className="btn-text-small" 
                         onClick={() => updateIngredient(item.id, { showNote: !item.showNote })}
                         disabled={isSaving}
@@ -566,6 +567,7 @@ const Recipes: React.FC = () => {
                       />
                       <span className="unit">{t('g')}</span>
                       <button 
+                        type="button"
                         className="btn-icon danger" 
                         onClick={() => handleRemoveIngredient(item.id)} 
                         disabled={isSaving}
@@ -604,7 +606,7 @@ const Recipes: React.FC = () => {
                     <div className="step-header-left">
                       <span className="step-number">{step.stepNumber}</span>
                       <select 
-                        style={{ border: 'none', background: 'transparent', fontWeight: 'bold' }}
+                        className="phase-selector"
                         value={step.phase}
                         onChange={(e) => updateStep(step.id, { phase: e.target.value as StepPhase })}
                         disabled={isSaving}
@@ -616,17 +618,21 @@ const Recipes: React.FC = () => {
                     </div>
                     <div className='step-buttons'>
                       <button 
+                        type="button"
                         className="btn-icon" 
                         style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
                         onClick={() => updateStep(step.id, { isExpanded: !step.isExpanded })}
                         aria-expanded={step.isExpanded}
+                        aria-label={step.isExpanded ? t('Collapse step') : t('Expand step')}
                       >
                         {step.isExpanded ? <FaChevronUp /> : <FaChevronDown />}
                       </button>
                       <button 
+                        type="button"
                         className="btn-icon danger" 
                         onClick={() => handleRemoveStep(step.id)} 
-                        disabled={isSaving} 
+                        disabled={isSaving}
+                        aria-label={t('Remove step')}
                       >
                         <FaTrash />
                       </button>
@@ -640,14 +646,14 @@ const Recipes: React.FC = () => {
                         value={step.title}
                         onChange={(e) => updateStep(step.id, { title: e.target.value })}
                         placeholder={t('Step Title')}
-                        style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                        className="step-title-input"
                         disabled={isSaving}
                       />
                       <textarea 
                         value={step.description}
                         onChange={(e) => updateStep(step.id, { description: e.target.value })}
                         placeholder={t('Detailed instructions...')}
-                        style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                        className="step-desc-textarea"
                         rows={3}
                         disabled={isSaving}
                       />
@@ -655,7 +661,7 @@ const Recipes: React.FC = () => {
                       <div className="form-row multi-col">
                         <div className="form-group">
                           <label>{t('Duration')}</label>
-                          <div style={{ display: 'flex', gap: '4px' }}>
+                          <div className="duration-inputs" style={{ display: 'flex', gap: '4px' }}>
                             <input 
                               type="number" 
                               min="0"
@@ -691,7 +697,7 @@ const Recipes: React.FC = () => {
                 </div>
               ))}
               <div className="step-add-buttons">
-                <button className="btn-secondary" onClick={() => handleAddStep('Preparation')} disabled={isSaving}>
+                <button type="button" className="btn-secondary" onClick={() => handleAddStep('Preparation')} disabled={isSaving}>
                   <FaPlus /> {t('Add Step')}
                 </button>
               </div>
@@ -739,6 +745,7 @@ const Recipes: React.FC = () => {
                     <div className="flex-row gap-sm align-center">
                       <strong className="text-lg text-primary">{add.totalGrams.toFixed(1)} g</strong>
                       <button 
+                        type="button"
                         className="btn-apply-small" 
                         onClick={() => updateIngredient(add.id, { quantity: parseFloat(add.totalGrams.toFixed(1)) })}
                       >
@@ -752,6 +759,7 @@ const Recipes: React.FC = () => {
           )}
 
           <button 
+            type="button"
             className="btn-primary full-width mt-md" 
             onClick={handleSaveRecipe}
             disabled={!recipeName || recipeIngredients.length === 0 || isSaving}
