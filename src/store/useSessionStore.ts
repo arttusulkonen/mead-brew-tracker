@@ -106,13 +106,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       if (currentSession) {
         const updatedLogs = [...(currentSession.logs || []), log];
         set({
-          currentSession: { ...currentSession, logs: updatedLogs },
-          isLoading: false
+          currentSession: { ...currentSession, logs: updatedLogs }
         });
       }
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 
@@ -127,7 +128,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         updateData.completedDate = new Date().toISOString();
       }
 
-      await setDoc(docRef, updateData, { merge: true });
+      await updateDoc(docRef, updateData);
 
       set(state => ({
         currentSession: state.currentSession ? { ...state.currentSession, ...updateData } : null,

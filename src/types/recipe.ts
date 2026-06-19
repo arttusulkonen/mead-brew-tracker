@@ -1,4 +1,4 @@
-import type { IngredientCategory } from './ingredient';
+export type IngredientCategory = 'Honey' | 'Yeast' | 'Hops' | 'Water Profile' | 'Additive';
 
 export interface RecipeIngredientReference {
   id: string;
@@ -11,7 +11,6 @@ export interface RecipeIngredientReference {
 
 export type StepPhase = 'Preparation' | 'Fermentation' | 'Aging';
 export type TimeUnit = 'minutes' | 'days';
-export type MeadStyleTarget = 'Session (4-6%)' | 'Standard (7-10%)' | 'Wine/Sack (11%+)' | 'Custom';
 
 export interface RecipeStep {
   id: string;
@@ -36,6 +35,8 @@ export interface IdealTargetCurves {
   };
 }
 
+export type MeadStyleTarget = 'Session (4-6%)' | 'Standard (7-10%)' | 'Wine/Sack (11%+)' | 'Custom';
+
 export interface Recipe {
   id: string;
   breweryId: string;
@@ -51,31 +52,4 @@ export interface Recipe {
   createdAt: string;
   updatedAt: string;
   createdBy: string;
-}
-
-export type BrewSessionStage =
-  | 'Planning'
-  | 'Brew Day'
-  | 'Primary Fermentation'
-  | 'Secondary/Aging'
-  | 'Packaging/Bottling'
-  | 'Completed';
-
-export interface BrewSession {
-  id: string;
-  recipeId: string | null;
-  breweryId: string;
-  parentSessionId: string | null;
-  childSessionIds: string[];
-  status: BrewSessionStage;
-  targetStyle: MeadStyleTarget;
-  actualBatchSizeLiters: number;
-  actualOriginalGravity: number | null;
-  actualFinalGravity: number | null;
-  actualAbv: number | null;
-  startedAt: string;
-  completedAt: string | null;
-  splitTimestamp: string | null;
-  sessionIngredients: RecipeIngredientReference[];
-  sessionSteps: RecipeStep[];
 }

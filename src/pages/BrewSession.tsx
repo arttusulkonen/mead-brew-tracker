@@ -33,7 +33,7 @@ const BrewSession: React.FC = () => {
       const startDate = new Date(currentSession.startDate);
       const now = new Date();
       const diffTime = Math.abs(now.getTime() - startDate.getTime());
-      const dayNumber = Math.max(1, Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
+      const dayNumber = Math.max(1, Math.floor(diffTime / 86400000) + 1);
 
       const newLog: BrewLog = {
         id: crypto.randomUUID(),
@@ -63,7 +63,12 @@ const BrewSession: React.FC = () => {
   const handleCompletePhase = async (newStatus: 'fermenting' | 'aging' | 'completed') => {
     if (!currentSession || !currentSession.id) return;
     if (window.confirm(t('Are you sure you want to advance to the next phase?'))) {
-      await updateSessionStatus(currentSession.id, newStatus);
+      try {
+        await updateSessionStatus(currentSession.id, newStatus);
+      } catch (error) {
+        console.error(error);
+        alert(t('Failed to update status.'));
+      }
     }
   };
 
@@ -95,6 +100,13 @@ const BrewSession: React.FC = () => {
   const latestLog = currentSession.logs?.length > 0 ? [...currentSession.logs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0] : null;
   const isPhDanger = latestLog?.ph !== null && latestLog?.ph !== undefined && latestLog.ph < 3.2;
 
+  const statusLabels: Record<string, string> = {
+    planned: t('Planned'),
+    fermenting: t('Fermenting'),
+    aging: t('Aging'),
+    completed: t('Completed')
+  };
+
   return (
     <div className="brew-session-page">
       <header className="session-header">
@@ -102,7 +114,7 @@ const BrewSession: React.FC = () => {
           <h1>{currentSession.recipeName}</h1>
           <div className="meta-tags">
             <span className="status-badge">
-              {t(currentSession.status.toUpperCase())}
+              {statusLabels[currentSession.status] || currentSession.status}
             </span>
             <span className="start-date">
               {t('Started')}: {new Date(currentSession.startDate).toLocaleDateString()}

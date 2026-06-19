@@ -373,7 +373,7 @@ const Recipes: React.FC = () => {
    * @returns Promise<void>
    */
   const handleSaveRecipe = async () => {
-    if (!activeBreweryId || !recipeName || recipeIngredients.length === 0 || !db || !auth?.currentUser) return;
+    if (!activeBreweryId || !recipeName || !recipeIngredients || recipeIngredients.length === 0 || !db || !auth?.currentUser) return;
 
     setIsSaving(true);
     try {
@@ -381,34 +381,34 @@ const Recipes: React.FC = () => {
       const recipeRef = doc(db, 'recipes', recipeId);
       
       const cleanIngredients = recipeIngredients.map(item => ({
-        id: item.id,
-        globalIngredientId: item.globalIngredientId,
-        name: item.name,
-        category: item.category,
-        quantity: item.quantity,
-        note: item.note || ''
+        id: item?.id || crypto.randomUUID(),
+        globalIngredientId: item?.globalIngredientId || '',
+        name: item?.name || '',
+        category: item?.category || 'Additive',
+        quantity: item?.quantity || 0,
+        note: item?.note || ''
       }));
       
       const cleanSteps = recipeSteps.map(step => ({
-        id: step.id,
-        stepNumber: step.stepNumber,
-        phase: step.phase,
-        title: step.title,
-        description: step.description,
-        durationValue: step.durationValue,
-        durationUnit: step.durationUnit,
-        targetTempC: step.targetTempC
+        id: step?.id || crypto.randomUUID(),
+        stepNumber: step?.stepNumber || 0,
+        phase: step?.phase || 'Preparation',
+        title: step?.title || '',
+        description: step?.description || '',
+        durationValue: step?.durationValue || 0,
+        durationUnit: step?.durationUnit || 'minutes',
+        targetTempC: step?.targetTempC ?? null
       }));
 
-      const recipeData: any = {
+      const recipeData: Partial<Recipe> = {
         id: recipeId,
         breweryId: activeBreweryId,
         name: recipeName,
         targetStyle,
-        expectedBatchSizeLiters: batchSizeLiters,
-        targetOriginalGravity: recipeDetails.og,
-        targetFinalGravity: targetFg,
-        targetAbv: recipeDetails.abv,
+        expectedBatchSizeLiters: batchSizeLiters || 0,
+        targetOriginalGravity: recipeDetails?.og || 1.000,
+        targetFinalGravity: targetFg || 1.000,
+        targetAbv: recipeDetails?.abv || 0,
         ingredients: cleanIngredients,
         steps: cleanSteps,
         updatedAt: new Date().toISOString()
