@@ -15,6 +15,13 @@
       color: $color-text-main;
     }
   }
+
+  input,
+  select {
+    padding: $spacing-sm;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-sm;
+  }
 }
 
 .recipe-grid {
@@ -286,23 +293,23 @@
   display: flex;
   flex-direction: column;
   gap: $spacing-md;
+}
 
-  .btn-secondary {
-    display: flex;
-    gap: $spacing-xs;
-    align-items: center;
-    justify-content: center;
-    padding: $spacing-sm;
-    color: $color-primary;
-    cursor: pointer;
-    background-color: transparent;
-    border: 1px dashed $color-primary;
-    border-radius: $border-radius-sm;
-    transition: all 0.2s ease;
+.btn-secondary {
+  display: flex;
+  gap: $spacing-xs;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-sm;
+  color: $color-primary;
+  cursor: pointer;
+  background-color: transparent;
+  border: 1px dashed $color-primary;
+  border-radius: $border-radius-sm;
+  transition: all 0.2s ease;
 
-    &:hover {
-      background-color: rgba($color-primary, 0.05);
-    }
+  &:hover {
+    background-color: rgba($color-primary, 0.05);
   }
 }
 

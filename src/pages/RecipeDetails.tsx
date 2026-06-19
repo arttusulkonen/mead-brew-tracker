@@ -1,7 +1,7 @@
 import { collection, getDocs } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaPlay } from 'react-icons/fa';
+import { FaEdit, FaPlay, FaTrash } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
 import { db } from '../firebase/config';
 import { useRecipeStore } from '../store/useRecipeStore';
@@ -12,7 +12,7 @@ const RecipeDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { currentRecipe, fetchRecipeById, clearCurrentRecipe, isLoading } = useRecipeStore();
+  const { currentRecipe, fetchRecipeById, clearCurrentRecipe, isLoading, deleteRecipe } = useRecipeStore();
   const [globalCatalog, setGlobalCatalog] = useState<BaseIngredient[]>([]);
 
   useEffect(() => {
@@ -41,11 +41,19 @@ const RecipeDetails: React.FC = () => {
     if (!currentRecipe || globalCatalog.length === 0) return null;
     let selectedYeastTemplate = null;
     let yeastAddedGrams = 0;
+    let customNutrientName = '';
 
     currentRecipe.ingredients.forEach(item => {
+      const template = globalCatalog.find(t => t.id === item.globalIngredientId);
+      
       if (item.category === 'Yeast') {
         yeastAddedGrams += item.quantity;
-        selectedYeastTemplate = globalCatalog.find(t => t.id === item.globalIngredientId);
+        selectedYeastTemplate = template;
+      } else if (item.category === 'Additive' && template) {
+        const additive = template as any;
+        if (additive.dosagePer10Liters && !customNutrientName) {
+          customNutrientName = item.name;
+        }
       }
     });
 
@@ -57,14 +65,35 @@ const RecipeDetails: React.FC = () => {
 
       return {
         ...calculateTosna(currentRecipe.expectedBatchSizeLiters, currentRecipe.targetOriginalGravity, nFactor),
-        yeastAdded: yeastAddedGrams
+        yeastAdded: yeastAddedGrams,
+        customNutrientName: customNutrientName || 'Fermaid-O'
       };
     }
     return null;
   }, [currentRecipe, globalCatalog]);
 
   const startBrewSession = () => {
-    alert(t('Live Brew Session feature is coming in the next module!'));
+    if (!currentRecipe?.id) return;
+    navigate(`/brew/setup/${currentRecipe.id}`);
+  };
+
+  const handleEdit = () => {
+    if (!currentRecipe) return;
+    navigate('/recipes', { state: { editRecipe: currentRecipe } });
+  };
+
+  const handleDelete = async () => {
+    if (!currentRecipe || !currentRecipe.id) return;
+    
+    if (window.confirm(t('Are you sure you want to delete this recipe?'))) {
+      try {
+        await deleteRecipe(currentRecipe.id);
+        navigate('/recipes');
+      } catch (error) {
+        console.error(error);
+        alert(t('Failed to delete recipe. Check your permissions.'));
+      }
+    }
   };
 
   if (isLoading) {
@@ -89,13 +118,20 @@ const RecipeDetails: React.FC = () => {
           <h1 style={{ margin: 0 }}>{currentRecipe.name}</h1>
           <span style={{ fontSize: '0.9rem', color: '#666' }}>{currentRecipe.targetStyle}</span>
         </div>
-        <button className="btn-secondary" onClick={() => navigate('/recipes')}>
-          {t('Back to list')}
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button className="btn-icon" onClick={handleEdit} title={t('Edit Recipe')} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: 'white', cursor: 'pointer' }}>
+            <FaEdit color="#666" />
+          </button>
+          <button className="btn-icon" onClick={handleDelete} title={t('Delete Recipe')} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #f5c2c7', backgroundColor: '#f8d7da', cursor: 'pointer' }}>
+            <FaTrash color="#dc3545" />
+          </button>
+          <button className="btn-secondary" onClick={() => navigate('/recipes')}>
+            {t('Back to list')}
+          </button>
+        </div>
       </header>
 
       <div className="recipe-grid" style={{ display: 'grid', gap: '24px', gridTemplateColumns: '2fr 1fr', alignItems: 'start', marginTop: '24px' }}>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div className="card">
             <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid #eee', paddingBottom: '12px' }}>{t('Ingredients')}</h3>
@@ -184,7 +220,7 @@ const RecipeDetails: React.FC = () => {
                     </div>
                   </div>
                   <div className="tosna-row"><span>{t('Go-Ferm (Rehydration)')}</span><strong>{selectedRecipeTosna.goFermGrams} g</strong></div>
-                  <div className="tosna-row"><span>{t('Total Fermaid-O')}</span><strong>{selectedRecipeTosna.totalFermaidOGrams} g</strong></div>
+                  <div className="tosna-row"><span>{t('Total')} {selectedRecipeTosna.customNutrientName}</span><strong>{selectedRecipeTosna.totalFermaidOGrams} g</strong></div>
                 </div>
 
                 <div style={{ backgroundColor: '#f9f9f9', padding: '12px', borderRadius: '8px', border: '1px solid #eee' }}>
@@ -205,6 +241,14 @@ const RecipeDetails: React.FC = () => {
                         {t('Target SG for final addition')}: {(currentRecipe.targetOriginalGravity - ((currentRecipe.targetOriginalGravity - 1.000) / 3)).toFixed(3)}
                       </span>
                     </li>
+                  </ul>
+                </div>
+
+                <div style={{ marginTop: '16px', backgroundColor: '#e8f4f8', padding: '12px', borderRadius: '8px' }}>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '0.95rem', color: '#0056b3' }}>{t('Fermentation Monitoring')}</h4>
+                  <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: '#333', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Density (SG)')}:</strong> {t('Use a hydrometer. Degas sample to avoid false readings from CO2 bubbles.')}</li>
+                    <li><strong>{t('Acidity (pH)')}:</strong> {t('Keep pH between 3.6 and 4.0. If it drops below 3.2, yeast may stall.')}</li>
                   </ul>
                 </div>
 
