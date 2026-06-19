@@ -127,8 +127,8 @@ const BrewSessionSetup: React.FC = () => {
     setIsStarting(true);
     try {
       // 1. Атомарное списание ингредиентов со склада пивоварни
-      await consumeIngredients(activeBreweryId, sessionIngredients);
-
+      const consumed = await consumeIngredients(activeBreweryId, sessionIngredients);
+      if (!consumed) throw new Error('Failed to consume ingredients');
       // 2. Создание документа сессии с глубоким копированием шагов и ингредиентов
       const sessionId = crypto.randomUUID();
       const newSession: BrewSession = {
