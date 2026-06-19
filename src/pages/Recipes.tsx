@@ -1,14 +1,16 @@
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaChevronDown, FaChevronUp, FaExclamationTriangle, FaMagic, FaPlus, FaTrash } from 'react-icons/fa';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { auth, db } from '../firebase/config';
+import { app, auth, db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useRecipeStore } from '../store/useRecipeStore';
 import type { BaseIngredient, HoneyIngredient, IngredientCategory, YeastIngredient } from '../types/ingredient';
 import type { MeadStyleTarget, Recipe, StepPhase, TimeUnit } from '../types/recipe';
 import { calculateAbvCrouch, calculateTosna, estimateOG } from '../utils/calculations';
+import { HONEY_TERROIR, MEAD_STYLES, SWEETNESS_LEVELS } from '../utils/meadConstants';
 
 interface RecipeIngredientEntry {
   id: string;
@@ -48,6 +50,11 @@ const Recipes: React.FC = () => {
   const [targetFg, setTargetFg] = useState<number>(1.000);
   
   const [targetAutoAbv, setTargetAutoAbv] = useState<number>(5.0);
+
+  const [wizardStyle, setWizardStyle] = useState<string>(MEAD_STYLES[0].id);
+  const [wizardSweetness, setWizardSweetness] = useState<string>(SWEETNESS_LEVELS[2].id);
+  const [wizardHoney, setWizardHoney] = useState<string>(HONEY_TERROIR[4].id);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
 
   const [globalCatalog, setGlobalCatalog] = useState<BaseIngredient[]>([]);
   const [selectedIngredientId, setSelectedIngredientId] = useState<string>('');
@@ -223,6 +230,77 @@ const Recipes: React.FC = () => {
 
     const roundedGrams = Math.round(bestGrams / 10) * 10;
     updateIngredient(honeyEntry.id, { quantity: roundedGrams });
+  };
+
+  const handleAiGeneration = async () => {
+    if (!app) return;
+    setIsGenerating(true);
+    
+    try {
+      const payload = {
+        style: wizardStyle,
+        sweetness: wizardSweetness,
+        honeyTerroir: wizardHoney,
+        targetAbv: targetAutoAbv,
+        batchSizeLiters,
+        targetFg,
+        ingredients: recipeIngredients.map(i => ({
+          ingredientId: i.id,
+          globalIngredientId: i.globalIngredientId,
+          name: i.name,
+          category: i.category,
+          quantity: i.quantity
+        }))
+      };
+
+      const functions = getFunctions(app, 'europe-west1');
+      const generateRecipeAI = httpsCallable(functions, 'generateRecipeAI');
+      const response = await generateRecipeAI(payload);
+      const resultData = response.data as any;
+
+      if (resultData?.status === 'success' && resultData?.data) {
+        const aiData = resultData.data;
+
+        if (Array.isArray(aiData.steps)) {
+          const newSteps = aiData.steps.map((s: any, idx: number) => ({
+            id: crypto.randomUUID(),
+            stepNumber: idx + 1,
+            phase: s.phase || 'Preparation',
+            title: s.title || '',
+            description: s.description || '',
+            durationValue: s.durationValue || 0,
+            durationUnit: s.durationUnit || 'minutes',
+            targetTempC: typeof s.targetTempC === 'number' ? s.targetTempC : null,
+            isExpanded: false
+          }));
+          setRecipeSteps(newSteps);
+        }
+
+        if (Array.isArray(aiData.ingredientQuantities)) {
+          setRecipeIngredients(prev => {
+            const next = [...prev];
+            for (const suggestion of aiData.ingredientQuantities) {
+              if (suggestion && suggestion.ingredientId) {
+                const idx = next.findIndex(i => i.id === suggestion.ingredientId);
+                if (idx >= 0) {
+                  next[idx] = {
+                    ...next[idx],
+                    quantity: typeof suggestion.suggestedQuantityGrams === 'number' ? suggestion.suggestedQuantityGrams : next[idx].quantity,
+                    note: suggestion.aiNote ? suggestion.aiNote : next[idx].note,
+                    showNote: !!suggestion.aiNote || next[idx].showNote
+                  };
+                }
+              }
+            }
+            return next;
+          });
+        }
+      }
+    } catch {
+      alert(t('AI Generation failed'));
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const recipeDetails = useMemo(() => {
@@ -452,6 +530,41 @@ const Recipes: React.FC = () => {
         <div className="flex-col gap-lg">
           
           <div className="card">
+            <div className="card-header-flex">
+              <h3 className="m-0"><FaMagic /> {t('Smart Recipe Wizard')}</h3>
+            </div>
+            <div className="form-row multi-col mb-md">
+              <div className="form-group">
+                <label>{t('Base Style')}</label>
+                <select value={wizardStyle} onChange={e => setWizardStyle(e.target.value)}>
+                  {MEAD_STYLES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>{t('Sweetness / FG')}</label>
+                <select value={wizardSweetness} onChange={e => {
+                  setWizardSweetness(e.target.value);
+                  const selected = SWEETNESS_LEVELS.find(lvl => lvl.id === e.target.value);
+                  if (selected) {
+                    setTargetFg(selected.minFg);
+                  }
+                }}>
+                  {SWEETNESS_LEVELS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>{t('Honey Terroir')}</label>
+                <select value={wizardHoney} onChange={e => setWizardHoney(e.target.value)}>
+                  {HONEY_TERROIR.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <button type="button" className="btn-secondary full-width" onClick={handleAiGeneration} disabled={isGenerating}>
+              <FaMagic /> {isGenerating ? t('AI is thinking...') : (recipeSteps.length > 0 ? t('Review & Update Steps with AI') : t('Generate Recipe Steps'))}
+            </button>
+          </div>
+
+          <div className="card">
             <div className="form-group">
               <label>{t('Recipe Name')}</label>
               <input 
@@ -620,7 +733,6 @@ const Recipes: React.FC = () => {
                       <button 
                         type="button"
                         className="btn-icon" 
-                        style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
                         onClick={() => updateStep(step.id, { isExpanded: !step.isExpanded })}
                         aria-expanded={step.isExpanded}
                         aria-label={step.isExpanded ? t('Collapse step') : t('Expand step')}
