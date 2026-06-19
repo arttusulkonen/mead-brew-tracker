@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { db } from '../firebase/config';
 import { useRecipeStore } from '../store/useRecipeStore';
 import type { BaseIngredient, YeastIngredient } from '../types/ingredient';
-import { calculateTosna } from '../utils/calculations';
+import { calculateOneThirdSugarBreak, calculateTosna } from '../utils/calculations';
 
 const RecipeDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,13 +25,13 @@ const RecipeDetails: React.FC = () => {
       try {
         if (!db) return;
         const querySnapshot = await getDocs(collection(db, 'ingredients'));
-        const catalogData = querySnapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id
+        const catalogData = querySnapshot.docs.map(docSnap => ({
+          ...docSnap.data(),
+          id: docSnap.id
         })) as BaseIngredient[];
         setGlobalCatalog(catalogData);
-      } catch (error) {
-        console.error(error);
+      } catch {
+        console.assert(false, 'Failed to fetch global ingredient catalog');
       }
     };
     fetchCatalog();
@@ -89,22 +89,21 @@ const RecipeDetails: React.FC = () => {
       try {
         await deleteRecipe(currentRecipe.id);
         navigate('/recipes');
-      } catch (error) {
-        console.error(error);
+      } catch {
         alert(t('Failed to delete recipe. Check your permissions.'));
       }
     }
   };
 
   if (isLoading) {
-    return <div className="loading-text" style={{ padding: '2rem' }}>{t('Loading recipe...')}</div>;
+    return <div className="loading-text p-lg text-center">{t('Loading recipe...')}</div>;
   }
 
   if (!currentRecipe) {
     return (
-      <div className="recipes-page" style={{ padding: '20px', textAlign: 'center' }}>
+      <div className="recipes-page text-center p-lg">
         <h2>{t('Recipe not found')}</h2>
-        <button className="btn-secondary" onClick={() => navigate('/recipes')} style={{ marginTop: '16px' }}>
+        <button className="btn-secondary mt-md" onClick={() => navigate('/recipes')}>
           {t('Back to list')}
         </button>
       </div>
@@ -112,17 +111,17 @@ const RecipeDetails: React.FC = () => {
   }
 
   return (
-    <div className="recipes-page" style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <h1 style={{ margin: 0 }}>{currentRecipe.name}</h1>
-          <span style={{ fontSize: '0.9rem', color: '#666' }}>{currentRecipe.targetStyle}</span>
+    <div className="recipes-page">
+      <header className="page-header">
+        <div className="flex-col gap-xs">
+          <h1 className="m-0">{currentRecipe.name}</h1>
+          <span className="text-sm text-muted">{currentRecipe.targetStyle}</span>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="btn-icon" onClick={handleEdit} title={t('Edit Recipe')} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: 'white', cursor: 'pointer' }}>
+        <div className="header-actions" style={{ display: 'flex', gap: '12px' }}>
+          <button className="btn-icon outline" onClick={handleEdit} title={t('Edit Recipe')}>
             <FaEdit color="#666" />
           </button>
-          <button className="btn-icon" onClick={handleDelete} title={t('Delete Recipe')} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #f5c2c7', backgroundColor: '#f8d7da', cursor: 'pointer' }}>
+          <button className="btn-icon danger-outline" onClick={handleDelete} title={t('Delete Recipe')}>
             <FaTrash color="#dc3545" />
           </button>
           <button className="btn-secondary" onClick={() => navigate('/recipes')}>
@@ -131,27 +130,27 @@ const RecipeDetails: React.FC = () => {
         </div>
       </header>
 
-      <div className="recipe-grid" style={{ display: 'grid', gap: '24px', gridTemplateColumns: '2fr 1fr', alignItems: 'start', marginTop: '24px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div className="recipe-grid">
+        <div className="flex-col gap-lg">
           <div className="card">
-            <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid #eee', paddingBottom: '12px' }}>{t('Ingredients')}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <h3 className="mb-md" style={{ borderBottom: '1px solid #eee', paddingBottom: '12px' }}>{t('Ingredients')}</h3>
+            <div className="flex-col gap-sm">
               {currentRecipe.ingredients.map(ing => (
-                <div key={ing.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
+                <div key={ing.id} className="ingredient-list-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
                   <div>
-                    <span className="category-tag" data-category={ing.category} style={{ marginRight: '12px', fontSize: '0.8rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: '#eef' }}>{t(ing.category)}</span>
-                    <strong style={{ fontSize: '0.95rem' }}>{ing.name}</strong>
-                    {ing.note && <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '4px' }}>{ing.note}</div>}
+                    <span className="category-tag" style={{ marginRight: '12px', fontSize: '0.8rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: '#eef' }} data-category={ing.category}>{t(ing.category)}</span>
+                    <strong className="text-md">{ing.name}</strong>
+                    {ing.note && <div className="text-sm text-muted mt-sm">{ing.note}</div>}
                   </div>
-                  <div style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>{ing.quantity} {t('g')}</div>
+                  <div className="font-bold no-wrap">{ing.quantity} {t('g')}</div>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="card">
-            <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid #eee', paddingBottom: '12px' }}>{t('Brewing Steps')}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <h3 className="mb-md" style={{ borderBottom: '1px solid #eee', paddingBottom: '12px' }}>{t('Brewing Steps')}</h3>
+            <div className="flex-col gap-md">
               {currentRecipe.steps.map((step, idx) => (
                 <div key={step.id} style={{ display: 'flex', gap: '16px' }}>
                   <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}>
@@ -159,7 +158,7 @@ const RecipeDetails: React.FC = () => {
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <strong style={{ fontSize: '1rem' }}>{step.title}</strong>
+                      <strong className="text-md">{step.title}</strong>
                       <span style={{ fontSize: '0.85rem', color: '#666', backgroundColor: '#eee', padding: '2px 8px', borderRadius: '12px' }}>{step.phase}</span>
                     </div>
                     <p style={{ margin: '4px 0 8px 0', fontSize: '0.95rem', lineHeight: '1.4' }}>{step.description}</p>
@@ -174,52 +173,48 @@ const RecipeDetails: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <button
-            className="btn-primary"
-            style={{ width: '100%', padding: '16px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            onClick={startBrewSession}
-          >
+        <div className="flex-col gap-lg">
+          <button className="btn-primary full-width" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', padding: '16px', fontSize: '1.1rem' }} onClick={startBrewSession}>
             <FaPlay /> {t('Start Brew Session')}
           </button>
 
-          <div className="card stat-card primary">
-            <h3 style={{ margin: '0 0 16px 0' }}>{t('Specifications')}</h3>
-            <div className="stat-grid" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="card stat-card">
+            <h3 className="mb-md">{t('Specifications')}</h3>
+            <div className="flex-col gap-sm">
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '8px' }}>
-                <span style={{ color: '#666' }}>{t('Batch Size')}</span>
-                <span style={{ fontWeight: 'bold' }}>{currentRecipe.expectedBatchSizeLiters} {t('L')}</span>
+                <span className="text-muted">{t('Batch Size')}</span>
+                <span className="font-bold">{currentRecipe.expectedBatchSizeLiters} {t('L')}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '8px' }}>
-                <span style={{ color: '#666' }}>{t('Estimated ABV')}</span>
-                <span style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>{currentRecipe.targetAbv?.toFixed(1)}%</span>
+                <span className="text-muted">{t('Estimated ABV')}</span>
+                <span className="text-primary-bold">{currentRecipe.targetAbv?.toFixed(1)}%</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '8px' }}>
-                <span style={{ color: '#666' }}>{t('Original Gravity')}</span>
-                <span style={{ fontWeight: 'bold' }}>{currentRecipe.targetOriginalGravity?.toFixed(3)}</span>
+                <span className="text-muted">{t('Original Gravity')}</span>
+                <span className="font-bold">{currentRecipe.targetOriginalGravity?.toFixed(3)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#666' }}>{t('Final Gravity')}</span>
-                <span style={{ fontWeight: 'bold' }}>{currentRecipe.targetFinalGravity?.toFixed(3)}</span>
+                <span className="text-muted">{t('Final Gravity')}</span>
+                <span className="font-bold">{currentRecipe.targetFinalGravity?.toFixed(3)}</span>
               </div>
             </div>
           </div>
 
-          <div className="card stat-card secondary">
-            <h3 style={{ margin: '0 0 16px 0' }}>{t('TOSNA 3.0 Guide')}</h3>
+          <div className="card stat-card">
+            <h3 className="mb-md">{t('TOSNA 3.0 Guide')}</h3>
             {!selectedRecipeTosna ? (
-              <div className="empty-text">{t('No yeast added')}</div>
+              <div className="empty-text text-center text-muted">{t('No yeast added')}</div>
             ) : (
               <>
-                <div className="tosna-grid" style={{ marginBottom: '16px' }}>
+                <div className="tosna-grid mb-md">
                   <div className="tosna-row">
                     <span>{t('Required Yeast')}</span>
-                    <div style={{ textAlign: 'right' }}>
+                    <div className="text-right">
                       <strong>{selectedRecipeTosna.totalYeastGrams} g</strong>
-                      {selectedRecipeTosna.yeastAdded > 0 && <div style={{ fontSize: '0.75rem', color: '#666' }}>({t('Added')}: {selectedRecipeTosna.yeastAdded}g)</div>}
+                      {selectedRecipeTosna.yeastAdded > 0 && <div className="text-xs text-muted">({t('Added')}: {selectedRecipeTosna.yeastAdded}g)</div>}
                     </div>
                   </div>
-                  <div className="tosna-row"><span>{t('Go-Ferm (Rehydration)')}</span><strong>{selectedRecipeTosna.goFermGrams} g</strong></div>
+                  <div className="tosna-row"><span>{t('Go-Ferm')}</span><strong>{selectedRecipeTosna.goFermGrams} g</strong></div>
                   <div className="tosna-row"><span>{t('Total')} {selectedRecipeTosna.customNutrientName}</span><strong>{selectedRecipeTosna.totalFermaidOGrams} g</strong></div>
                 </div>
 
@@ -227,36 +222,22 @@ const RecipeDetails: React.FC = () => {
                   <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>{t('Feeding Schedule')}</h4>
                   <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: '#444', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <li>
-                      <strong>{t('Addition 1')}</strong> ({t('24h')}): <strong style={{ color: 'var(--color-primary)' }}>{selectedRecipeTosna.dosePerAdditionGrams} g</strong>
+                      <strong>{t('Addition 1')}</strong> ({t('24h')}): <strong className="text-primary">{selectedRecipeTosna.dosePerAdditionGrams} g</strong>
                     </li>
                     <li>
-                      <strong>{t('Addition 2')}</strong> ({t('48h')}): <strong style={{ color: 'var(--color-primary)' }}>{selectedRecipeTosna.dosePerAdditionGrams} g</strong>
+                      <strong>{t('Addition 2')}</strong> ({t('48h')}): <strong className="text-primary">{selectedRecipeTosna.dosePerAdditionGrams} g</strong>
                     </li>
                     <li>
-                      <strong>{t('Addition 3')}</strong> ({t('72h')}): <strong style={{ color: 'var(--color-primary)' }}>{selectedRecipeTosna.dosePerAdditionGrams} g</strong>
+                      <strong>{t('Addition 3')}</strong> ({t('72h')}): <strong className="text-primary">{selectedRecipeTosna.dosePerAdditionGrams} g</strong>
                     </li>
                     <li>
-                      <strong>{t('Addition 4')}</strong> ({t('1/3 Sugar Break')}): <strong style={{ color: 'var(--color-primary)' }}>{selectedRecipeTosna.dosePerAdditionGrams} g</strong><br />
-                      <span style={{ color: '#888', fontSize: '0.8rem' }}>
-                        {t('Target SG for final addition')}: {(currentRecipe.targetOriginalGravity - ((currentRecipe.targetOriginalGravity - 1.000) / 3)).toFixed(3)}
+                      <strong>{t('Addition 4')}</strong> ({t('1/3 Sugar Break')}): <strong className="text-primary">{selectedRecipeTosna.dosePerAdditionGrams} g</strong><br />
+                      <span className="text-xs text-muted">
+                        {t('Target SG for final addition')}: {calculateOneThirdSugarBreak(currentRecipe.targetOriginalGravity).toFixed(3)}
                       </span>
                     </li>
                   </ul>
                 </div>
-
-                <div style={{ marginTop: '16px', backgroundColor: '#e8f4f8', padding: '12px', borderRadius: '8px' }}>
-                  <h4 style={{ margin: '0 0 8px 0', fontSize: '0.95rem', color: '#0056b3' }}>{t('Fermentation Monitoring')}</h4>
-                  <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: '#333', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <li><strong>{t('Density (SG)')}:</strong> {t('Use a hydrometer. Degas sample to avoid false readings from CO2 bubbles.')}</li>
-                    <li><strong>{t('Acidity (pH)')}:</strong> {t('Keep pH between 3.6 and 4.0. If it drops below 3.2, yeast may stall.')}</li>
-                  </ul>
-                </div>
-
-                {currentRecipe.targetStyle === 'Session (4-6%)' && (
-                  <div style={{ marginTop: '16px', fontSize: '0.85rem', color: '#666', borderLeft: '3px solid var(--color-primary)', paddingLeft: '8px' }}>
-                    {t('💡 For Session Meads, the 1/3 sugar break occurs rapidly. Monitor gravity closely from Day 2 to avoid missing nutrient additions.')}
-                  </div>
-                )}
               </>
             )}
           </div>

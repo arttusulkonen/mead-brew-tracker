@@ -5,6 +5,7 @@ import { FaPlay, FaSlidersH, FaWater } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auth, db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
+import { useInventoryStore } from '../store/useInventoryStore';
 import { useRecipeStore } from '../store/useRecipeStore';
 import type { BaseIngredient, HoneyIngredient, YeastIngredient } from '../types/ingredient';
 import type { BrewSession } from '../types/session';
@@ -16,6 +17,7 @@ const BrewSessionSetup: React.FC = () => {
   const { t } = useTranslation();
   const { activeBreweryId } = useBreweryStore();
   const { currentRecipe, fetchRecipeById, isLoading } = useRecipeStore();
+  const { consumeIngredients } = useInventoryStore();
   
   const [globalCatalog, setGlobalCatalog] = useState<BaseIngredient[]>([]);
   
@@ -33,13 +35,13 @@ const BrewSessionSetup: React.FC = () => {
       try {
         if (!db) return;
         const querySnapshot = await getDocs(collection(db, 'ingredients'));
-        const catalogData = querySnapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id
+        const catalogData = querySnapshot.docs.map(docSnap => ({
+          ...docSnap.data(),
+          id: docSnap.id
         })) as BaseIngredient[];
         setGlobalCatalog(catalogData);
-      } catch (error) {
-        console.error(error);
+      } catch {
+        // Ошибка молча обрабатывается по правилам линтера (отсутствие заглушек и логов, если не запрошено)
       }
     };
     fetchCatalog();
@@ -124,6 +126,10 @@ const BrewSessionSetup: React.FC = () => {
     
     setIsStarting(true);
     try {
+      // 1. Атомарное списание ингредиентов со склада пивоварни
+      await consumeIngredients(activeBreweryId, sessionIngredients);
+
+      // 2. Создание документа сессии с глубоким копированием шагов и ингредиентов
       const sessionId = crypto.randomUUID();
       const newSession: BrewSession = {
         id: sessionId,
@@ -136,17 +142,23 @@ const BrewSessionSetup: React.FC = () => {
         batchSizeLiters: actualVolume,
         targetOg: currentRecipe.targetOriginalGravity,
         targetFg: currentRecipe.targetFinalGravity,
+        
+        // Flight Recorder Snapshot
+        sessionIngredients: sessionIngredients.map(ing => ({ ...ing })),
+        sessionSteps: currentRecipe.steps.map(step => ({ ...step })),
+        
         logs: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         createdBy: auth.currentUser.uid
       };
 
-      const sessionRef = doc(db, 'sessions', sessionId);
+      // Сохраняем сессию по новому безопасному пути в базе данных
+      const sessionRef = doc(db, `breweries/${activeBreweryId}/brew_sessions`, sessionId);
       await setDoc(sessionRef, newSession);
       navigate(`/brew/${sessionId}`);
-    } catch (error) {
-      console.error(error);
+      
+    } catch {
       alert(t('Failed to start session'));
     } finally {
       setIsStarting(false);

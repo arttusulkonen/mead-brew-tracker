@@ -1,4 +1,4 @@
-export type IngredientCategory = 'Honey' | 'Yeast' | 'Hops' | 'Water Profile' | 'Additive';
+import type { IngredientCategory } from './ingredient';
 
 export interface RecipeIngredientReference {
   id: string;

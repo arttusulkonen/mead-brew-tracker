@@ -3,13 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { FaCheck, FaExclamationTriangle, FaPlus, FaSave } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { useBreweryStore } from '../store/useBreweryStore';
 import { useSessionStore } from '../store/useSessionStore';
 import type { BrewLog } from '../types/session';
+import { calculateOneThirdSugarBreak } from '../utils/calculations';
 
 const BrewSession: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { activeBreweryId } = useBreweryStore();
   const { currentSession, fetchSessionById, clearCurrentSession, isLoading, addLogToSession, updateSessionStatus } = useSessionStore();
 
   const [sgInput, setSgInput] = useState<string>('');
@@ -20,13 +23,13 @@ const BrewSession: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchSessionById(id);
+    fetchSessionById(activeBreweryId, id);
     return () => clearCurrentSession();
-  }, [id, fetchSessionById, clearCurrentSession]);
+  }, [id, activeBreweryId, fetchSessionById, clearCurrentSession]);
 
   const handleAddLog = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentSession || !currentSession.id) return;
+    if (!currentSession || !currentSession.id || !activeBreweryId) return;
 
     setIsSubmitting(true);
     try {
@@ -46,14 +49,14 @@ const BrewSession: React.FC = () => {
         actionTaken: actionInput
       };
 
-      await addLogToSession(currentSession.id, newLog);
+      await addLogToSession(activeBreweryId, currentSession.id, newLog);
       
       setSgInput('');
       setPhInput('');
       setTempInput('');
       setNotesInput('');
       setActionInput('');
-    } catch (error) {
+    } catch {
       alert(t('Failed to add log.'));
     } finally {
       setIsSubmitting(false);
@@ -61,12 +64,11 @@ const BrewSession: React.FC = () => {
   };
 
   const handleCompletePhase = async (newStatus: 'fermenting' | 'aging' | 'completed') => {
-    if (!currentSession || !currentSession.id) return;
+    if (!currentSession || !currentSession.id || !activeBreweryId) return;
     if (window.confirm(t('Are you sure you want to advance to the next phase?'))) {
       try {
-        await updateSessionStatus(currentSession.id, newStatus);
-      } catch (error) {
-        console.error(error);
+        await updateSessionStatus(activeBreweryId, currentSession.id, newStatus);
+      } catch {
         alert(t('Failed to update status.'));
       }
     }
@@ -99,6 +101,12 @@ const BrewSession: React.FC = () => {
 
   const latestLog = currentSession.logs?.length > 0 ? [...currentSession.logs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0] : null;
   const isPhDanger = latestLog?.ph !== null && latestLog?.ph !== undefined && latestLog.ph < 3.2;
+  
+  const oneThirdBreakSg = calculateOneThirdSugarBreak(currentSession.targetOg);
+  const isTosnaAlert = currentSession.status === 'fermenting' && 
+                       latestLog?.sg !== null && 
+                       latestLog?.sg !== undefined && 
+                       latestLog.sg <= oneThirdBreakSg;
 
   const statusLabels: Record<string, string> = {
     planned: t('Planned'),
@@ -241,6 +249,16 @@ const BrewSession: React.FC = () => {
               </div>
             </div>
           </div>
+          
+          {isTosnaAlert && (
+            <div className="success-banner">
+              <FaCheck className="success-icon" />
+              <div className="success-content">
+                <h4>{t('1/3 Sugar Break Reached')}</h4>
+                <p>{t('Target SG for final addition reached. Please add the final portion of Fermaid-O.')}</p>
+              </div>
+            </div>
+          )}
 
           {isPhDanger && (
             <div className="warning-banner">
