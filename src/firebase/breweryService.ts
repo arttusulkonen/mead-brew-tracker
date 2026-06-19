@@ -114,7 +114,7 @@ export const deleteBrewery = async (breweryId: string | null | undefined) => {
   if (!breweryId) return false;
   try {
     const recipesQ = query(collection(db, 'recipes'), where('breweryId', '==', breweryId));
-    const sessionsQ = query(collection(db, 'brew_sessions'), where('breweryId', '==', breweryId));
+    const sessionsQ = query(collection(db, 'sessions'), where('breweryId', '==', breweryId));
     
     const [recipesSnap, sessionsSnap] = await Promise.all([getDocs(recipesQ), getDocs(sessionsQ)]);
     const deletePromises: Promise<void>[] = [];

@@ -36,7 +36,7 @@ File saved successfully as mead_brew_tracker_specification.md
 Для выполнения сложного аналитического анализа без падения производительности чтения в Firestore настроены следующие составные индексы:
 
 - **Индекс Активных Сессий (Active Sessions Index):**
-- **Коллекция:** `brew_sessions` (Группа коллекций)
+- **Коллекция:** `sessions` (Группа коллекций)
 - **Поля:** `breweryId` (Ascending), `status` (Ascending), `startedAt` (Descending)
 - **Назначение:** Обеспевечивает мгновенный рендеринг главного экрана с запущенными процессами.
 
@@ -46,7 +46,7 @@ File saved successfully as mead_brew_tracker_specification.md
 - **Назначение:** Позволяет последовательно извлекать точки данных для отрисовки многоосевых графиков брожения.
 
 - **Индекс Генеалогии Партий (Parent-Child Ancestry Index):**
-- **Коллекция:** `brew_sessions` (Группа коллекций)
+- **Коллекция:** `sessions` (Группа коллекций)
 - **Поля:** `parentSessionId` (Ascending), `splitTimestamp` (Ascending)
 - **Назначение:** Восстанавливает древовидную структуру происхождения разделенных батчей (Split-Batch) в интерфейсе.
 
