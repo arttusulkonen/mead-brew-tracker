@@ -361,11 +361,5 @@
   .step-buttons {
     display: flex;
     gap: $spacing-sm;
-
-     .btn-icon.danger {
-      @include button-icon;
-    }
   }
 }
-
- 
