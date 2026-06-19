@@ -83,6 +83,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: $spacing-md;
+  align-items: end;
 }
 
 .ingredient-selector {
@@ -176,24 +177,6 @@
     color: $color-text-muted;
     white-space: nowrap;
   }
-
-  .btn-icon.danger {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    color: $color-error-text;
-    cursor: pointer;
-    background-color: $color-error-bg;
-    border: none;
-    border-radius: $border-radius-sm;
-    transition: opacity 0.2s ease;
-
-    &:hover {
-      opacity: 0.8;
-    }
-  }
 }
 
 .stat-card {
@@ -286,6 +269,7 @@
 
 .card-header-flex {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: space-between;
   margin-bottom: $spacing-md;
@@ -373,4 +357,15 @@
     gap: $spacing-md;
     padding: $spacing-md;
   }
+
+  .step-buttons {
+    display: flex;
+    gap: $spacing-sm;
+
+     .btn-icon.danger {
+      @include button-icon;
+    }
+  }
 }
+
+ 

@@ -614,7 +614,7 @@ const Recipes: React.FC = () => {
                         <option value="Aging">{t('Aging')}</option>
                       </select>
                     </div>
-                    <div>
+                    <div className='step-buttons'>
                       <button 
                         className="btn-icon" 
                         style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
