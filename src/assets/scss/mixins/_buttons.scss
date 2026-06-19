@@ -77,8 +77,10 @@
   @include button-icon;
 }
 
-.outline {
+.btn-icon.outline {
   @include button-primary;
+
+  padding: 0;
 
   svg {
     fill: white

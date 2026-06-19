@@ -64,7 +64,8 @@
     color: $color-text-muted;
   }
 
-  input, select {
+  input,
+  select {
     padding: $spacing-sm $spacing-md;
     font-size: 1rem;
     background-color: $color-surface;
@@ -79,11 +80,13 @@
   }
 }
 
-.form-row.multi-col {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: $spacing-md;
-  align-items: end;
+.form-row {
+  &.multi-col {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: $spacing-md;
+    align-items: end;
+  }
 }
 
 .ingredient-selector {
@@ -179,6 +182,64 @@
   }
 }
 
+.ingredient-note-container {
+  width: 100%;
+  margin-top: $spacing-sm;
+
+  .note-textarea {
+    width: 100%;
+    padding: $spacing-sm;
+    font-family: inherit;
+    font-size: 0.9rem;
+    resize: vertical;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-sm;
+  }
+}
+
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: $color-text-muted;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: $border-radius-sm;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+
+  &:hover {
+    background-color: rgb(0 0 0 / 5%);
+  }
+
+  &.danger {
+    margin-top: 4px;
+    color: $color-error-text;
+    background-color: $color-error-bg;
+
+    &:hover {
+      background-color: $color-error-bg;
+      opacity: 0.8;
+    }
+  }
+
+  &.outline {
+    border: 1px solid $color-border;
+
+    svg {
+      fill: white;
+    }
+  }
+
+  &.danger-outline {
+    color: $color-error-text;
+    background-color: $color-error-bg;
+    border: 1px solid rgba($color-error-text, 0.3);
+  }
+}
+
 .stat-card {
   h3 {
     margin-bottom: $spacing-xl;
@@ -259,9 +320,13 @@
   &:hover {
     background-color: rgba($color-primary, 0.05);
   }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
 }
 
-/* Helper Utilities */
 .flex-col {
   display: flex;
   flex-direction: column;
@@ -269,28 +334,42 @@
 
 .card-header-flex {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: space-between;
   margin-bottom: $spacing-md;
 }
 
+.header-actions {
+  display: flex;
+  gap: $spacing-sm;
+}
+
+.gap-xs { gap: $spacing-xs; }
 .gap-sm { gap: $spacing-sm; }
 .gap-md { gap: $spacing-md; }
 .gap-lg { gap: $spacing-lg; }
 
 .mb-sm { margin-bottom: $spacing-sm; }
 .mb-md { margin-bottom: $spacing-md; }
+.mt-sm { margin-top: $spacing-sm; }
 .mt-md { margin-top: $spacing-md; }
+
+.m-0 { margin: 0; }
 
 .font-bold { font-weight: bold; }
 .text-sm { font-size: 0.85rem; }
 .text-md { font-size: 1rem; }
+.text-lg { font-size: 1.1rem; }
 .text-muted { color: $color-text-muted; }
 .text-primary { color: $color-primary; }
+.text-error { color: $color-error-text; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.no-wrap { white-space: nowrap; }
 
 .text-primary-bold { 
-  font-weight: bold; color: $color-primary; 
+  font-weight: bold; 
+  color: $color-primary; 
 }
 
 .auto-calc-widget {
@@ -316,6 +395,22 @@
   }
 }
 
+.btn-apply-small {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: $color-primary;
+  cursor: pointer;
+  background-color: rgba($color-primary, 0.1);
+  border: none;
+  border-radius: $border-radius-sm;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: rgba($color-primary, 0.2);
+  }
+}
+
 .step-card {
   display: flex;
   flex-direction: column;
@@ -329,6 +424,7 @@
     align-items: center;
     justify-content: space-between;
     padding: $spacing-sm $spacing-md;
+    background-color: var(--surface-hover, #f8fafc);
     border-bottom: 1px solid $color-border;
 
     .step-header-left {
@@ -348,6 +444,17 @@
         background-color: $color-primary;
         border-radius: 50%;
       }
+      
+      .phase-selector {
+        padding: 0;
+        font-weight: bold;
+        background: transparent;
+        border: none;
+        
+        &:focus {
+          outline: none;
+        }
+      }
     }
   }
 
@@ -356,10 +463,116 @@
     flex-direction: column;
     gap: $spacing-md;
     padding: $spacing-md;
+    
+    .step-title-input,
+    .step-desc-textarea {
+      width: 100%;
+      padding: $spacing-sm;
+      border: 1px solid $color-border;
+      border-radius: $border-radius-sm;
+    }
+    
+    .step-desc-textarea {
+      resize: vertical;
+    }
+    
+    .duration-inputs {
+      display: flex;
+      gap: $spacing-xs;
+      
+      input {
+        width: 80px;
+      }
+      
+      select {
+        flex: 1;
+      }
+    }
   }
 
   .step-buttons {
     display: flex;
     gap: $spacing-sm;
+  }
+}
+
+.step-add-buttons {
+  display: flex;
+  margin-top: $spacing-md;
+}
+
+.ai-diff-box {
+  padding: $spacing-md;
+  margin-top: $spacing-sm;
+  background-color: rgba(#22c55e, 0.05);
+  border: 1px solid rgba(#22c55e, 0.3);
+  border-radius: $border-radius-md;
+
+  h4 {
+    display: flex;
+    gap: $spacing-xs;
+    align-items: center;
+    margin: 0 0 $spacing-sm;
+    font-size: 0.9rem;
+    color: #166534;
+  }
+
+  .diff-actions {
+    display: flex;
+    gap: $spacing-sm;
+    margin-top: $spacing-md;
+  }
+}
+
+.btn-accept {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: white;
+  cursor: pointer;
+  background-color: #22c55e;
+  border: none;
+  border-radius: $border-radius-sm;
+
+  &:hover {
+    background-color: #16a34a;
+  }
+}
+
+.btn-reject {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #ef4444;
+  cursor: pointer;
+  background-color: transparent;
+  border: 1px solid #ef4444;
+  border-radius: $border-radius-sm;
+
+  &:hover {
+    background-color: rgba(#ef4444, 0.1);
+  }
+}
+
+.ai-proposed-steps-container {
+  padding: $spacing-xl;
+  margin-top: $spacing-lg;
+  background-color: rgba(#3b82f6, 0.05);
+  border: 2px dashed rgba(#3b82f6, 0.3);
+  border-radius: $border-radius-md;
+
+  .ai-container-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: $spacing-lg;
+
+    h3 {
+      display: flex;
+      gap: $spacing-sm;
+      align-items: center;
+      margin: 0;
+      color: #1d4ed8;
+    }
   }
 }

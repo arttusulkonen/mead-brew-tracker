@@ -39,19 +39,27 @@ const RequestDataSchema = z.object({
     name: z.string(),
     category: z.string(),
     quantity: z.number()
-  }))
+  })),
+  locale: z.string()
 });
+
+const LANGUAGE_MAPPING: Record<string, string> = {
+  ru: "Russian (Русский язык)",
+  fi: "Finnish (Suomi)",
+  ko: "Korean (한국어)",
+  en: "English"
+};
 
 export const generateRecipeAI = onCall(
   { secrets: [geminiApiKey] }, 
   async (request) => {
     if (!request.auth) {
-      throw new HttpsError("unauthenticated", "Unauthenticated");
+      throw new HttpsError("unauthenticated", "User must be authenticated to generate recipes.");
     }
 
     const parsedData = RequestDataSchema.safeParse(request.data);
     if (!parsedData.success) {
-      throw new HttpsError("invalid-argument", "Invalid payload");
+      throw new HttpsError("invalid-argument", "Invalid payload format provided by the client.");
     }
 
     process.env.GEMINI_API_KEY = geminiApiKey.value();
@@ -60,7 +68,9 @@ export const generateRecipeAI = onCall(
       plugins: [googleAI({ apiKey: geminiApiKey.value() })],
     });
 
-    const { style, sweetness, honeyTerroir, targetAbv, batchSizeLiters, targetFg, ingredients } = parsedData.data;
+    const { style, sweetness, honeyTerroir, targetAbv, batchSizeLiters, targetFg, ingredients, locale } = parsedData.data;
+    const cleanLocale = (locale || "en").split("-")[0].toLowerCase();
+    const targetLanguage = LANGUAGE_MAPPING[cleanLocale] || "English";
 
     try {
       const userPrompt = `
@@ -81,11 +91,11 @@ export const generateRecipeAI = onCall(
         TASK:
         1. Evaluate the provided ingredients. Do NOT calculate honey grams. Calculate precise dosages for yeast nutrients, hops, and additives.
         2. Generate detailed technological steps strictly following constraints.
-        3. Generate the text in Russian.
+        3. CRITICAL: You MUST generate all text fields ("title", "description" inside steps array AND "aiNote" inside ingredientQuantities array) strictly in ${targetLanguage}. Do not leave any structural explanations or notes in English if the target language is different.
       `;
 
       const aiResponse = await ai.generate({
-        model: "gemini-2.5-flash",
+        model: "googleai/gemini-3.1-flash-lite",
         system: systemRules,
         prompt: userPrompt,
         output: { schema: RecipeGenerationSchema }
@@ -95,7 +105,7 @@ export const generateRecipeAI = onCall(
 
     } catch (error) {
       console.error(error);
-      throw new HttpsError("internal", "AI Generation failed");
+      throw new HttpsError("internal", "AI Generation failed.");
     }
   }
 );

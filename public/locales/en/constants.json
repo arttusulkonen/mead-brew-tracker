@@ -1,0 +1,16 @@
+{
+  "constants.styles.traditional": "Traditional Mead",
+  "constants.styles.session_hopped": "Session Hopped Mead",
+  "constants.styles.melomel": "Melomel",
+  "constants.styles.metheglin": "Metheglin",
+  "constants.styles.braggot": "Braggot",
+  "constants.sweetness.dry": "Dry",
+  "constants.sweetness.semi_dry": "Semi-Dry",
+  "constants.sweetness.semi_sweet": "Semi-Sweet",
+  "constants.sweetness.sweet": "Sweet",
+  "constants.honey.linden": "Linden",
+  "constants.honey.acacia": "Acacia",
+  "constants.honey.heather": "Heather",
+  "constants.honey.buckwheat": "Buckwheat",
+  "constants.honey.wildflower": "Wildflower"
+}
