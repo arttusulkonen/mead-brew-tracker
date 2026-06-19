@@ -5,6 +5,7 @@ import { FaPlay, FaSlidersH, FaWater } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auth, db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
+import { useInventoryStore } from '../store/useInventoryStore';
 import { useRecipeStore } from '../store/useRecipeStore';
 import type { BaseIngredient, HoneyIngredient, YeastIngredient } from '../types/ingredient';
 import type { BrewSession } from '../types/session';
@@ -16,6 +17,7 @@ const BrewSessionSetup: React.FC = () => {
   const { t } = useTranslation();
   const { activeBreweryId } = useBreweryStore();
   const { currentRecipe, fetchRecipeById, isLoading } = useRecipeStore();
+  const { consumeIngredients } = useInventoryStore();
   
   const [globalCatalog, setGlobalCatalog] = useState<BaseIngredient[]>([]);
   
@@ -33,13 +35,12 @@ const BrewSessionSetup: React.FC = () => {
       try {
         if (!db) return;
         const querySnapshot = await getDocs(collection(db, 'ingredients'));
-        const catalogData = querySnapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id
+        const catalogData = querySnapshot.docs.map(docSnap => ({
+          ...docSnap.data(),
+          id: docSnap.id
         })) as BaseIngredient[];
         setGlobalCatalog(catalogData);
-      } catch (error) {
-        console.error(error);
+      } catch {
       }
     };
     fetchCatalog();
@@ -124,6 +125,16 @@ const BrewSessionSetup: React.FC = () => {
     
     setIsStarting(true);
     try {
+      const mappedIngredients = sessionIngredients.map(i => ({
+        globalIngredientId: i.globalIngredientId,
+        quantity: i.quantity
+      }));
+      const success = await consumeIngredients(activeBreweryId, mappedIngredients);
+
+      if (!success) {
+        throw new Error('Inventory consumption failed');
+      }
+
       const sessionId = crypto.randomUUID();
       const newSession: BrewSession = {
         id: sessionId,
@@ -136,18 +147,22 @@ const BrewSessionSetup: React.FC = () => {
         batchSizeLiters: actualVolume,
         targetOg: currentRecipe.targetOriginalGravity,
         targetFg: currentRecipe.targetFinalGravity,
+        
+        sessionIngredients: sessionIngredients.map(ing => ({ ...ing })),
+        sessionSteps: currentRecipe.steps.map(step => ({ ...step })),
+        
         logs: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         createdBy: auth.currentUser.uid
       };
 
-      const sessionRef = doc(db, 'sessions', sessionId);
+      const sessionRef = doc(db, `breweries/${activeBreweryId}/brew_sessions`, sessionId);
       await setDoc(sessionRef, newSession);
       navigate(`/brew/${sessionId}`);
-    } catch (error) {
-      console.error(error);
-      alert(t('Failed to start session'));
+      
+    } catch {
+      alert(t('Failed to start session. Check your stock.'));
     } finally {
       setIsStarting(false);
     }
@@ -161,7 +176,7 @@ const BrewSessionSetup: React.FC = () => {
     return (
       <div className="recipes-page" style={{ padding: '20px', textAlign: 'center' }}>
         <h2>{t('Recipe not found')}</h2>
-        <button className="btn-secondary" onClick={() => navigate('/recipes')} style={{ marginTop: '16px' }}>
+        <button type="button" className="btn-secondary" onClick={() => navigate('/recipes')} style={{ marginTop: '16px' }}>
           {t('Back to list')}
         </button>
       </div>
@@ -177,7 +192,7 @@ const BrewSessionSetup: React.FC = () => {
           <h1 style={{ margin: 0 }}>{t('Brew Day Setup')}</h1>
           <span style={{ fontSize: '0.9rem', color: '#666' }}>{t('Recipe')}: {currentRecipe.name}</span>
         </div>
-        <button className="btn-secondary" onClick={() => navigate(`/recipes/${currentRecipe.id}`)}>
+        <button type="button" className="btn-secondary" onClick={() => navigate(`/recipes/${currentRecipe.id}`)}>
           {t('Cancel')}
         </button>
       </header>
@@ -256,6 +271,7 @@ const BrewSessionSetup: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           <button 
+            type="button"
             className="btn-primary" 
             style={{ width: '100%', padding: '16px', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: '#28a745' }}
             onClick={handleStartSession}

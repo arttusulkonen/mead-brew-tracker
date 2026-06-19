@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, increment, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocs, increment, query, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { create } from 'zustand';
 import { db } from '../firebase/config';
 import {
@@ -22,6 +22,7 @@ export interface InventoryState {
   addCustomIngredient: (ingredientData: Omit<IngredientUnion, 'id' | 'updatedAt'>) => Promise<IngredientUnion | null>;
   updateItem: (breweryId: string | null | undefined, itemId: string, updates: Omit<Partial<WorkspaceInventoryItem>, 'id' | 'breweryId'>) => Promise<boolean>;
   removeItem: (breweryId: string | null | undefined, itemId: string) => Promise<boolean>;
+  consumeIngredients: (breweryId: string | null | undefined, ingredientsToConsume: { globalIngredientId: string, quantity: number }[]) => Promise<boolean>;
   clearInventory: () => void;
 }
 
@@ -37,7 +38,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       const ingredients = await getGlobalIngredients(category);
       set({ globalIngredients: ingredients });
     } catch (err: any) {
-      set({ error: err.message || 'Failed to fetch global ingredients' });
+      set({ error: err?.message || 'Failed to fetch global ingredients' });
     } finally {
       set({ isLoading: false });
     }
@@ -53,7 +54,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       const items = await getWorkspaceInventory(breweryId);
       set({ inventory: items });
     } catch (err: any) {
-      set({ error: err.message || 'Failed to fetch inventory' });
+      set({ error: err?.message || 'Failed to fetch inventory' });
     } finally {
       set({ isLoading: false });
     }
@@ -94,8 +95,8 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
       await get().fetchInventory(breweryId);
       return true;
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+    } catch (err: any) {
+      set({ error: err?.message || 'Failed to add item', isLoading: false });
       return false;
     } finally {
       set({ isLoading: false });
@@ -112,7 +113,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       }
       return null;
     } catch (err: any) {
-      set({ error: err.message || 'Failed to add custom ingredient' });
+      set({ error: err?.message || 'Failed to add custom ingredient' });
       return null;
     } finally {
       set({ isLoading: false });
@@ -134,7 +135,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       }
       return false;
     } catch (err: any) {
-      set({ error: err.message || 'Failed to update inventory item' });
+      set({ error: err?.message || 'Failed to update inventory item' });
       return false;
     } finally {
       set({ isLoading: false });
@@ -154,7 +155,53 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       }
       return false;
     } catch (err: any) {
-      set({ error: err.message || 'Failed to remove inventory item' });
+      set({ error: err?.message || 'Failed to remove inventory item' });
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  consumeIngredients: async (breweryId, ingredientsToConsume) => {
+    if (!breweryId || !ingredientsToConsume.length || !db) return false;
+    set({ isLoading: true, error: null });
+    try {
+      const batch = writeBatch(db);
+      const currentInventory = get().inventory;
+      
+      for (const ing of ingredientsToConsume) {
+        if (ing.quantity > 0) {
+          const invItem = currentInventory.find(i => i.ingredientId === ing.globalIngredientId);
+          if (invItem) {
+            let decrementQty = ing.quantity;
+            switch (invItem.unit) {
+              case 'kg':
+              case 'L':
+                decrementQty = ing.quantity / 1000;
+                break;
+              case 'oz':
+                decrementQty = ing.quantity / 28.3495;
+                break;
+              case 'lb':
+                decrementQty = ing.quantity / 453.592;
+                break;
+              case 'gal':
+                decrementQty = ing.quantity / 3785.41;
+                break;
+              default:
+                decrementQty = ing.quantity;
+            }
+            const itemRef = doc(db, `breweries/${breweryId}/inventory`, invItem.id);
+            batch.update(itemRef, { quantityOnHand: increment(-decrementQty) });
+          }
+        }
+      }
+      
+      await batch.commit();
+      await get().fetchInventory(breweryId);
+      return true;
+    } catch (err: any) {
+      set({ error: err?.message || 'Failed to consume ingredients', isLoading: false });
       return false;
     } finally {
       set({ isLoading: false });

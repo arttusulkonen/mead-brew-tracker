@@ -1,9 +1,3 @@
-/*
- * File: src/pages/Recipes.tsx
- * This file contains the Recipes component, which manages the recipe list and the recipe builder interface.
- * It handles ingredient selection, dynamic dosage calculations for additives, and saving recipes to Firestore.
- */
-
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,11 +32,6 @@ interface RecipeStep {
   isExpanded: boolean;
 }
 
-/**
- * Main component for managing and building recipes.
- * Handles the UI for listing recipes and the dynamic form for creating or editing a recipe.
- * @returns React.FC
- */
 const Recipes: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -68,11 +57,6 @@ const Recipes: React.FC = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
   useEffect(() => {
-    /**
-     * Fetches the global ingredient catalog from Firestore.
-     * Maps the response to the component's globalCatalog state.
-     * @returns Promise<void>
-     */
     const fetchCatalog = async () => {
       try {
         if (!db) return;
@@ -82,8 +66,7 @@ const Recipes: React.FC = () => {
           id: docSnap.id
         })) as BaseIngredient[];
         setGlobalCatalog(catalogData);
-      } catch (error) {
-        console.error(error);
+      } catch {
       }
     };
     fetchCatalog();
@@ -122,9 +105,6 @@ const Recipes: React.FC = () => {
     }
   }, [location.state, navigate, location.pathname]);
 
-  /**
-   * Resets all recipe builder form fields to their default state.
-   */
   const resetForm = () => {
     setRecipeName('');
     setBatchSizeLiters(10);
@@ -135,17 +115,11 @@ const Recipes: React.FC = () => {
     setEditingRecipeId(null);
   };
 
-  /**
-   * Resets the form and returns to the recipe list view.
-   */
   const handleCancel = () => {
     resetForm();
     setView('list');
   };
 
-  /**
-   * Adds a selected ingredient from the global catalog to the active recipe state.
-   */
   const handleAddIngredient = () => {
     if (!selectedIngredientId) return;
     const template = globalCatalog.find(i => i.id === selectedIngredientId);
@@ -166,29 +140,16 @@ const Recipes: React.FC = () => {
     setSelectedIngredientId('');
   };
 
-  /**
-   * Removes an ingredient from the recipe by its unique entry ID.
-   * @param id - The unique identifier of the recipe ingredient entry.
-   */
   const handleRemoveIngredient = (id: string) => {
     if (!id) return;
     setRecipeIngredients(prev => prev.filter(item => item.id !== id));
   };
 
-  /**
-   * Updates properties of a specific recipe ingredient.
-   * @param id - The unique identifier of the recipe ingredient entry.
-   * @param updates - Partial object containing the properties to update.
-   */
   const updateIngredient = (id: string, updates: Partial<RecipeIngredientEntry>) => {
     if (!id) return;
     setRecipeIngredients(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
   };
 
-  /**
-   * Adds a new brewing step to the recipe sequence.
-   * @param phase - The default brewing phase for the new step.
-   */
   const handleAddStep = (phase: StepPhase = 'Preparation') => {
     setRecipeSteps(prev => [
       ...prev,
@@ -206,10 +167,6 @@ const Recipes: React.FC = () => {
     ]);
   };
 
-  /**
-   * Removes a brewing step by its ID and reorders the remaining steps.
-   * @param id - The unique identifier of the brewing step.
-   */
   const handleRemoveStep = (id: string) => {
     if (!id) return;
     setRecipeSteps(prev => {
@@ -218,19 +175,11 @@ const Recipes: React.FC = () => {
     });
   };
 
-  /**
-   * Updates a specific brewing step by its ID.
-   * @param id - The unique identifier of the brewing step.
-   * @param updates - Partial object containing the properties to update.
-   */
   const updateStep = (id: string, updates: Partial<RecipeStep>) => {
     if (!id) return;
     setRecipeSteps(prev => prev.map(step => step.id === id ? { ...step, ...updates } : step));
   };
 
-  /**
-   * Calculates the optimal honey quantity using binary search based on target ABV.
-   */
   const handleAutoCalculateHoney = () => {
     const honeyItems = recipeIngredients.filter(i => i.category === 'Honey');
     
@@ -285,7 +234,6 @@ const Recipes: React.FC = () => {
     let customNutrientName = '';
     const dynamicAdditives: Array<{ id: string; name: string; totalGrams: number; rule: string }> = [];
 
-    // Проход 1: Собираем базовые данные (мёд и дрожжи)
     recipeIngredients.forEach(item => {
       const template = globalCatalog.find(t => t.id === item.globalIngredientId);
       if (!template) return;
@@ -303,7 +251,6 @@ const Recipes: React.FC = () => {
       }
     });
 
-    // Проход 2: Считаем добавки на основе уже известных данных
     recipeIngredients.forEach(item => {
       const template = globalCatalog.find(t => t.id === item.globalIngredientId);
       if (!template || template.category !== 'Additive') return;
@@ -319,7 +266,6 @@ const Recipes: React.FC = () => {
         calculatedGrams = (batchSizeLiters / 10) * additive.dosagePer10Liters;
         ruleApplied = `${additive.dosagePer10Liters}g / 10L`;
         
-        // Если это объемная добавка, скорее всего это аналог Fermaid-O, берем её название
         if (!customNutrientName) {
           customNutrientName = item.name;
         }
@@ -368,10 +314,6 @@ const Recipes: React.FC = () => {
     return false;
   }, [targetStyle, recipeDetails.abv]);
 
-  /**
-   * Saves the current recipe configuration to the Firestore database.
-   * @returns Promise<void>
-   */
   const handleSaveRecipe = async () => {
     if (!activeBreweryId || !recipeName || !recipeIngredients || recipeIngredients.length === 0 || !db || !auth?.currentUser) return;
 
@@ -433,8 +375,7 @@ const Recipes: React.FC = () => {
       } else {
         setView('list');
       }
-    } catch (error) {
-      console.error(error);
+    } catch {
       alert(t('Error saving recipe'));
     } finally {
       setIsSaving(false);
@@ -446,9 +387,9 @@ const Recipes: React.FC = () => {
   if (view === 'list') {
     return (
       <div className="recipes-page">
-        <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <header className="page-header">
           <h1>{t('Recipes')}</h1>
-          <button className="btn-primary" onClick={() => setView('builder')}>
+          <button type="button" className="btn-primary" onClick={() => setView('builder')}>
             <FaPlus /> {t('Create Recipe')}
           </button>
         </header>
@@ -460,14 +401,13 @@ const Recipes: React.FC = () => {
             <p>{t('No recipes found. Create your first recipe!')}</p>
           </div>
         ) : (
-          <div className="recipes-grid" style={{ display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', marginTop: '24px' }}>
+          <div className="recipes-list-grid">
             {recipes.map(recipe => (
               <div 
                 key={recipe.id} 
-                className="card recipe-card" 
+                className="card recipe-card interactive" 
                 role="button"
                 tabIndex={0}
-                style={{ padding: '20px', border: '1px solid #eee', borderRadius: '12px', cursor: 'pointer', transition: 'box-shadow 0.2s' }}
                 onClick={() => navigate(`/recipes/${recipe.id}`)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -476,17 +416,17 @@ const Recipes: React.FC = () => {
                   }
                 }}
               >
-                <h3 style={{ margin: '0 0 12px 0' }}>{recipe.name}</h3>
-                <div className="recipe-meta" style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem', color: '#666' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 'bold' }}>{recipe.targetStyle}</span>
-                    <span style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>{recipe.targetAbv?.toFixed(1)}% ABV</span>
+                <h3 className="recipe-title">{recipe.name}</h3>
+                <div className="recipe-meta-stack">
+                  <div className="meta-row">
+                    <span className="font-bold">{recipe.targetStyle}</span>
+                    <span className="text-primary-bold">{recipe.targetAbv?.toFixed(1)}% ABV</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div className="meta-row">
                     <span>{t('Batch Size')}</span>
                     <span>{recipe.expectedBatchSizeLiters} {t('L')}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div className="meta-row">
                     <span>{t('Original Gravity')}</span>
                     <span>{recipe.targetOriginalGravity?.toFixed(3)}</span>
                   </div>
@@ -501,15 +441,15 @@ const Recipes: React.FC = () => {
 
   return (
     <div className="recipes-page">
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <header className="page-header">
         <h1>{editingRecipeId ? t('Edit Recipe') : t('Recipe Builder')}</h1>
-        <button className="btn-secondary" onClick={handleCancel}>
+        <button type="button" className="btn-secondary" onClick={handleCancel}>
           {t('Cancel')}
         </button>
       </header>
 
       <div className="recipe-grid">
-        <div className="recipe-form-section">
+        <div className="flex-col gap-lg">
           
           <div className="card">
             <div className="form-group">
@@ -521,7 +461,7 @@ const Recipes: React.FC = () => {
                 placeholder={t('e.g. Traditional Wildflower Mead')}
               />
             </div>
-            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
+            <div className="form-row multi-col">
               <div className="form-group">
                 <label>{t('Target Style')}</label>
                 <select 
@@ -558,11 +498,11 @@ const Recipes: React.FC = () => {
           </div>
 
           <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0 }}>{t('Ingredients')}</h3>
+            <div className="card-header-flex">
+              <h3 className="m-0">{t('Ingredients')}</h3>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#f0f4f8', padding: '6px 12px', borderRadius: '8px' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#444' }}>{t('Target ABV')}:</span>
+              <div className="auto-calc-widget">
+                <span className="widget-label">{t('Target ABV')}:</span>
                 <input 
                   type="number" 
                   step="0.1"
@@ -570,12 +510,12 @@ const Recipes: React.FC = () => {
                   max="20"
                   value={targetAutoAbv} 
                   onChange={(e) => setTargetAutoAbv(parseFloat(e.target.value) || 5.0)}
-                  style={{ width: '60px', padding: '4px', fontSize: '0.85rem' }}
+                  className="widget-input"
                 />
                 <button 
-                  className="btn-text-small" 
+                  type="button"
+                  className="btn-text-small widget-btn" 
                   onClick={handleAutoCalculateHoney}
-                  style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary)' }}
                   title={t('Auto-calculate honey grams needed for this ABV')}
                 >
                   <FaMagic /> {t('Auto-Honey')}
@@ -595,7 +535,7 @@ const Recipes: React.FC = () => {
                   </option>
                 ))}
               </select>
-              <button className="btn-primary" onClick={handleAddIngredient} disabled={!selectedIngredientId || isSaving}>
+              <button type="button" className="btn-primary" onClick={handleAddIngredient} disabled={!selectedIngredientId || isSaving}>
                 <FaPlus /> {t('Add')}
               </button>
             </div>
@@ -610,6 +550,7 @@ const Recipes: React.FC = () => {
                     </div>
                     <div className="ingredient-controls">
                       <button 
+                        type="button"
                         className="btn-text-small" 
                         onClick={() => updateIngredient(item.id, { showNote: !item.showNote })}
                         disabled={isSaving}
@@ -626,6 +567,7 @@ const Recipes: React.FC = () => {
                       />
                       <span className="unit">{t('g')}</span>
                       <button 
+                        type="button"
                         className="btn-icon danger" 
                         onClick={() => handleRemoveIngredient(item.id)} 
                         disabled={isSaving}
@@ -674,24 +616,27 @@ const Recipes: React.FC = () => {
                         <option value="Aging">{t('Aging')}</option>
                       </select>
                     </div>
-                    <div className="step-header-right">
-                    <button 
-                      className="btn-icon transparent" 
-                      onClick={() => updateStep(step.id, { isExpanded: !step.isExpanded })}
-                      aria-expanded={step.isExpanded}
-                      aria-label={step.isExpanded ? t('Collapse step') : t('Expand step')}
-                    >
-                      {step.isExpanded ? <FaChevronUp /> : <FaChevronDown />}
-                    </button>
-                    <button 
-                      className="btn-icon danger" 
-                      onClick={() => handleRemoveStep(step.id)} 
-                      disabled={isSaving} 
-                      aria-label={t('Remove step')}
-                    >
-                      <FaTrash />
-                    </button>
-                  </div>
+                    <div className='step-buttons'>
+                      <button 
+                        type="button"
+                        className="btn-icon" 
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+                        onClick={() => updateStep(step.id, { isExpanded: !step.isExpanded })}
+                        aria-expanded={step.isExpanded}
+                        aria-label={step.isExpanded ? t('Collapse step') : t('Expand step')}
+                      >
+                        {step.isExpanded ? <FaChevronUp /> : <FaChevronDown />}
+                      </button>
+                      <button 
+                        type="button"
+                        className="btn-icon danger" 
+                        onClick={() => handleRemoveStep(step.id)} 
+                        disabled={isSaving}
+                        aria-label={t('Remove step')}
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
                   </div>
 
                   {step.isExpanded && (
@@ -713,28 +658,30 @@ const Recipes: React.FC = () => {
                         disabled={isSaving}
                       />
                       
-                      <div className="step-metrics-grid">
-                        <div className="metric-group">
+                      <div className="form-row multi-col">
+                        <div className="form-group">
                           <label>{t('Duration')}</label>
-                          <div className="duration-inputs">
+                          <div className="duration-inputs" style={{ display: 'flex', gap: '4px' }}>
                             <input 
                               type="number" 
                               min="0"
                               value={step.durationValue === 0 ? '' : step.durationValue}
                               onChange={(e) => updateStep(step.id, { durationValue: parseFloat(e.target.value) || 0 })}
                               disabled={isSaving}
+                              style={{ width: '80px' }}
                             />
                             <select 
                               value={step.durationUnit}
                               onChange={(e) => updateStep(step.id, { durationUnit: e.target.value as TimeUnit })}
                               disabled={isSaving}
+                              style={{ flex: 1 }}
                             >
                               <option value="minutes">{t('Minutes')}</option>
                               <option value="days">{t('Days')}</option>
                             </select>
                           </div>
                         </div>
-                        <div className="metric-group">
+                        <div className="form-group">
                           <label>{t('Target Temp (°C)')}</label>
                           <input 
                             type="number" 
@@ -750,7 +697,7 @@ const Recipes: React.FC = () => {
                 </div>
               ))}
               <div className="step-add-buttons">
-                <button className="btn-secondary" onClick={() => handleAddStep('Preparation')} disabled={isSaving}>
+                <button type="button" className="btn-secondary" onClick={() => handleAddStep('Preparation')} disabled={isSaving}>
                   <FaPlus /> {t('Add Step')}
                 </button>
               </div>
@@ -759,8 +706,8 @@ const Recipes: React.FC = () => {
 
         </div>
 
-        <div className="recipe-stats-section">
-          <div className="card stat-card primary">
+        <div className="flex-col gap-lg">
+          <div className="card stat-card">
             <h3>{t('Estimated Specifications')}</h3>
             <div className="stat-grid">
               <div className="stat-box">
@@ -773,34 +720,34 @@ const Recipes: React.FC = () => {
               </div>
               <div className="stat-box">
                 <span className="label">{t('Estimated ABV')}</span>
-                <span className={`value ${isAbvMismatch ? 'text-warning' : ''}`}>
+                <span className={`value ${isAbvMismatch ? 'text-error' : ''}`}>
                   {recipeDetails.abv.toFixed(1)}%
                 </span>
               </div>
             </div>
             {isAbvMismatch && targetStyle !== 'Custom' && (
-              <div className="abv-warning-msg" style={{ marginTop: '16px', color: '#d9534f', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="abv-warning-msg mt-md text-error flex-row gap-sm align-center">
                 <FaExclamationTriangle /> {t('The calculated ABV does not match your selected Target Style. Adjust honey amount.')}
               </div>
             )}
           </div>
 
           {recipeDetails.dynamicAdditives.length > 0 && (
-            <div className="card stat-card secondary" style={{ marginTop: '16px' }}>
-              <h3 style={{ margin: '0 0 16px 0' }}>{t('Smart Additive Calculator')}</h3>
+            <div className="card stat-card mt-md">
+              <h3 className="mb-md">{t('Smart Additive Calculator')}</h3>
               <div className="tosna-grid">
                 {recipeDetails.dynamicAdditives.map(add => (
-                  <div className="tosna-row" key={add.id} style={{ alignItems: 'center' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontWeight: 'bold' }}>{add.name}</span>
-                      <span style={{ fontSize: '0.75rem', color: '#666' }}>{add.rule}</span>
+                  <div className="tosna-row align-center" key={add.id}>
+                    <div className="flex-col gap-xs">
+                      <span className="font-bold">{add.name}</span>
+                      <span className="text-sm text-muted">{add.rule}</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <strong style={{ fontSize: '1.1rem', color: 'var(--color-primary)' }}>{add.totalGrams.toFixed(1)} g</strong>
+                    <div className="flex-row gap-sm align-center">
+                      <strong className="text-lg text-primary">{add.totalGrams.toFixed(1)} g</strong>
                       <button 
-                        className="btn-text-small" 
+                        type="button"
+                        className="btn-apply-small" 
                         onClick={() => updateIngredient(add.id, { quantity: parseFloat(add.totalGrams.toFixed(1)) })}
-                        style={{ backgroundColor: '#eef', padding: '4px 8px', borderRadius: '4px' }}
                       >
                         {t('Apply')}
                       </button>
@@ -812,10 +759,10 @@ const Recipes: React.FC = () => {
           )}
 
           <button 
-            className="btn-primary full-width" 
+            type="button"
+            className="btn-primary full-width mt-md" 
             onClick={handleSaveRecipe}
             disabled={!recipeName || recipeIngredients.length === 0 || isSaving}
-            style={{ marginTop: '16px' }}
           >
             {isSaving ? t('Saving...') : editingRecipeId ? t('Update Recipe') : t('Save Recipe')}
           </button>

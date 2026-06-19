@@ -1,19 +1,24 @@
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useRecipeStore } from '../store/useRecipeStore';
+import { useSessionStore } from '../store/useSessionStore';
 
 const Home: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { activeBrewery, activeBreweryId } = useBreweryStore();
-  const { recipes, fetchRecipes, isLoading } = useRecipeStore();
+  const { recipes, fetchRecipes, isLoading: isRecipesLoading } = useRecipeStore();
+  const { sessions, fetchSessions, isLoading: isSessionsLoading } = useSessionStore();
 
   useEffect(() => {
     fetchRecipes(activeBreweryId);
-  }, [activeBreweryId, fetchRecipes]);
+    fetchSessions(activeBreweryId);
+  }, [activeBreweryId, fetchRecipes, fetchSessions]);
 
   const recentRecipes = recipes.slice(0, 3);
+  const activeSessions = sessions.filter(s => s.status === 'fermenting' || s.status === 'aging');
 
   return (
     <div className="home-container">
@@ -28,45 +33,69 @@ const Home: React.FC = () => {
 
       <div className="dashboard-grid">
         <div className="dashboard-card">
-          <h3>{t('Active Brews')}</h3>
-          <p>{t('No active brews in this workspace yet.')}</p>
+          <div className="card-header-flex">
+            <h3>{t('Active Brews')}</h3>
+          </div>
+          
+          {isSessionsLoading ? (
+             <p className="loading-text">{t('Loading...')}</p>
+          ) : activeSessions.length > 0 ? (
+            <div className="dashboard-list">
+              {activeSessions.map(session => (
+                <div 
+                  key={session.id} 
+                  className="dashboard-list-item interactive"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/brew/${session.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/brew/${session.id}`);
+                    }
+                  }}
+                >
+                  <div className="item-title">{session.recipeName}</div>
+                  <div className="item-meta">
+                    <span>{session.status === 'fermenting' ? t('Fermenting') : t('Aging')}</span>
+                    <span className="text-primary-bold">{session.batchSizeLiters} {t('L')}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="empty-text-sm">{t('No active brews in this workspace yet.')}</p>
+          )}
         </div>
         
         <div className="dashboard-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ margin: 0 }}>{t('Recent Recipes')}</h3>
-            <Link to="/recipes" style={{ fontSize: '0.9rem', color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 'bold' }}>
+          <div className="card-header-flex">
+            <h3>{t('Recent Recipes')}</h3>
+            <Link to="/recipes" className="view-all-link">
               {t('View All')}
             </Link>
           </div>
           
-          {isLoading ? (
+          {isRecipesLoading ? (
             <p className="loading-text">{t('Loading...')}</p>
           ) : recentRecipes.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="dashboard-list">
               {recentRecipes.map(recipe => (
                 <Link 
                   key={recipe.id} 
                   to={`/recipes/${recipe.id}`} 
-                  style={{ 
-                    display: 'block', 
-                    padding: '12px', 
-                    border: '1px solid #eee', 
-                    borderRadius: '8px', 
-                    textDecoration: 'none', 
-                    color: 'inherit' 
-                  }}
+                  className="dashboard-list-item link"
                 >
-                  <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{recipe.name}</div>
-                  <div style={{ fontSize: '0.85rem', color: '#666', display: 'flex', justifyContent: 'space-between' }}>
+                  <div className="item-title">{recipe.name}</div>
+                  <div className="item-meta">
                     <span>{recipe.targetStyle}</span>
-                    <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>{recipe.targetAbv?.toFixed(1)}% ABV</span>
+                    <span className="text-primary-bold">{recipe.targetAbv?.toFixed(1)}% ABV</span>
                   </div>
                 </Link>
               ))}
             </div>
           ) : (
-            <p style={{ color: '#666', fontSize: '0.9rem' }}>{t('Your latest recipes will appear here.')}</p>
+            <p className="empty-text-sm">{t('Your latest recipes will appear here.')}</p>
           )}
         </div>
       </div>

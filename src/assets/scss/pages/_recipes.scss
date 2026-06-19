@@ -8,9 +8,13 @@
   margin: 0 auto;
 
   .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin-bottom: $spacing-xxl;
 
     h1 {
+      margin: 0;
       font-size: 2rem;
       color: $color-text-main;
     }
@@ -60,7 +64,7 @@
     color: $color-text-muted;
   }
 
-  input {
+  input, select {
     padding: $spacing-sm $spacing-md;
     font-size: 1rem;
     background-color: $color-surface;
@@ -75,6 +79,13 @@
   }
 }
 
+.form-row.multi-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: $spacing-md;
+  align-items: end;
+}
+
 .ingredient-selector {
   display: flex;
   gap: $spacing-md;
@@ -82,16 +93,6 @@
 
   select {
     flex: 1;
-    padding: $spacing-sm $spacing-md;
-    font-size: 1rem;
-    background-color: $color-surface;
-    border: 1px solid $color-border;
-    border-radius: $border-radius-sm;
-
-    &:focus {
-      border-color: $color-primary;
-      outline: none;
-    }
   }
 }
 
@@ -160,36 +161,6 @@
   }
 }
 
-.warning-text {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  margin-left: $spacing-md;
-  font-size: 0.8rem;
-  color: #d97706;
-}
-
-.ingredient-note {
-  width: 100%;
-  margin-top: $spacing-sm;
-
-  .note-input {
-    width: 100%;
-    padding: $spacing-xs $spacing-sm;
-    font-size: 0.85rem;
-    font-style: italic;
-    background-color: transparent;
-    border: none;
-    border-bottom: 1px dashed $color-border;
-    border-radius: 0;
-
-    &:focus {
-      border-bottom-color: $color-primary;
-      outline: none;
-    }
-  }
-}
-
 .ingredient-controls {
   display: flex;
   gap: $spacing-sm;
@@ -199,36 +170,12 @@
     width: 100px;
     padding: $spacing-sm;
     text-align: right;
-    border: 1px solid $color-border;
-    border-radius: $border-radius-sm;
-
-    &:focus {
-      border-color: $color-primary;
-      outline: none;
-    }
   }
 
   .unit {
     font-weight: 500;
     color: $color-text-muted;
-  }
-
-  .btn-icon.danger {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    color: $color-error-text;
-    cursor: pointer;
-    background-color: $color-error-bg;
-    border: none;
-    border-radius: $border-radius-sm;
-    transition: opacity 0.2s ease;
-
-    &:hover {
-      opacity: 0.8;
-    }
+    white-space: nowrap;
   }
 }
 
@@ -271,6 +218,7 @@
 
 .tosna-row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   padding-bottom: $spacing-sm;
   color: $color-text-main;
@@ -300,11 +248,11 @@
   gap: $spacing-xs;
   align-items: center;
   justify-content: center;
-  padding: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
   color: $color-primary;
   cursor: pointer;
   background-color: transparent;
-  border: 1px dashed $color-primary;
+  border: 1px solid $color-primary;
   border-radius: $border-radius-sm;
   transition: all 0.2s ease;
 
@@ -313,82 +261,45 @@
   }
 }
 
-.step-row {
+/* Helper Utilities */
+.flex-col {
   display: flex;
-  gap: $spacing-md;
-  align-items: flex-start;
-  padding: $spacing-md;
-  background-color: var(--surface-hover, #f8fafc);
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: $border-radius-md;
+  flex-direction: column;
+}
 
-  .step-number {
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    font-weight: 700;
-    color: white;
-    background-color: $color-primary;
-    border-radius: 50%;
-  }
+.card-header-flex {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
 
-  .step-content {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: $spacing-sm;
+.gap-sm { gap: $spacing-sm; }
+.gap-md { gap: $spacing-md; }
+.gap-lg { gap: $spacing-lg; }
 
-    .step-desc-input {
-      width: 100%;
-      padding: $spacing-sm;
-      border: 1px solid $color-border;
-      border-radius: $border-radius-sm;
-    }
+.mb-sm { margin-bottom: $spacing-sm; }
+.mb-md { margin-bottom: $spacing-md; }
+.mt-md { margin-top: $spacing-md; }
 
-    .step-metrics {
-      display: flex;
-      gap: $spacing-md;
+.font-bold { font-weight: bold; }
+.text-sm { font-size: 0.85rem; }
+.text-md { font-size: 1rem; }
+.text-muted { color: $color-text-muted; }
+.text-primary { color: $color-primary; }
 
-      .metric-input {
-        display: flex;
-        gap: $spacing-xs;
-        align-items: center;
+.text-primary-bold { 
+  font-weight: bold; color: $color-primary; 
+}
 
-        label {
-          font-size: 0.85rem;
-          color: $color-text-muted;
-        }
-
-        input {
-          width: 70px;
-          padding: $spacing-xs $spacing-sm;
-          border: 1px solid $color-border;
-          border-radius: $border-radius-sm;
-        }
-      }
-    }
-  }
-
-  .btn-icon.danger {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    margin-top: 4px;
-    color: $color-error-text;
-    cursor: pointer;
-    background-color: $color-error-bg;
-    border: none;
-    border-radius: $border-radius-sm;
-
-    &:hover {
-      opacity: 0.8;
-    }
-  }
+.auto-calc-widget {
+  display: flex;
+  gap: $spacing-sm;
+  align-items: center;
+  padding: $spacing-xs $spacing-sm;
+  background-color: $color-bg;
+  border-radius: $border-radius-sm;
 }
 
 .btn-text-small {
@@ -405,35 +316,12 @@
   }
 }
 
-.ingredient-note-container {
-  width: 100%;
-  padding-top: $spacing-sm;
-  margin-top: $spacing-sm;
-  border-top: 1px dashed $color-border;
-
-  .note-textarea {
-    width: 100%;
-    padding: $spacing-sm;
-    font-family: inherit;
-    font-size: 0.9rem;
-    resize: vertical;
-    background-color: var(--surface-hover);
-    border: 1px solid $color-border;
-    border-radius: $border-radius-sm;
-
-    &:focus {
-      border-color: $color-primary;
-      outline: none;
-    }
-  }
-}
-
 .step-card {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: var(--surface-hover, #f8fafc);
-  border: 1px solid var(--border-color, #e2e8f0);
+  background-color: $color-surface;
+  border: 1px solid $color-border;
   border-radius: $border-radius-md;
 
   .step-header {
@@ -441,7 +329,6 @@
     align-items: center;
     justify-content: space-between;
     padding: $spacing-sm $spacing-md;
-    background-color: $color-surface;
     border-bottom: 1px solid $color-border;
 
     .step-header-left {
@@ -461,30 +348,6 @@
         background-color: $color-primary;
         border-radius: 50%;
       }
-
-      .phase-selector {
-        padding: 4px 8px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: $color-text-main;
-        cursor: pointer;
-        background-color: transparent;
-        border: none;
-        outline: none;
-      }
-    }
-
-    .step-header-right {
-      display: flex;
-      gap: $spacing-xs;
-
-      .btn-icon.transparent {
-        padding: 4px 8px;
-        color: $color-text-muted;
-        cursor: pointer;
-        background: transparent;
-        border: none;
-      }
     }
   }
 
@@ -493,84 +356,10 @@
     flex-direction: column;
     gap: $spacing-md;
     padding: $spacing-md;
-
-    .step-title-input {
-      width: 100%;
-      padding: $spacing-sm;
-      font-weight: 600;
-      border: 1px solid $color-border;
-      border-radius: $border-radius-sm;
-    }
-
-    .step-desc-textarea {
-      width: 100%;
-      padding: $spacing-sm;
-      font-family: inherit;
-      resize: vertical;
-      border: 1px solid $color-border;
-      border-radius: $border-radius-sm;
-    }
-
-    .step-metrics-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: $spacing-md;
-
-      .metric-group {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-
-        label {
-          font-size: 0.8rem;
-          font-weight: 600;
-          color: $color-text-muted;
-        }
-
-        input,
-        select {
-          padding: $spacing-sm;
-          border: 1px solid $color-border;
-          border-radius: $border-radius-sm;
-        }
-
-        .duration-inputs {
-          display: flex;
-          gap: 4px;
-
-          input {
-            width: 80px;
-          }
-
-          select {
-            flex: 1;
-          }
-        }
-      }
-    }
   }
-}
 
-.step-add-buttons {
-  display: flex;
-  gap: $spacing-md;
-  margin-top: $spacing-sm;
-
-  .btn-secondary {
+  .step-buttons {
     display: flex;
-    flex: 1;
     gap: $spacing-sm;
-    align-items: center;
-    justify-content: center;
-    padding: $spacing-sm;
-    color: $color-primary;
-    cursor: pointer;
-    background-color: transparent;
-    border: 1px dashed $color-primary;
-    border-radius: $border-radius-sm;
-
-    &:hover {
-      background-color: rgba($color-primary, 0.05);
-    }
   }
 }

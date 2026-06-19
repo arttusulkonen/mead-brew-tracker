@@ -25,3 +25,66 @@
     background-color: $color-disabled;
   }
 }
+
+@mixin button-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xs;
+  font-size: $font-size-base;
+  color: $color-danger;
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  border-radius: $border-radius-sm;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: rgba($color-danger, 0.1);
+  }
+
+  &:disabled {
+    color: $color-disabled;
+    cursor: not-allowed;
+  }
+}
+
+@mixin button-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-sm $spacing-md;
+  font-size: $font-size-base;
+  color: $color-primary;
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+  border-radius: $border-radius-sm;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: rgba($color-primary, 0.05);
+  }
+
+  &:disabled {
+    color: $color-disabled;
+    cursor: not-allowed;
+  }
+}
+
+.danger-outline,
+.danger {
+  @include button-icon;
+}
+
+.outline {
+  @include button-primary;
+
+  svg {
+    fill: white
+  }
+}
+
+  .btn-apply-small {
+    @include button-text;
+  }

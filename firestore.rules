@@ -4,6 +4,15 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+    match /ingredients/{ingredientId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if false; 
+    }
+    match /recipes/{recipeId} {
+      allow create: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(request.resource.data.breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(request.resource.data.breweryId)).data.members);
+      allow read, update, delete: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.members);
+    }
     match /breweries/{breweryId} {
       allow create: if request.auth != null
                     && request.resource.data.ownerId == request.auth.uid
@@ -34,20 +43,19 @@ service cloud.firestore {
         allow delete: if request.auth != null
                       && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(breweryId)).data.members);
       }
-    }
-    match /ingredients/{ingredientId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.createdBy == request.auth.uid;
-      allow update, delete: if false; 
-    }
-    match /recipes/{recipeId} {
-      allow create: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(request.resource.data.breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(request.resource.data.breweryId)).data.members);
-      allow read, update, delete: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.members);
-    }
-    match /sessions/{sessionId} {
-      allow create: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(request.resource.data.breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(request.resource.data.breweryId)).data.members);
-      allow read, update: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.members);
-      allow delete: if request.auth != null && request.auth.uid == get(/databases/$(database)/documents/breweries/$(resource.data.breweryId)).data.ownerId;
+      
+      match /brew_sessions/{sessionId} {
+        allow create: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(breweryId)).data.members);
+        allow read, update: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(breweryId)).data.members);
+        allow delete: if request.auth != null && request.auth.uid == get(/databases/$(database)/documents/breweries/$(breweryId)).data.ownerId;
+        
+        match /fermentation_logs/{logId} {
+          allow read, write: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(breweryId)).data.members);
+        }
+        match /timeline_events/{eventId} {
+          allow read, write: if request.auth != null && (request.auth.uid == get(/databases/$(database)/documents/breweries/$(breweryId)).data.ownerId || request.auth.uid in get(/databases/$(database)/documents/breweries/$(breweryId)).data.members);
+        }
+      }
     }
   }
 }

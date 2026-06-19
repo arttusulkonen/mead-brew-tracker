@@ -2,10 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useInventoryStore } from '../store/useInventoryStore';
-import type { IngredientCategory, UnitType } from '../types/ingredient';
-
-const UNITS: UnitType[] = ['g', 'kg', 'L', 'ml', 'oz', 'lb', 'gal', 'unit'];
-const CATEGORIES: IngredientCategory[] = ['Honey', 'Yeast', 'Hops', 'Additive', 'Water Profile'];
+import type { AdditiveType, IngredientCategory, UnitType } from '../types/ingredient';
+import { ADDITIVE_TYPES, INGREDIENT_CATEGORIES, UNIT_TYPES } from '../types/ingredient';
 
 const Inventory: React.FC = () => {
   const { t } = useTranslation();
@@ -30,20 +28,17 @@ const Inventory: React.FC = () => {
   const [customName, setCustomName] = useState('');
   const [customCategory, setCustomCategory] = useState<IngredientCategory>('Honey');
 
-  // Honey states
   const [honeyBrix, setHoneyBrix] = useState<number | ''>(79);
   const [honeyMoisture, setHoneyMoisture] = useState<number | ''>(18);
   
-  // Yeast states
   const [yeastTempMin, setYeastTempMin] = useState<number | ''>(15);
   const [yeastTempMax, setYeastTempMax] = useState<number | ''>(25);
   const [yeastTolerance, setYeastTolerance] = useState<number | ''>(14);
   const [yeastNitrogen, setYeastNitrogen] = useState<'Low' | 'Medium' | 'High' | 'Very High'>('Low');
   
-  // Hops states
   const [hopsAlpha, setHopsAlpha] = useState<number | ''>(5);
 
-  // Additive (Nutrient) states
+  const [additiveType, setAdditiveType] = useState<AdditiveType>('Nutrient');
   const [dosagePer10Liters, setDosagePer10Liters] = useState<number | ''>('');
   const [dosagePerGramYeast, setDosagePerGramYeast] = useState<number | ''>('');
 
@@ -67,10 +62,10 @@ const Inventory: React.FC = () => {
     if (wasCreatingCustom) {
       if (!customName || !customName.trim()) return;
 
-      const fullData: any = {
+      const fullData = {
         name: customName.trim(),
-        category: customCategory
-      };
+        category: customCategory,
+      } as any;
 
       if (customCategory === 'Honey') {
         fullData.sugarContentBrix = Number(honeyBrix) || 79;
@@ -83,8 +78,7 @@ const Inventory: React.FC = () => {
       } else if (customCategory === 'Hops') {
         fullData.alphaAcidPct = Number(hopsAlpha) || 5;
       } else if (customCategory === 'Additive') {
-        fullData.additiveType = 'Nutrient';
-        // Сохраняем новые поля дозировок в базу
+        fullData.additiveType = additiveType;
         if (dosagePer10Liters !== '') fullData.dosagePer10Liters = Number(dosagePer10Liters);
         if (dosagePerGramYeast !== '') fullData.dosagePerGramYeast = Number(dosagePerGramYeast);
       } else if (customCategory === 'Water Profile') {
@@ -173,19 +167,19 @@ const Inventory: React.FC = () => {
             <div className="form-group">
               <label htmlFor="ingredient">{t('Ingredient')}</label>
               {!isCreatingCustom ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                <div className="ingredient-select-wrapper">
+                  <div className="flex-row gap-sm">
                     <select
                       id="ingredient"
                       value={selectedIngredientId}
                       onChange={(e) => setSelectedIngredientId(e.target.value)}
                       required
-                      style={{ flex: 1 }}
+                      className="flex-1"
                     >
                       <option value="" disabled>
                         {t('Select an ingredient...')}
                       </option>
-                      {CATEGORIES.map((cat) => {
+                      {INGREDIENT_CATEGORIES.map((cat) => {
                         const catIngs = globalIngredients?.filter((i) => i?.category === cat);
                         if (!catIngs || catIngs.length === 0) return null;
                         return (
@@ -202,7 +196,7 @@ const Inventory: React.FC = () => {
                         );
                       })}
                     </select>
-                    <button type="button" onClick={() => setIsCreatingCustom(true)} className="btn-switch" style={{ padding: '0 12px' }}>
+                    <button type="button" onClick={() => setIsCreatingCustom(true)} className="btn-switch px-md">
                       + {t('New')}
                     </button>
                   </div>
@@ -239,7 +233,7 @@ const Inventory: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div className="custom-ingredient-wrapper">
                   <input
                     type="text"
                     placeholder={t('Ingredient Name')}
@@ -247,29 +241,28 @@ const Inventory: React.FC = () => {
                     onChange={(e) => setCustomName(e.target.value)}
                     required
                   />
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div className="flex-row gap-sm">
                     <select
                       value={customCategory}
                       onChange={(e) => setCustomCategory(e.target.value as IngredientCategory)}
-                      style={{ flex: 1 }}
+                      className="flex-1"
                     >
-                      {CATEGORIES.map((cat) => (
+                      {INGREDIENT_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>{t(cat)}</option>
                       ))}
                     </select>
-                    <button type="button" onClick={() => setIsCreatingCustom(false)} className="btn-switch" style={{ padding: '0 12px' }}>
+                    <button type="button" onClick={() => setIsCreatingCustom(false)} className="btn-switch px-md">
                       {t('Cancel')}
                     </button>
                   </div>
 
-                  {/* Дополнительные поля для мёда */}
                   {customCategory === 'Honey' && (
                     <div className="custom-fields-panel">
                       <div className="form-row">
                         <div className="form-group">
                           <div className="label-with-tooltip">
                             <label>{t('Brix')}</label>
-                            <span className="tooltip-icon" data-tooltip={t("Brix indicates the sugar content of the honey. Typically around 79-82%. You can find this on the supplier's spec sheet.")}>?</span>
+                            <span className="tooltip-icon" data-tooltip={t("Brix indicates the sugar content of the honey. Typically around 79-82%.")}>?</span>
                           </div>
                           <input type="number" step="0.1" value={honeyBrix} onChange={(e) => setHoneyBrix(e.target.value === '' ? '' : Number(e.target.value))} required />
                         </div>
@@ -284,21 +277,20 @@ const Inventory: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Дополнительные поля для дрожжей */}
                   {customCategory === 'Yeast' && (
                     <div className="custom-fields-panel">
                       <div className="form-row">
                         <div className="form-group">
                           <div className="label-with-tooltip">
                             <label>{t('Tolerance')} (%)</label>
-                            <span className="tooltip-icon" data-tooltip={t("The maximum alcohol percentage (ABV) this yeast can ferment before it stops. Look on the packaging.")}>?</span>
+                            <span className="tooltip-icon" data-tooltip={t("The maximum alcohol percentage (ABV) this yeast can ferment before it stops.")}>?</span>
                           </div>
                           <input type="number" step="0.1" value={yeastTolerance} onChange={(e) => setYeastTolerance(e.target.value === '' ? '' : Number(e.target.value))} required />
                         </div>
                         <div className="form-group">
                           <div className="label-with-tooltip">
                             <label>{t('Nitrogen Demand')}</label>
-                            <span className="tooltip-icon" data-tooltip={t("Yeast requirement for nutrients (YAN). Check the manufacturer's specifications (Low, Medium, High).")}>?</span>
+                            <span className="tooltip-icon" data-tooltip={t("Yeast requirement for nutrients (YAN).")}>?</span>
                           </div>
                           <select value={yeastNitrogen} onChange={(e) => setYeastNitrogen(e.target.value as any)}>
                             <option value="Low">{t('Low')}</option>
@@ -312,14 +304,14 @@ const Inventory: React.FC = () => {
                         <div className="form-group">
                           <div className="label-with-tooltip">
                             <label>{t('Min Temp')} (°C)</label>
-                            <span className="tooltip-icon" data-tooltip={t("The optimal temperature range for this yeast to ferment cleanly without producing off-flavors.")}>?</span>
+                            <span className="tooltip-icon" data-tooltip={t("The optimal temperature range for this yeast to ferment cleanly.")}>?</span>
                           </div>
                           <input type="number" step="0.1" value={yeastTempMin} onChange={(e) => setYeastTempMin(e.target.value === '' ? '' : Number(e.target.value))} required />
                         </div>
                         <div className="form-group">
                           <div className="label-with-tooltip">
                             <label>{t('Max Temp')} (°C)</label>
-                            <span className="tooltip-icon" data-tooltip={t("The optimal temperature range for this yeast to ferment cleanly without producing off-flavors.")}>?</span>
+                            <span className="tooltip-icon" data-tooltip={t("The optimal temperature range for this yeast to ferment cleanly.")}>?</span>
                           </div>
                           <input type="number" step="0.1" value={yeastTempMax} onChange={(e) => setYeastTempMax(e.target.value === '' ? '' : Number(e.target.value))} required />
                         </div>
@@ -327,22 +319,31 @@ const Inventory: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Дополнительные поля для хмеля */}
                   {customCategory === 'Hops' && (
                     <div className="custom-fields-panel">
                       <div className="form-group">
                         <div className="label-with-tooltip">
                           <label>{t('Alpha Acid')} (%)</label>
-                          <span className="tooltip-icon" data-tooltip={t("Alpha acid percentage determines the bitterness potential. Printed on the hops packaging.")}>?</span>
+                          <span className="tooltip-icon" data-tooltip={t("Alpha acid percentage determines the bitterness potential.")}>?</span>
                         </div>
                         <input type="number" step="0.1" value={hopsAlpha} onChange={(e) => setHopsAlpha(e.target.value === '' ? '' : Number(e.target.value))} required />
                       </div>
                     </div>
                   )}
 
-                  {/* НОВЫЕ ПОЛЯ ДЛЯ ДОБАВОК И ПОДКОРМОК */}
                   {customCategory === 'Additive' && (
                     <div className="custom-fields-panel">
+                      <div className="form-group mb-md">
+                         <div className="label-with-tooltip">
+                            <label>{t('Additive Type')}</label>
+                            <span className="tooltip-icon" data-tooltip={t("Select the sub-category of this additive.")}>?</span>
+                         </div>
+                         <select value={additiveType} onChange={(e) => setAdditiveType(e.target.value as AdditiveType)}>
+                           {ADDITIVE_TYPES.map(type => (
+                             <option key={type} value={type}>{t(type)}</option>
+                           ))}
+                         </select>
+                      </div>
                       <div className="form-row">
                         <div className="form-group">
                           <div className="label-with-tooltip">
@@ -397,7 +398,7 @@ const Inventory: React.FC = () => {
               <div className="form-group">
                 <label htmlFor="unit">{t('Unit')}</label>
                 <select id="unit" value={unit} onChange={(e) => setUnit(e.target.value as UnitType)}>
-                  {UNITS.map((u) => (
+                  {UNIT_TYPES.map((u) => (
                     <option key={u} value={u}>
                       {t(u)}
                     </option>
