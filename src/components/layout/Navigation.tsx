@@ -52,14 +52,13 @@ const Navigation: React.FC = () => {
         </button>
 
         <select 
-        className="lang-select-desktop"
-        value={currentLanguage} 
-        onChange={(e) => {
-          const lang = e.target.value;
-          i18n.changeLanguage(lang);
-          setLanguage(lang); 
-        }}
-      >
+          value={currentLanguage}
+          onChange={(e) => {
+            const lang = e.target.value;
+            setLanguage(lang); 
+          }}
+          className="language-select"
+        >
         {Object.entries(langsConfig.uiLabels).map(([code, label]) => (
           <option key={code} value={code}>{label}</option>
         ))}

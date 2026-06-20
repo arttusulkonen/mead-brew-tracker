@@ -1,5 +1,6 @@
+@use 'sass:color';
 @use '../settings/variables' as *;
-@use '../settings/font-family' as *;
+@use '../mixins/typography' as *;
 @use '../settings/font-size' as *;
 
 .home {
@@ -40,7 +41,6 @@
   }
 }
 
-/* Карточки секций дашборда */
 .home-card {
   display: flex;
   flex-direction: column;
@@ -75,7 +75,7 @@
     transition: color 0.2s;
 
     &:hover {
-      color: darken(#3b82f6, 10%);
+      color: color.adjust($color-primary, $lightness: -10%);
     }
   }
 
@@ -96,11 +96,12 @@
     color: $color-text-muted;
     text-align: center;
 
-    p { margin: 0; }
+    p {
+      margin: 0;
+    }
   }
 }
 
-/* Элемент: Активная варка */
 .brew-item {
   display: flex;
   flex-direction: column;
@@ -148,10 +149,25 @@
     white-space: nowrap;
     border-radius: 4px;
 
-    &[data-status="planned"] { color: #475569; background-color: #f1f5f9; }
-    &[data-status="fermenting"] { color: #1d4ed8; background-color: #eff6ff; }
-    &[data-status="aging"] { color: #7e22ce; background-color: #faf5ff; }
-    &[data-status="completed"] { color: #15803d; background-color: #f0fdf4; }
+    &[data-status="planned"] {
+      color: #475569;
+      background-color: #f1f5f9;
+    }
+
+    &[data-status="fermenting"] {
+      color: #1d4ed8;
+      background-color: #eff6ff;
+    }
+
+    &[data-status="aging"] {
+      color: #7e22ce;
+      background-color: #faf5ff;
+    }
+
+    &[data-status="completed"] {
+      color: #15803d;
+      background-color: #f0fdf4;
+    }
   }
 
   &__details {
@@ -204,7 +220,6 @@
   }
 }
 
-/* Элемент: Недавний рецепт */
 .recipe-item {
   display: flex;
   flex-direction: column;
@@ -246,7 +261,15 @@
 }
 
 @keyframes dashboard-pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.4; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }

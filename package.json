@@ -21,11 +21,10 @@
     "fix": "npm run lint:js:fix && npm run lint:css:fix",
     "db:clear": "npx tsx scripts/clearIngredients.ts",
     "deploy:prod": "npm run build && firebase deploy",
-    "deploy:all": "npm run deploy:prod"
+    "deploy:all": "npm run fix && npm run lint:types && npm run i18n:sync && npm run deploy:prod"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.37.0",
-    "@genkit-ai/googleai": "^1.28.0",
     "date-fns": "^4.4.0",
     "firebase": "^12.14.0",
     "genkit": "^1.36.0",

@@ -18,6 +18,8 @@
         ]
       }
     ],
-    "no-descending-specificity": null
+    "no-descending-specificity": null,
+    "selector-class-pattern": null,
+    "declaration-block-single-line-max-declarations": 1
   }
 }

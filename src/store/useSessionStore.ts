@@ -168,7 +168,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             { id: 1, type: '24h', targetDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), isCompleted: false },
             { id: 2, type: '48h', targetDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), isCompleted: false },
             { id: 3, type: '72h', targetDate: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(), isCompleted: false },
-            { id: 4, type: '1/3 Break', isCompleted: false }
+            { id: 4, type: '1/3 Sugar Break', isCompleted: false } 
           ]
         };
       }

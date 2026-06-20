@@ -42,6 +42,7 @@ const BrewSessionSetup: React.FC = () => {
         })) as BaseIngredient[];
         setGlobalCatalog(catalogData);
       } catch {
+        console.error('Failed to fetch global ingredient catalog');
       }
     };
     fetchCatalog();
@@ -52,10 +53,10 @@ const BrewSessionSetup: React.FC = () => {
       setActualVolume(currentRecipe.expectedBatchSizeLiters);
       
       const rAny = currentRecipe as any;
-      const targetStyleId = rAny.baseStyle || currentRecipe.targetStyle;
+      const baseStyle = rAny.baseStyle || 'traditional';
       
-      const styleDef = MEAD_STYLES.find(s => s.id === targetStyleId || s.name === targetStyleId);
-      const isBoil = styleDef?.boilProtocol.includes('Boil');
+      const styleDef = MEAD_STYLES.find(s => s.id === baseStyle);
+      const isBoil = styleDef?.boilProtocol?.includes('Boil');
       setPreBoilVolume(isBoil ? Math.round(currentRecipe.expectedBatchSizeLiters * 1.15 * 10) / 10 : currentRecipe.expectedBatchSizeLiters);
       
       setSessionIngredients(currentRecipe.ingredients);
@@ -69,10 +70,10 @@ const BrewSessionSetup: React.FC = () => {
     setActualVolume(newVolume);
     
     const rAny = currentRecipe as any;
-    const targetStyleId = rAny.baseStyle || currentRecipe.targetStyle;
+    const baseStyle = rAny.baseStyle || 'traditional';
     
-    const styleDef = MEAD_STYLES.find(s => s.id === targetStyleId || s.name === targetStyleId);
-    const isBoil = styleDef?.boilProtocol.includes('Boil');
+    const styleDef = MEAD_STYLES.find(s => s.id === baseStyle);
+    const isBoil = styleDef?.boilProtocol?.includes('Boil');
     setPreBoilVolume(Math.round(newVolume * (isBoil ? 1.15 : 1) * 10) / 10);
     
     const scaledIngredients = currentRecipe.ingredients.map(ing => ({

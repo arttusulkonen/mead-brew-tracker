@@ -1,8 +1,8 @@
 import { doc, updateDoc } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaCheck, FaCommentDots, FaEdit, FaExclamationTriangle, FaGripLines, FaPause, FaPlay, FaPlus, FaSave, FaTrash } from 'react-icons/fa';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
@@ -11,7 +11,6 @@ import type { BrewLog } from '../types/session';
 
 const BrewSession: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { t } = useTranslation();
   const { activeBreweryId } = useBreweryStore();
   const { currentSession, fetchSessionById, clearCurrentSession, isLoading, addLogToSession, updateSessionStatus } = useSessionStore();
@@ -28,6 +27,7 @@ const BrewSession: React.FC = () => {
 
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
   const [editStepData, setEditStepData] = useState<any | null>(null);
+  const [isNewStep, setIsNewStep] = useState(false); // ДОБАВЛЕН ФЛАГ ДЛЯ ЗАЩИТЫ ОТ УДАЛЕНИЯ
 
   const [quickNoteInputs, setQuickNoteInputs] = useState<Record<string, string>>({});
   
@@ -45,11 +45,14 @@ const BrewSession: React.FC = () => {
   }, [currentSession]);
 
   useEffect(() => {
+    const hasActive = steps.some(s => s.isActive);
+    if (!hasActive) return;
+    
     const interval = setInterval(() => {
       setTick(t => t + 1);
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [steps]);
 
   const saveStepsToDb = async (newSteps: any[]) => {
     if (!activeBreweryId || !currentSession?.id || !db) return;
@@ -69,7 +72,7 @@ const BrewSession: React.FC = () => {
     setDraggedIndex(index);
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
 
@@ -175,20 +178,23 @@ const BrewSession: React.FC = () => {
     
     setEditStepData(newStep);
     setEditingStepId(newId);
+    setIsNewStep(true); // УСТАНОВКА ФЛАГА
   };
 
   const startEditStep = (step: any) => {
     setEditStepData({ ...step });
     setEditingStepId(step.id);
+    setIsNewStep(false); // СБРОС ФЛАГА ДЛЯ СУЩЕСТВУЮЩИХ ШАГОВ
   };
 
   const cancelEditStep = () => {
-    if (editStepData && !editStepData.title) {
+    if (isNewStep) { // ИСПРАВЛЕНА ЛОГИКА УДАЛЕНИЯ
       const filteredSteps = steps.filter(s => s.id !== editingStepId);
       setSteps(filteredSteps);
     }
     setEditingStepId(null);
     setEditStepData(null);
+    setIsNewStep(false);
   };
 
   const saveEditedStep = async () => {
@@ -197,6 +203,7 @@ const BrewSession: React.FC = () => {
     setSteps(updatedSteps);
     setEditingStepId(null);
     setEditStepData(null);
+    setIsNewStep(false);
     await saveStepsToDb(updatedSteps);
   };
 
@@ -642,7 +649,7 @@ const BrewSession: React.FC = () => {
               <div className="tosna-widget__header">
                 <h3 className="brew-session__card-title" style={{ margin: 0 }}>🚀 {t('TOSNA 3.0 Tracker')}</h3>
                 <span className="tosna-widget__target">
-                  {t('1/3 Break')}: <strong>{currentSession.tosnaSchedule.targetOneThirdBreak.toFixed(3)}</strong>
+                  {t('1/3 Sugar Break')}: <strong>{currentSession.tosnaSchedule.targetOneThirdBreak.toFixed(3)}</strong>
                 </span>
               </div>
 
@@ -755,7 +762,7 @@ const BrewSession: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           {isPhDanger && (
             <div className="session-alert session-alert--warning">
               <FaExclamationTriangle className="session-alert__icon" />

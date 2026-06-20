@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 
 const apiKey = process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY;
 if (!apiKey) {
-  console.error('Missing GOOGLE_GENAI_API_KEY environment variable.');
+  console.error('Missing GOOGLE_GENAI_API_KEY or GEMINI_API_KEY environment variable.');
   process.exit(1);
 }
 

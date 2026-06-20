@@ -1,6 +1,6 @@
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaCheck, FaChevronDown, FaChevronUp, FaExclamationTriangle, FaMagic, FaPlus, FaTimes, FaTrash } from 'react-icons/fa';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -86,6 +86,7 @@ const Recipes: React.FC = () => {
         })) as BaseIngredient[];
         setGlobalCatalog(catalogData);
       } catch {
+        console.error('Error fetching global ingredient catalog');
       }
     };
     fetchCatalog();

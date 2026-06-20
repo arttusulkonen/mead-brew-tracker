@@ -16,7 +16,7 @@ export interface BrewLog {
 
 export interface TosnaAddition {
   id: number;
-  type: '24h' | '48h' | '72h' | '1/3 Break';
+  type: '24h' | '48h' | '72h' | '1/3 Sugar Break'; 
   targetDate?: string;
   isCompleted: boolean;
   actualDate?: string;
