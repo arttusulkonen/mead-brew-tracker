@@ -1,16 +1,18 @@
 import { doc, updateDoc } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaCheck, FaCommentDots, FaEdit, FaExclamationTriangle, FaGripLines, FaPause, FaPlay, FaPlus, FaSave, FaTrash } from 'react-icons/fa';
-import { useParams } from 'react-router-dom';
+import { FaCheck, FaCommentDots, FaEdit, FaExclamationTriangle, FaGripLines, FaLock, FaPause, FaPlay, FaPlus, FaSave, FaTrash } from 'react-icons/fa';
+import { useNavigate, useParams } from 'react-router-dom';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useSessionStore } from '../store/useSessionStore';
 import type { BrewLog } from '../types/session';
+import { calculateOneThirdSugarBreak } from '../utils/calculations';
 
 const BrewSession: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { activeBreweryId } = useBreweryStore();
   const { currentSession, fetchSessionById, clearCurrentSession, isLoading, addLogToSession, updateSessionStatus } = useSessionStore();
@@ -27,7 +29,7 @@ const BrewSession: React.FC = () => {
 
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
   const [editStepData, setEditStepData] = useState<any | null>(null);
-  const [isNewStep, setIsNewStep] = useState(false); // ДОБАВЛЕН ФЛАГ ДЛЯ ЗАЩИТЫ ОТ УДАЛЕНИЯ
+  const [isNewStep, setIsNewStep] = useState(false);
 
   const [quickNoteInputs, setQuickNoteInputs] = useState<Record<string, string>>({});
   
@@ -90,7 +92,6 @@ const BrewSession: React.FC = () => {
 
   const toggleStepTimer = async (stepId: string) => {
     const now = new Date().toISOString();
-    let isStartingNew = false;
     
     const updatedSteps = steps.map(s => {
       if (s.id === stepId) {
@@ -98,7 +99,6 @@ const BrewSession: React.FC = () => {
           const elapsed = Math.floor((new Date(now).getTime() - new Date(s.startedAt).getTime()) / 1000);
           return { ...s, isActive: false, startedAt: null, accumulatedSeconds: (s.accumulatedSeconds || 0) + elapsed };
         } else {
-          isStartingNew = true;
           return { ...s, isActive: true, startedAt: now };
         }
       } else if (s.isActive) {
@@ -110,20 +110,10 @@ const BrewSession: React.FC = () => {
     
     setSteps(updatedSteps);
     await saveStepsToDb(updatedSteps);
-
-    if (isStartingNew && currentSession?.status === 'planned' && activeBreweryId && currentSession?.id) {
-      try {
-        await updateSessionStatus(activeBreweryId, currentSession.id, 'fermenting');
-        await fetchSessionById(activeBreweryId, currentSession.id);
-      } catch (error) {
-        console.error(error);
-      }
-    }
   };
 
   const completeStep = async (stepId: string) => {
     const now = new Date().toISOString();
-    let isStartingNew = false;
     
     const updatedSteps = steps.map(s => {
       if (s.id === stepId) {
@@ -131,7 +121,6 @@ const BrewSession: React.FC = () => {
         if (s.isActive && s.startedAt) {
           finalSeconds += Math.floor((new Date(now).getTime() - new Date(s.startedAt).getTime()) / 1000);
         }
-        isStartingNew = true;
         return { 
           ...s, 
           isCompleted: true, 
@@ -146,15 +135,6 @@ const BrewSession: React.FC = () => {
     
     setSteps(updatedSteps);
     await saveStepsToDb(updatedSteps);
-
-    if (isStartingNew && currentSession?.status === 'planned' && activeBreweryId && currentSession?.id) {
-      try {
-        await updateSessionStatus(activeBreweryId, currentSession.id, 'fermenting');
-        await fetchSessionById(activeBreweryId, currentSession.id);
-      } catch (error) {
-        console.error(error);
-      }
-    }
   };
 
   const addManualStep = async () => {
@@ -178,17 +158,17 @@ const BrewSession: React.FC = () => {
     
     setEditStepData(newStep);
     setEditingStepId(newId);
-    setIsNewStep(true); // УСТАНОВКА ФЛАГА
+    setIsNewStep(true);
   };
 
   const startEditStep = (step: any) => {
     setEditStepData({ ...step });
     setEditingStepId(step.id);
-    setIsNewStep(false); // СБРОС ФЛАГА ДЛЯ СУЩЕСТВУЮЩИХ ШАГОВ
+    setIsNewStep(false);
   };
 
   const cancelEditStep = () => {
-    if (isNewStep) { // ИСПРАВЛЕНА ЛОГИКА УДАЛЕНИЯ
+    if (isNewStep) {
       const filteredSteps = steps.filter(s => s.id !== editingStepId);
       setSteps(filteredSteps);
     }
@@ -377,6 +357,14 @@ const BrewSession: React.FC = () => {
   const latestLog = currentSession.logs?.length > 0 ? [...currentSession.logs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0] : null;
   const isPhDanger = latestLog?.ph !== null && latestLog?.ph !== undefined && latestLog.ph < 3.2;
 
+  const isLogFresh = latestLog ? (Date.now() - new Date(latestLog.timestamp).getTime() < 4 * 60 * 60 * 1000) : false;
+
+  const prepSteps = steps.filter(s => s.phase === 'Preparation');
+  const isPrepDone = prepSteps.length === 0 || prepSteps.every(s => s.isCompleted);
+
+  const fermSteps = steps.filter(s => s.phase === 'Fermentation');
+  const isFermDone = fermSteps.length === 0 || fermSteps.every(s => s.isCompleted);
+
   const statusLabels: Record<string, string> = {
     planned: t('Planned'),
     fermenting: t('Fermenting'),
@@ -395,9 +383,35 @@ const BrewSession: React.FC = () => {
           </div>
         </div>
         <div className="brew-session__actions">
-          {currentSession.status === 'planned' && <button type="button" className="btn-primary" onClick={() => handleCompletePhase('fermenting')}>{t('Start Fermentation')}</button>}
-          {currentSession.status === 'fermenting' && <button type="button" className="btn-primary" onClick={() => handleCompletePhase('aging')}>{t('Move to Aging (Cold Crash)')}</button>}
-          {currentSession.status === 'aging' && <button type="button" className="btn-primary" onClick={() => handleCompletePhase('completed')}><FaCheck /> {t('Complete Brew')}</button>}
+          {currentSession.status === 'planned' && (
+            <button 
+              type="button" 
+              className="btn-primary" 
+              onClick={() => handleCompletePhase('fermenting')}
+              disabled={!isPrepDone}
+              title={!isPrepDone ? t('Finish all Preparation steps first') : ''}
+            >
+              {!isPrepDone && <FaLock style={{ marginRight: '6px' }} />}
+              {t('Start Fermentation')}
+            </button>
+          )}
+          {currentSession.status === 'fermenting' && (
+            <button 
+              type="button" 
+              className="btn-primary" 
+              onClick={() => handleCompletePhase('aging')}
+              disabled={!isFermDone}
+              title={!isFermDone ? t('Finish all Fermentation steps first') : ''}
+            >
+              {!isFermDone && <FaLock style={{ marginRight: '6px' }} />}
+              {t('Move to Aging (Cold Crash)')}
+            </button>
+          )}
+          {currentSession.status === 'aging' && (
+            <button type="button" className="btn-primary" onClick={() => handleCompletePhase('completed')}>
+              <FaCheck /> {t('Complete Brew')}
+            </button>
+          )}
         </div>
       </header>
 
@@ -669,11 +683,15 @@ const BrewSession: React.FC = () => {
                 {currentSession.tosnaSchedule.additions.map((addition) => {
                   const isOverdue = addition.targetDate ? new Date(addition.targetDate).getTime() < Date.now() : false;
                   const isDueNow = currentSession.tosnaSchedule?.isCompressed && !addition.isCompleted;
+                  
+                  // Защита и Блокировки (Interlocks)
+                  const isTimeArrived = isOverdue || isDueNow;
+                  const canApply = isTimeArrived && isLogFresh;
 
                   return (
                     <div 
                       key={addition.id} 
-                      className={`tosna-widget__item ${addition.isCompleted ? 'tosna-widget__item--completed' : ''} ${isOverdue ? 'tosna-widget__item--overdue' : ''} ${isDueNow ? 'tosna-widget__item--due-now' : ''}`}
+                      className={`tosna-widget__item ${addition.isCompleted ? 'tosna-widget__item--completed' : ''} ${isOverdue && !addition.isCompleted ? 'tosna-widget__item--overdue' : ''} ${isDueNow ? 'tosna-widget__item--due-now' : ''}`}
                     >
                       <div className="tosna-widget__info">
                         <span className="tosna-widget__item-title">{t(`Addition ${addition.id}`)} ({t(addition.type)})</span>
@@ -692,15 +710,23 @@ const BrewSession: React.FC = () => {
                       </div>
                       
                       {!addition.isCompleted && (
-                        <button 
-                          type="button" 
-                          className="btn-primary" 
-                          style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-                          onClick={() => handleCompleteTosna(addition.id, addition.type)}
-                          disabled={isSubmitting}
-                        >
-                          <FaCheck />
-                        </button>
+                        <div className="flex-row gap-sm align-center">
+                          {isTimeArrived && !isLogFresh && (
+                            <span className="text-xs text-error text-right" style={{ maxWidth: '120px', lineHeight: '1.2' }}>
+                              {t('Please add a measurement log first')}
+                            </span>
+                          )}
+                          <button 
+                            type="button" 
+                            className="btn-primary" 
+                            style={{ padding: '6px 12px', fontSize: '0.85rem', opacity: canApply ? 1 : 0.5 }}
+                            onClick={() => handleCompleteTosna(addition.id, addition.type)}
+                            disabled={isSubmitting || !canApply}
+                            title={!isTimeArrived ? t('Not time yet') : !isLogFresh ? t('Measurement required') : ''}
+                          >
+                            {canApply ? <FaCheck /> : <FaLock />}
+                          </button>
+                        </div>
                       )}
                     </div>
                   );
