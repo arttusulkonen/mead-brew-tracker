@@ -51,7 +51,10 @@ const BrewSessionSetup: React.FC = () => {
     if (currentRecipe) {
       setActualVolume(currentRecipe.expectedBatchSizeLiters);
       
-      const styleDef = MEAD_STYLES.find(s => s.id === currentRecipe.targetStyle || s.name === currentRecipe.targetStyle);
+      const rAny = currentRecipe as any;
+      const targetStyleId = rAny.baseStyle || currentRecipe.targetStyle;
+      
+      const styleDef = MEAD_STYLES.find(s => s.id === targetStyleId || s.name === targetStyleId);
       const isBoil = styleDef?.boilProtocol.includes('Boil');
       setPreBoilVolume(isBoil ? Math.round(currentRecipe.expectedBatchSizeLiters * 1.15 * 10) / 10 : currentRecipe.expectedBatchSizeLiters);
       
@@ -65,7 +68,10 @@ const BrewSessionSetup: React.FC = () => {
     const scaleFactor = newVolume / currentRecipe.expectedBatchSizeLiters;
     setActualVolume(newVolume);
     
-    const styleDef = MEAD_STYLES.find(s => s.id === currentRecipe.targetStyle || s.name === currentRecipe.targetStyle);
+    const rAny = currentRecipe as any;
+    const targetStyleId = rAny.baseStyle || currentRecipe.targetStyle;
+    
+    const styleDef = MEAD_STYLES.find(s => s.id === targetStyleId || s.name === targetStyleId);
     const isBoil = styleDef?.boilProtocol.includes('Boil');
     setPreBoilVolume(Math.round(newVolume * (isBoil ? 1.15 : 1) * 10) / 10);
     
@@ -144,8 +150,8 @@ const BrewSessionSetup: React.FC = () => {
       const sessionId = crypto.randomUUID();
       const newSession: BrewSession = {
         id: sessionId,
-        breweryId: activeBreweryId,
         recipeId: currentRecipe.id,
+        breweryId: activeBreweryId,
         recipeName: currentRecipe.name,
         status: 'planned',
         startDate: new Date().toISOString(),
@@ -248,7 +254,7 @@ const BrewSessionSetup: React.FC = () => {
 
           <div className="brew-session-setup__card">
             <div className="brew-session-setup__card-title brew-session-setup__card-title--static">
-              <h3 style={{ margin: 0 }}>{t('Review Ingredients')}</h3>
+              <h3 className="brew-session-setup__header-title">{t('Review Ingredients')}</h3>
             </div>
             <p className="brew-session-setup__card-subtitle">
               {t('You can manually adjust the scaled quantities based on what you actually have on hand.')}

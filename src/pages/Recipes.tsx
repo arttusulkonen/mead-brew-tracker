@@ -105,6 +105,17 @@ const Recipes: React.FC = () => {
       setTargetStyle(r.targetStyle || 'Session (4-6%)');
       setTargetFg(r.targetFinalGravity || 1.000);
       
+      const rAny = r as any;
+      if (rAny.baseStyle) {
+        setWizardStyle(rAny.baseStyle);
+      } else {
+        const matchedStyle = MEAD_STYLES.find(s => s.name === r.targetStyle || s.id === r.targetStyle);
+        if (matchedStyle) setWizardStyle(matchedStyle.id);
+      }
+
+      const matchedSweetness = SWEETNESS_LEVELS.find(lvl => Math.abs(lvl.minFg - r.targetFinalGravity) < 0.005);
+      if (matchedSweetness) setWizardSweetness(matchedSweetness.id);
+
       const mappedIngredients = r.ingredients.map(ing => ({
         ...ing,
         showNote: !!ing.note
@@ -472,11 +483,12 @@ const Recipes: React.FC = () => {
         targetTempC: step?.targetTempC ?? null
       }));
 
-      const recipeData: Partial<Recipe> = {
+      const recipeData: any = {
         id: recipeId,
         breweryId: activeBreweryId,
         name: recipeName,
         targetStyle,
+        baseStyle: wizardStyle,
         expectedBatchSizeLiters: batchSizeLiters || 0,
         targetOriginalGravity: recipeDetails?.og || 1.000,
         targetFinalGravity: targetFg || 1.000,
@@ -628,7 +640,7 @@ const Recipes: React.FC = () => {
             </div>
             <div className="form-row multi-col">
               <div className="form-group">
-                <label>{t('Target Style')}</label>
+                <label>{t('Target ABV Tier')}</label>
                 <select 
                   value={targetStyle}
                   onChange={(e) => setTargetStyle(e.target.value as MeadStyleTarget)}
@@ -797,10 +809,10 @@ const Recipes: React.FC = () => {
               </div>
               <div className="steps-list">
                 {aiProposedSteps.map((step) => (
-                  <div key={step.id} className="step-card" style={{ borderColor: 'rgba(59, 130, 246, 0.5)' }}>
+                  <div key={step.id} className="step-card ai-step-card">
                     <div className="step-header">
                       <div className="step-header-left">
-                        <span className="step-number" style={{ backgroundColor: '#3b82f6' }}>{step.stepNumber}</span>
+                        <span className="step-number ai-step-number">{step.stepNumber}</span>
                         <span className="font-bold text-sm">{step.phase}</span>
                       </div>
                       <div className='step-buttons'>
