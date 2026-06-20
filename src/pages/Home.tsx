@@ -18,7 +18,7 @@ const Home: React.FC = () => {
   }, [activeBreweryId, fetchRecipes, fetchSessions]);
 
   const recentRecipes = recipes.slice(0, 3);
-  const activeSessions = sessions.filter(s => s.status === 'fermenting' || s.status === 'aging');
+  const activeSessions = sessions.filter(s => ['planned', 'fermenting', 'aging'].includes(s.status));
 
   return (
     <div className="home-container">
@@ -57,7 +57,7 @@ const Home: React.FC = () => {
                 >
                   <div className="item-title">{session.recipeName}</div>
                   <div className="item-meta">
-                    <span>{session.status === 'fermenting' ? t('Fermenting') : t('Aging')}</span>
+                    <span>{t(session.status.charAt(0).toUpperCase() + session.status.slice(1))}</span>
                     <span className="text-primary-bold">{session.batchSizeLiters} {t('L')}</span>
                   </div>
                 </div>
@@ -88,7 +88,7 @@ const Home: React.FC = () => {
                 >
                   <div className="item-title">{recipe.name}</div>
                   <div className="item-meta">
-                    <span>{recipe.targetStyle}</span>
+                    <span>{t(recipe.targetStyle)}</span>
                     <span className="text-primary-bold">{recipe.targetAbv?.toFixed(1)}% ABV</span>
                   </div>
                 </Link>
