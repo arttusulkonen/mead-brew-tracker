@@ -8,7 +8,7 @@ import { db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useSessionStore } from '../store/useSessionStore';
 import type { BrewLog } from '../types/session';
-import { calculateOneThirdSugarBreak } from '../utils/calculations';
+import { calculateAbvCrouch } from '../utils/calculations';
 
 const BrewSession: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -33,6 +33,9 @@ const BrewSession: React.FC = () => {
 
   const [quickNoteInputs, setQuickNoteInputs] = useState<Record<string, string>>({});
   
+  const [showOgModal, setShowOgModal] = useState(false);
+  const [actualOgInput, setActualOgInput] = useState<string>('');
+
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -316,7 +319,30 @@ const BrewSession: React.FC = () => {
     }
   };
 
-  const handleCompletePhase = async (newStatus: 'fermenting' | 'aging' | 'completed') => {
+  const handleOpenOgModal = () => {
+    setActualOgInput(currentSession?.targetOg?.toString() || '1.000');
+    setShowOgModal(true);
+  };
+
+  const handleConfirmStartFermentation = async () => {
+    if (!currentSession || !currentSession.id || !activeBreweryId) return;
+    
+    const parsedOg = parseFloat(actualOgInput);
+    if (isNaN(parsedOg) || parsedOg < 0.990 || parsedOg > 1.200) {
+      alert(t('Please enter a valid Original Gravity (e.g. 1.050)'));
+      return;
+    }
+
+    setShowOgModal(false);
+    try {
+      await updateSessionStatus(activeBreweryId, currentSession.id, 'fermenting', parsedOg);
+      await fetchSessionById(activeBreweryId, currentSession.id);
+    } catch {
+      alert(t('Failed to start fermentation.'));
+    }
+  };
+
+  const handleCompletePhase = async (newStatus: 'aging' | 'completed') => {
     if (!currentSession || !currentSession.id || !activeBreweryId) return;
     if (window.confirm(t('Are you sure you want to advance to the next phase?'))) {
       try {
@@ -365,6 +391,21 @@ const BrewSession: React.FC = () => {
   const fermSteps = steps.filter(s => s.phase === 'Fermentation');
   const isFermDone = fermSteps.length === 0 || fermSteps.every(s => s.isCompleted);
 
+  const nutrientIngredient = currentSession.sessionIngredients?.find(
+    i => i.category === 'Additive' && (i.name.toLowerCase().includes('fermaid') || i.name.toLowerCase().includes('питат') || i.name.toLowerCase().includes('подкормк'))
+  );
+  const totalNutrientGrams = nutrientIngredient?.quantity || 0;
+  const gramsPerAddition = totalNutrientGrams / 4;
+
+  let totalDueGrams = 0;
+  if (currentSession.tosnaSchedule?.additions) {
+    const uncompletedCount = currentSession.tosnaSchedule.additions.filter(a => !a.isCompleted).length;
+    totalDueGrams = uncompletedCount * gramsPerAddition;
+  }
+
+  const usedOg = currentSession.actualOg || currentSession.targetOg;
+  const estimatedCurrentAbv = calculateAbvCrouch(usedOg, currentSession.targetFg || 1.000);
+
   const statusLabels: Record<string, string> = {
     planned: t('Planned'),
     fermenting: t('Fermenting'),
@@ -374,11 +415,38 @@ const BrewSession: React.FC = () => {
 
   return (
     <div className="brew-session">
+      {showOgModal && (
+        <div className="og-modal">
+          <div className="og-modal__content">
+            <h3 className="og-modal__title">{t('Start Fermentation')}</h3>
+            <p className="og-modal__desc">
+              {t('Please enter the actual Original Gravity (OG) measured before pitching yeast. This will be used to calculate your precise TOSNA schedule and final ABV.')}
+            </p>
+            <div className="measurement-form__group">
+              <label className="measurement-form__label">{t('Actual OG')}</label>
+              <input 
+                type="number" 
+                step="0.001" 
+                value={actualOgInput} 
+                onChange={e => setActualOgInput(e.target.value)} 
+                className="measurement-form__input"
+              />
+            </div>
+            <div className="og-modal__actions">
+              <button type="button" className="btn-secondary" onClick={() => setShowOgModal(false)}>{t('Cancel')}</button>
+              <button type="button" className="btn-primary" onClick={handleConfirmStartFermentation}>{t('Start')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="brew-session__header">
         <div className="brew-session__info">
           <h1 className="brew-session__title">{currentSession.recipeName}</h1>
           <div className="brew-session__tags">
-            <span className="brew-session__badge">{statusLabels[currentSession.status] || currentSession.status}</span>
+            <span className="brew-session__badge" data-status={currentSession.status}>
+              {statusLabels[currentSession.status] || currentSession.status}
+            </span>
             <span className="brew-session__date">{t('Started')}: {new Date(currentSession.startDate).toLocaleDateString()}</span>
           </div>
         </div>
@@ -387,7 +455,7 @@ const BrewSession: React.FC = () => {
             <button 
               type="button" 
               className="btn-primary" 
-              onClick={() => handleCompletePhase('fermenting')}
+              onClick={handleOpenOgModal}
               disabled={!isPrepDone}
               title={!isPrepDone ? t('Finish all Preparation steps first') : ''}
             >
@@ -673,7 +741,7 @@ const BrewSession: React.FC = () => {
                   <div className="session-alert__content">
                     <h4 className="session-alert__title">{t('Fast Fermentation Detected!')}</h4>
                     <p className="session-alert__text">
-                      {t('1/3 Sugar Break reached early. Schedule compressed. Add remaining nutrients now.')}
+                      {t('1/3 Sugar Break reached early. Schedule compressed. Add remaining nutrients now.')} <strong>{totalDueGrams.toFixed(1)} {t('g')}</strong>
                     </p>
                   </div>
                 </div>
@@ -684,7 +752,6 @@ const BrewSession: React.FC = () => {
                   const isOverdue = addition.targetDate ? new Date(addition.targetDate).getTime() < Date.now() : false;
                   const isDueNow = currentSession.tosnaSchedule?.isCompressed && !addition.isCompleted;
                   
-                  // Защита и Блокировки (Interlocks)
                   const isTimeArrived = isOverdue || isDueNow;
                   const canApply = isTimeArrived && isLogFresh;
 
@@ -694,7 +761,7 @@ const BrewSession: React.FC = () => {
                       className={`tosna-widget__item ${addition.isCompleted ? 'tosna-widget__item--completed' : ''} ${isOverdue && !addition.isCompleted ? 'tosna-widget__item--overdue' : ''} ${isDueNow ? 'tosna-widget__item--due-now' : ''}`}
                     >
                       <div className="tosna-widget__info">
-                        <span className="tosna-widget__item-title">{t(`Addition ${addition.id}`)} ({t(addition.type)})</span>
+                        <span className="tosna-widget__item-title">{t(`Addition ${addition.id}`)} ({t(addition.type)}) — <strong>{gramsPerAddition.toFixed(1)} {t('g')}</strong></span>
                         
                         {addition.isCompleted ? (
                           <span className="tosna-widget__time tosna-widget__time--success">
@@ -713,7 +780,7 @@ const BrewSession: React.FC = () => {
                         <div className="flex-row gap-sm align-center">
                           {isTimeArrived && !isLogFresh && (
                             <span className="text-xs text-error text-right" style={{ maxWidth: '120px', lineHeight: '1.2' }}>
-                              {t('Please add a measurement log first')}
+                              {t('Measurement required')}
                             </span>
                           )}
                           <button 
@@ -772,15 +839,25 @@ const BrewSession: React.FC = () => {
           </div>
 
           <div className="brew-session__card target-stats">
-            <h3 className="brew-session__card-title">{t('Target Metrics')}</h3>
+            <h3 className="brew-session__card-title">{t('Session Metrics')}</h3>
             <div className="target-stats__list">
               <div className="target-stats__row">
-                <span className="target-stats__label">{t('Original Gravity')}</span>
+                <span className="target-stats__label">{t('Original Gravity (Target)')}</span>
                 <span className="target-stats__value">{currentSession.targetOg?.toFixed(3)}</span>
               </div>
+              {currentSession.actualOg && (
+                <div className="target-stats__row">
+                  <span className="target-stats__label">{t('Actual OG')}</span>
+                  <span className="target-stats__value target-stats__value--primary">{currentSession.actualOg.toFixed(3)}</span>
+                </div>
+              )}
               <div className="target-stats__row">
                 <span className="target-stats__label">{t('Target Final Gravity')}</span>
-                <span className="target-stats__value target-stats__value--primary">{currentSession.targetFg?.toFixed(3)}</span>
+                <span className="target-stats__value">{currentSession.targetFg?.toFixed(3)}</span>
+              </div>
+              <div className="target-stats__row">
+                <span className="target-stats__label">{t('Estimated ABV')}</span>
+                <span className="target-stats__value target-stats__value--primary">{estimatedCurrentAbv.toFixed(1)}%</span>
               </div>
               <div className="target-stats__row">
                 <span className="target-stats__label">{t('Batch Size')}</span>

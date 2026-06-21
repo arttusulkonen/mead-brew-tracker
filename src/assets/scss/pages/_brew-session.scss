@@ -1073,3 +1073,44 @@
     }
   }
 }
+
+.og-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgb(0 0 0 / 50%);
+
+  &__content {
+    width: 100%;
+    max-width: 400px;
+    padding: 24px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgb(0 0 0 / 20%);
+  }
+
+  &__title {
+    margin: 0 0 8px;
+    font-size: 1.25rem;
+  }
+
+  &__desc {
+    margin: 0 0 16px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: #64748b;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+  }
+}

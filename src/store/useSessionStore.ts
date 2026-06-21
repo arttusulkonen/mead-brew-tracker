@@ -12,7 +12,7 @@ export interface SessionState {
   fetchSessionById: (breweryId: string | null | undefined, sessionId: string | null | undefined) => Promise<void>;
   createSession: (breweryId: string | null | undefined, session: BrewSession) => Promise<void>;
   addLogToSession: (breweryId: string | null | undefined, sessionId: string | null | undefined, log: BrewLog) => Promise<void>;
-  updateSessionStatus: (breweryId: string | null | undefined, sessionId: string | null | undefined, status: BrewSession['status']) => Promise<void>;
+  updateSessionStatus: (breweryId: string | null | undefined, sessionId: string | null | undefined, status: BrewSession['status'], actualOg?: number) => Promise<void>;
   clearCurrentSession: () => void;
 }
 
@@ -146,7 +146,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 
-  updateSessionStatus: async (breweryId, sessionId, status) => {
+  updateSessionStatus: async (breweryId, sessionId, status, actualOg?: number) => {
     if (!breweryId || !sessionId || !status || !db) return;
     set({ isLoading: true, error: null });
     try {
@@ -157,9 +157,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       
       if (status === 'fermenting' && session && session.status === 'planned') {
         const pitchTimestamp = new Date().toISOString();
-        const targetOg = session.targetOg || 1.000;
-        const targetOneThirdBreak = targetOg - ((targetOg - 1.000) / 3);
+        const ogToUse = actualOg || session.targetOg || 1.000;
+        const targetOneThirdBreak = ogToUse - ((ogToUse - 1.000) / 3);
         
+        if (actualOg) {
+          updateData.actualOg = actualOg;
+        }
+
         updateData.pitchTimestamp = pitchTimestamp;
         updateData.tosnaSchedule = {
           targetOneThirdBreak: Math.round(targetOneThirdBreak * 1000) / 1000,
@@ -168,7 +172,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             { id: 1, type: '24h', targetDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), isCompleted: false },
             { id: 2, type: '48h', targetDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), isCompleted: false },
             { id: 3, type: '72h', targetDate: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(), isCompleted: false },
-            { id: 4, type: '1/3 Sugar Break', isCompleted: false } 
+            { id: 4, type: '1/3 Sugar Break', isCompleted: false }
           ]
         };
       }
