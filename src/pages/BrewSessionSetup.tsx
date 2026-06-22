@@ -1,5 +1,5 @@
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaPlay, FaSlidersH, FaWater } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';

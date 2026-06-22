@@ -34,7 +34,7 @@ const RequestDataSchema = z.object({
   batchSizeLiters: z.number().positive(),
   targetFg: z.number().positive(),
   ingredients: z.array(z.object({
-    ingredientId: z.string().optional(),
+    ingredientId: z.string(), 
     globalIngredientId: z.string().optional(),
     name: z.string(),
     category: z.string(),
@@ -47,6 +47,7 @@ const LANGUAGE_MAPPING: Record<string, string> = {
   ru: "Russian (Русский язык)",
   fi: "Finnish (Suomi)",
   ko: "Korean (한국어)",
+  et: "Estonian (Eesti)",
   en: "English"
 };
 

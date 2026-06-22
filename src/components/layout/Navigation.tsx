@@ -55,9 +55,10 @@ const Navigation: React.FC = () => {
           value={currentLanguage}
           onChange={(e) => {
             const lang = e.target.value;
-            setLanguage(lang); 
+            setLanguage(lang);
           }}
           className="language-select"
+          aria-label={t('Select Language')}
         >
         {Object.entries(langsConfig.uiLabels).map(([code, label]) => (
           <option key={code} value={code}>{label}</option>

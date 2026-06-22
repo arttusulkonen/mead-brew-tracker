@@ -1,6 +1,6 @@
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaCheck, FaChevronDown, FaChevronUp, FaExclamationTriangle, FaMagic, FaPlus, FaTimes, FaTrash } from 'react-icons/fa';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -484,7 +484,7 @@ const Recipes: React.FC = () => {
         targetTempC: step?.targetTempC ?? null
       }));
 
-      const recipeData: any = {
+      const recipeData: Partial<Recipe> & { baseStyle?: string } = {
         id: recipeId,
         breweryId: activeBreweryId,
         name: recipeName,

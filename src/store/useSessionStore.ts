@@ -118,7 +118,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         }
       }
 
-      const updateData: any = {
+      const updateData: Partial<BrewSession> = {
         updatedAt: new Date().toISOString()
       };
 
