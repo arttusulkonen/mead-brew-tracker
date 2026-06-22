@@ -1,14 +1,16 @@
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaChevronDown, FaChevronUp, FaExclamationTriangle, FaMagic, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaCheck, FaChevronDown, FaChevronUp, FaExclamationTriangle, FaMagic, FaPlus, FaTimes, FaTrash } from 'react-icons/fa';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { auth, db } from '../firebase/config';
+import { app, auth, db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useRecipeStore } from '../store/useRecipeStore';
 import type { BaseIngredient, HoneyIngredient, IngredientCategory, YeastIngredient } from '../types/ingredient';
 import type { MeadStyleTarget, Recipe, StepPhase, TimeUnit } from '../types/recipe';
 import { calculateAbvCrouch, calculateTosna, estimateOG } from '../utils/calculations';
+import { HONEY_TERROIR, MEAD_STYLES, SWEETNESS_LEVELS } from '../utils/meadConstants';
 
 interface RecipeIngredientEntry {
   id: string;
@@ -32,8 +34,17 @@ interface RecipeStep {
   isExpanded: boolean;
 }
 
+interface AiIngredientProposal {
+  ingredientId: string;
+  suggestedQuantityGrams: number;
+  aiNote: string;
+}
+
+const VALID_PHASES: StepPhase[] = ['Preparation', 'Fermentation', 'Aging'];
+const VALID_UNITS: TimeUnit[] = ['minutes', 'days'];
+
 const Recipes: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { activeBreweryId } = useBreweryStore();
@@ -49,12 +60,20 @@ const Recipes: React.FC = () => {
   
   const [targetAutoAbv, setTargetAutoAbv] = useState<number>(5.0);
 
+  const [wizardStyle, setWizardStyle] = useState<string>(MEAD_STYLES[0].id);
+  const [wizardSweetness, setWizardSweetness] = useState<string>(SWEETNESS_LEVELS[2].id);
+  const [wizardHoney, setWizardHoney] = useState<string>(HONEY_TERROIR[4].id);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+
   const [globalCatalog, setGlobalCatalog] = useState<BaseIngredient[]>([]);
   const [selectedIngredientId, setSelectedIngredientId] = useState<string>('');
   
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredientEntry[]>([]);
   const [recipeSteps, setRecipeSteps] = useState<RecipeStep[]>([]);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+
+  const [aiProposedIngredients, setAiProposedIngredients] = useState<AiIngredientProposal[]>([]);
+  const [aiProposedSteps, setAiProposedSteps] = useState<RecipeStep[]>([]);
 
   useEffect(() => {
     const fetchCatalog = async () => {
@@ -67,6 +86,7 @@ const Recipes: React.FC = () => {
         })) as BaseIngredient[];
         setGlobalCatalog(catalogData);
       } catch {
+        console.error('Error fetching global ingredient catalog');
       }
     };
     fetchCatalog();
@@ -86,6 +106,17 @@ const Recipes: React.FC = () => {
       setTargetStyle(r.targetStyle || 'Session (4-6%)');
       setTargetFg(r.targetFinalGravity || 1.000);
       
+      const rAny = r as any;
+      if (rAny.baseStyle) {
+        setWizardStyle(rAny.baseStyle);
+      } else {
+        const matchedStyle = MEAD_STYLES.find(s => s.name === r.targetStyle || s.id === r.targetStyle);
+        if (matchedStyle) setWizardStyle(matchedStyle.id);
+      }
+
+      const matchedSweetness = SWEETNESS_LEVELS.find(lvl => Math.abs(lvl.minFg - r.targetFinalGravity) < 0.005);
+      if (matchedSweetness) setWizardSweetness(matchedSweetness.id);
+
       const mappedIngredients = r.ingredients.map(ing => ({
         ...ing,
         showNote: !!ing.note
@@ -113,6 +144,8 @@ const Recipes: React.FC = () => {
     setRecipeIngredients([]);
     setRecipeSteps([]);
     setEditingRecipeId(null);
+    setAiProposedIngredients([]);
+    setAiProposedSteps([]);
   };
 
   const handleCancel = () => {
@@ -143,6 +176,7 @@ const Recipes: React.FC = () => {
   const handleRemoveIngredient = (id: string) => {
     if (!id) return;
     setRecipeIngredients(prev => prev.filter(item => item.id !== id));
+    setAiProposedIngredients(prev => prev.filter(p => p.ingredientId !== id));
   };
 
   const updateIngredient = (id: string, updates: Partial<RecipeIngredientEntry>) => {
@@ -225,6 +259,105 @@ const Recipes: React.FC = () => {
     updateIngredient(honeyEntry.id, { quantity: roundedGrams });
   };
 
+  const handleAiGeneration = async () => {
+    if (!app) return;
+    setIsGenerating(true);
+    
+    try {
+      const payload = {
+        style: wizardStyle,
+        sweetness: wizardSweetness,
+        honeyTerroir: wizardHoney,
+        targetAbv: targetAutoAbv,
+        batchSizeLiters,
+        targetFg,
+        locale: i18n.resolvedLanguage || i18n.language || 'en',
+        ingredients: recipeIngredients.map(i => ({
+          ingredientId: i.id,
+          globalIngredientId: i.globalIngredientId,
+          name: i.name,
+          category: i.category,
+          quantity: i.quantity
+        }))
+      };
+
+      const functions = getFunctions(app, 'europe-west1');
+      const generateRecipeAI = httpsCallable(functions, 'generateRecipeAI');
+      const response = await generateRecipeAI(payload);
+      const resultData = response.data as any;
+
+      if (resultData?.status === 'success' && resultData?.data) {
+        const aiData = resultData.data;
+
+        if (Array.isArray(aiData.steps)) {
+          const newSteps = aiData.steps.map((s: any, idx: number) => {
+            const safePhase = VALID_PHASES.includes(s.phase) ? s.phase : 'Preparation';
+            const safeUnit = VALID_UNITS.includes(s.durationUnit) ? s.durationUnit : 'minutes';
+
+            return {
+              id: crypto.randomUUID(),
+              stepNumber: idx + 1,
+              phase: safePhase as StepPhase,
+              title: s.title || '',
+              description: s.description || '',
+              durationValue: s.durationValue || 0,
+              durationUnit: safeUnit as TimeUnit,
+              targetTempC: typeof s.targetTempC === 'number' ? s.targetTempC : null,
+              isExpanded: true
+            };
+          });
+          setAiProposedSteps(newSteps);
+        }
+
+        if (Array.isArray(aiData.ingredientQuantities)) {
+          const validProposals: AiIngredientProposal[] = [];
+          for (const suggestion of aiData.ingredientQuantities) {
+            if (suggestion && suggestion.ingredientId && typeof suggestion.suggestedQuantityGrams === 'number') {
+              validProposals.push({
+                ingredientId: suggestion.ingredientId,
+                suggestedQuantityGrams: suggestion.suggestedQuantityGrams,
+                aiNote: suggestion.aiNote || ''
+              });
+            }
+          }
+          setAiProposedIngredients(validProposals);
+        }
+      }
+    } catch {
+      alert(t('AI Generation failed'));
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const acceptIngredientProposal = (proposal: AiIngredientProposal) => {
+    setRecipeIngredients(prev => prev.map(item => {
+      if (item.id === proposal.ingredientId) {
+        return {
+          ...item,
+          quantity: proposal.suggestedQuantityGrams,
+          note: proposal.aiNote || item.note,
+          showNote: !!proposal.aiNote || item.showNote
+        };
+      }
+      return item;
+    }));
+    setAiProposedIngredients(prev => prev.filter(p => p.ingredientId !== proposal.ingredientId));
+  };
+
+  const rejectIngredientProposal = (ingredientId: string) => {
+    setAiProposedIngredients(prev => prev.filter(p => p.ingredientId !== ingredientId));
+  };
+
+  const acceptAllProposedSteps = () => {
+    setRecipeSteps(aiProposedSteps.map(s => ({ ...s, isExpanded: false })));
+    setAiProposedSteps([]);
+  };
+
+  const rejectAllProposedSteps = () => {
+    setAiProposedSteps([]);
+  };
+
   const recipeDetails = useMemo(() => {
     let totalHoneyGrams = 0;
     let averageBrix = 80;
@@ -251,36 +384,6 @@ const Recipes: React.FC = () => {
       }
     });
 
-    recipeIngredients.forEach(item => {
-      const template = globalCatalog.find(t => t.id === item.globalIngredientId);
-      if (!template || template.category !== 'Additive') return;
-
-      const additive = template as any;
-      let calculatedGrams = 0;
-      let ruleApplied = '';
-
-      if (additive.dosagePerGramYeast && yeastAddedGrams > 0) {
-        calculatedGrams = yeastAddedGrams * additive.dosagePerGramYeast;
-        ruleApplied = `${additive.dosagePerGramYeast}g / 1g Yeast`;
-      } else if (additive.dosagePer10Liters && batchSizeLiters > 0) {
-        calculatedGrams = (batchSizeLiters / 10) * additive.dosagePer10Liters;
-        ruleApplied = `${additive.dosagePer10Liters}g / 10L`;
-        
-        if (!customNutrientName) {
-          customNutrientName = item.name;
-        }
-      }
-
-      if (calculatedGrams > 0) {
-        dynamicAdditives.push({
-          id: item.id,
-          name: item.name,
-          totalGrams: calculatedGrams,
-          rule: ruleApplied
-        });
-      }
-    });
-
     if (totalHoneyGrams > 0) {
       averageBrix = totalWeightedBrix / totalHoneyGrams;
     }
@@ -296,6 +399,45 @@ const Recipes: React.FC = () => {
       else if (yeast.nitrogenDemand === 'High' || yeast.nitrogenDemand === 'Very High') nFactor = 1.25;
       tosnaData = calculateTosna(batchSizeLiters, estimatedOg, nFactor);
     }
+
+    recipeIngredients.forEach(item => {
+      const template = globalCatalog.find(t => t.id === item.globalIngredientId);
+      if (!template || template.category !== 'Additive') return;
+
+      const additive = template as any;
+      let calculatedGrams = 0;
+      let ruleApplied = '';
+
+      if (additive.additiveType === 'Nutrient' && tosnaData) {
+        if (item.name.toLowerCase().includes('go-ferm') || additive.dosagePerGramYeast) {
+          calculatedGrams = tosnaData.goFermGrams;
+          ruleApplied = 'TOSNA 3.0: Go-Ferm (1.25x Yeast)';
+        } else {
+          calculatedGrams = tosnaData.totalFermaidOGrams;
+          ruleApplied = 'TOSNA 3.0: Total Fermaid-O';
+          if (!customNutrientName) customNutrientName = item.name;
+        }
+      } 
+      else if (additive.dosagePerGramYeast && yeastAddedGrams > 0) {
+        calculatedGrams = yeastAddedGrams * additive.dosagePerGramYeast;
+        ruleApplied = `${additive.dosagePerGramYeast}g / 1g Yeast`;
+      } else if (additive.dosagePer10Liters && batchSizeLiters > 0) {
+        calculatedGrams = (batchSizeLiters / 10) * additive.dosagePer10Liters;
+        ruleApplied = `${additive.dosagePer10Liters}g / 10L`;
+        if (additive.additiveType === 'Nutrient' && !customNutrientName) {
+          customNutrientName = item.name;
+        }
+      }
+
+      if (calculatedGrams > 0) {
+        dynamicAdditives.push({
+          id: item.id,
+          name: item.name,
+          totalGrams: calculatedGrams,
+          rule: ruleApplied
+        });
+      }
+    });
 
     return { 
       og: estimatedOg, 
@@ -342,11 +484,12 @@ const Recipes: React.FC = () => {
         targetTempC: step?.targetTempC ?? null
       }));
 
-      const recipeData: Partial<Recipe> = {
+      const recipeData: Partial<Recipe> & { baseStyle?: string } = {
         id: recipeId,
         breweryId: activeBreweryId,
         name: recipeName,
         targetStyle,
+        baseStyle: wizardStyle,
         expectedBatchSizeLiters: batchSizeLiters || 0,
         targetOriginalGravity: recipeDetails?.og || 1.000,
         targetFinalGravity: targetFg || 1.000,
@@ -452,6 +595,41 @@ const Recipes: React.FC = () => {
         <div className="flex-col gap-lg">
           
           <div className="card">
+            <div className="card-header-flex">
+              <h3 className="m-0"><FaMagic /> {t('Smart Recipe Wizard')}</h3>
+            </div>
+            <div className="form-row multi-col mb-md">
+              <div className="form-group">
+                <label>{t('Base Style')}</label>
+                <select value={wizardStyle} onChange={e => setWizardStyle(e.target.value)}>
+                  {MEAD_STYLES.map(s => <option key={s.id} value={s.id}>{t(s.name)}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>{t('Sweetness / FG')}</label>
+                <select value={wizardSweetness} onChange={e => {
+                  setWizardSweetness(e.target.value);
+                  const selected = SWEETNESS_LEVELS.find(lvl => lvl.id === e.target.value);
+                  if (selected) {
+                    setTargetFg(selected.minFg);
+                  }
+                }}>
+                  {SWEETNESS_LEVELS.map(s => <option key={s.id} value={s.id}>{t(s.name)}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>{t('Honey Terroir')}</label>
+                <select value={wizardHoney} onChange={e => setWizardHoney(e.target.value)}>
+                  {HONEY_TERROIR.map(s => <option key={s.id} value={s.id}>{t(s.name)}</option>)}
+                </select>
+              </div>
+            </div>
+            <button type="button" className="btn-secondary full-width" onClick={handleAiGeneration} disabled={isGenerating}>
+              <FaMagic /> {isGenerating ? t('AI is thinking...') : t('Generate / Review Steps with AI')}
+            </button>
+          </div>
+
+          <div className="card">
             <div className="form-group">
               <label>{t('Recipe Name')}</label>
               <input 
@@ -463,7 +641,7 @@ const Recipes: React.FC = () => {
             </div>
             <div className="form-row multi-col">
               <div className="form-group">
-                <label>{t('Target Style')}</label>
+                <label>{t('Target ABV Tier')}</label>
                 <select 
                   value={targetStyle}
                   onChange={(e) => setTargetStyle(e.target.value as MeadStyleTarget)}
@@ -541,64 +719,134 @@ const Recipes: React.FC = () => {
             </div>
 
             <div className="ingredients-list">
-              {recipeIngredients.map(item => (
-                <div key={item.id} className="ingredient-row">
-                  <div className="ingredient-main-row">
-                    <div className="ingredient-info">
-                      <span className="category-tag" data-category={item.category}>{t(item.category)}</span>
-                      <span className="name">{item.name}</span>
+              {recipeIngredients.map(item => {
+                const aiProposal = aiProposedIngredients.find(p => p.ingredientId === item.id);
+                return (
+                  <div key={item.id} className="ingredient-row">
+                    <div className="ingredient-main-row">
+                      <div className="ingredient-info">
+                        <span className="category-tag" data-category={item.category}>{t(item.category)}</span>
+                        <span className="name">{item.name}</span>
+                      </div>
+                      <div className="ingredient-controls">
+                        <button 
+                          type="button"
+                          className="btn-text-small" 
+                          onClick={() => updateIngredient(item.id, { showNote: !item.showNote })}
+                          disabled={isSaving}
+                        >
+                          {item.showNote ? t('- Note') : t('+ Note')}
+                        </button>
+                        <input 
+                          type="number" 
+                          min="0" 
+                          value={item.quantity === 0 ? '' : item.quantity} 
+                          onChange={(e) => updateIngredient(item.id, { quantity: parseFloat(e.target.value) || 0 })}
+                          placeholder="0"
+                          disabled={isSaving}
+                        />
+                        <span className="unit">{t('g')}</span>
+                        <button 
+                          type="button"
+                          className="btn-icon danger" 
+                          onClick={() => handleRemoveIngredient(item.id)} 
+                          disabled={isSaving}
+                          aria-label={t('Remove')}
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
                     </div>
-                    <div className="ingredient-controls">
-                      <button 
-                        type="button"
-                        className="btn-text-small" 
-                        onClick={() => updateIngredient(item.id, { showNote: !item.showNote })}
-                        disabled={isSaving}
-                      >
-                        {item.showNote ? t('- Note') : t('+ Note')}
-                      </button>
-                      <input 
-                        type="number" 
-                        min="0" 
-                        value={item.quantity === 0 ? '' : item.quantity} 
-                        onChange={(e) => updateIngredient(item.id, { quantity: parseFloat(e.target.value) || 0 })}
-                        placeholder="0"
-                        disabled={isSaving}
-                      />
-                      <span className="unit">{t('g')}</span>
-                      <button 
-                        type="button"
-                        className="btn-icon danger" 
-                        onClick={() => handleRemoveIngredient(item.id)} 
-                        disabled={isSaving}
-                        aria-label={t('Remove')}
-                      >
-                        <FaTrash />
-                      </button>
-                    </div>
+                    {item.showNote && (
+                      <div className="ingredient-note-container">
+                        <textarea 
+                          value={item.note}
+                          onChange={(e) => updateIngredient(item.id, { note: e.target.value })}
+                          placeholder={t('Add detailed notes for this ingredient...')}
+                          className="note-textarea"
+                          rows={2}
+                          disabled={isSaving}
+                        />
+                      </div>
+                    )}
+                    {aiProposal && (
+                      <div className="ai-diff-box">
+                        <h4><FaMagic /> {t('AI Proposed Adjustment')}</h4>
+                        <div className="text-sm">
+                          <strong>{t('Suggested Quantity')}:</strong> {aiProposal.suggestedQuantityGrams} {t('g')} <br />
+                          {aiProposal.aiNote && <span><strong>{t('Note')}:</strong> {aiProposal.aiNote}</span>}
+                        </div>
+                        <div className="diff-actions">
+                          <button type="button" className="btn-accept" onClick={() => acceptIngredientProposal(aiProposal)}>
+                            <FaCheck /> {t('Accept')}
+                          </button>
+                          <button type="button" className="btn-reject" onClick={() => rejectIngredientProposal(item.id)}>
+                            <FaTimes /> {t('Reject')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {item.showNote && (
-                    <div className="ingredient-note-container">
-                      <textarea 
-                        value={item.note}
-                        onChange={(e) => updateIngredient(item.id, { note: e.target.value })}
-                        placeholder={t('Add detailed notes for this ingredient...')}
-                        className="note-textarea"
-                        rows={2}
-                        disabled={isSaving}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
               {recipeIngredients.length === 0 && (
                 <div className="empty-text">{t('No ingredients added yet.')}</div>
               )}
             </div>
           </div>
 
+          {aiProposedSteps.length > 0 && (
+            <div className="ai-proposed-steps-container">
+              <div className="ai-container-header">
+                <h3><FaMagic /> {t('AI Generated Steps Review')}</h3>
+                <div className="header-actions">
+                  <button type="button" className="btn-accept" onClick={acceptAllProposedSteps}>
+                    <FaCheck /> {t('Accept All Steps')}
+                  </button>
+                  <button type="button" className="btn-reject" onClick={rejectAllProposedSteps}>
+                    <FaTimes /> {t('Reject AI Steps')}
+                  </button>
+                </div>
+              </div>
+              <div className="steps-list">
+                {aiProposedSteps.map((step) => (
+                  <div key={step.id} className="step-card ai-step-card">
+                    <div className="step-header">
+                      <div className="step-header-left">
+                        <span className="step-number ai-step-number">{step.stepNumber}</span>
+                        <span className="font-bold text-sm">{step.phase}</span>
+                      </div>
+                      <div className='step-buttons'>
+                        <button 
+                          type="button"
+                          className="btn-icon" 
+                          onClick={() => setAiProposedSteps(prev => prev.map(s => s.id === step.id ? { ...s, isExpanded: !s.isExpanded } : s))}
+                          aria-expanded={step.isExpanded}
+                          aria-label={step.isExpanded ? t('Collapse step') : t('Expand step')}
+                        >
+                          {step.isExpanded ? <FaChevronUp /> : <FaChevronDown />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {step.isExpanded && (
+                      <div className="step-body">
+                        <div className="font-bold mb-sm">{step.title}</div>
+                        <p className="text-sm m-0">{step.description}</p>
+                        <div className="form-row multi-col mt-sm text-sm text-muted">
+                          <div>⏱ {step.durationValue} {step.durationUnit}</div>
+                          {step.targetTempC && <div>🌡 {step.targetTempC} °C</div>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="card">
-            <h3>{t('Brewing Steps')}</h3>
+            <h3>{t('Current Brewing Steps')}</h3>
             <div className="steps-list">
               {recipeSteps.map((step) => (
                 <div key={step.id} className="step-card">
@@ -620,7 +868,6 @@ const Recipes: React.FC = () => {
                       <button 
                         type="button"
                         className="btn-icon" 
-                        style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
                         onClick={() => updateStep(step.id, { isExpanded: !step.isExpanded })}
                         aria-expanded={step.isExpanded}
                         aria-label={step.isExpanded ? t('Collapse step') : t('Expand step')}
@@ -661,20 +908,18 @@ const Recipes: React.FC = () => {
                       <div className="form-row multi-col">
                         <div className="form-group">
                           <label>{t('Duration')}</label>
-                          <div className="duration-inputs" style={{ display: 'flex', gap: '4px' }}>
+                          <div className="duration-inputs">
                             <input 
                               type="number" 
                               min="0"
                               value={step.durationValue === 0 ? '' : step.durationValue}
                               onChange={(e) => updateStep(step.id, { durationValue: parseFloat(e.target.value) || 0 })}
                               disabled={isSaving}
-                              style={{ width: '80px' }}
                             />
                             <select 
                               value={step.durationUnit}
                               onChange={(e) => updateStep(step.id, { durationUnit: e.target.value as TimeUnit })}
                               disabled={isSaving}
-                              style={{ flex: 1 }}
                             >
                               <option value="minutes">{t('Minutes')}</option>
                               <option value="days">{t('Days')}</option>
@@ -697,8 +942,8 @@ const Recipes: React.FC = () => {
                 </div>
               ))}
               <div className="step-add-buttons">
-                <button type="button" className="btn-secondary" onClick={() => handleAddStep('Preparation')} disabled={isSaving}>
-                  <FaPlus /> {t('Add Step')}
+                <button type="button" className="btn-secondary full-width" onClick={() => handleAddStep('Preparation')} disabled={isSaving}>
+                  <FaPlus /> {t('Add Manual Step')}
                 </button>
               </div>
             </div>

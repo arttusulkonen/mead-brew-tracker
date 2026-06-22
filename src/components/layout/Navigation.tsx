@@ -3,12 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { FaBook, FaChartLine, FaFlask, FaGlobe, FaHome, FaUser } from 'react-icons/fa';
 import { NavLink } from 'react-router-dom';
 import langsConfig from '../../../languages.json';
+import { useAuthStore } from '../../store/useAuthStore';
 
 const Navigation: React.FC = () => {
   const { t, i18n } = useTranslation();
   const currentLanguage = (i18n.resolvedLanguage || i18n.language || 'en').split('-')[0];
   const langCodes = Object.keys(langsConfig.uiLabels);
 
+  const { setLanguage } = useAuthStore();
+  
   const toggleLanguage = () => {
     const currentIndex = langCodes.indexOf(currentLanguage);
     const nextIndex = (currentIndex + 1) % langCodes.length;
@@ -49,15 +52,18 @@ const Navigation: React.FC = () => {
         </button>
 
         <select 
-          className="lang-select-desktop"
-          value={currentLanguage} 
-          onChange={(e) => i18n.changeLanguage(e.target.value)}
+          value={currentLanguage}
+          onChange={(e) => {
+            const lang = e.target.value;
+            setLanguage(lang);
+          }}
+          className="language-select"
           aria-label={t('Select Language')}
         >
-          {Object.entries(langsConfig.uiLabels).map(([code, label]) => (
-            <option key={code} value={code}>{label}</option>
-          ))}
-        </select>
+        {Object.entries(langsConfig.uiLabels).map(([code, label]) => (
+          <option key={code} value={code}>{label}</option>
+        ))}
+      </select>
       </div>
     </nav>
   );

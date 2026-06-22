@@ -1,8 +1,10 @@
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { auth } from '../firebase/config';
+import { auth, db } from '../firebase/config';
+import i18n from '../i18n';
 
 const Login: React.FC = () => {
   const { t } = useTranslation();
@@ -13,11 +15,23 @@ const Login: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!db) return;
+    
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      if (user) {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists() && userDoc.data().language) {
+          await i18n.changeLanguage(userDoc.data().language);
+        }
+      }
+
       navigate('/home');
     } catch (err: any) {
-      console.error('Login failed:', err);
+      console.error(err);
       setError(t('Invalid email or password'));
     }
   };

@@ -12,7 +12,7 @@ export interface SessionState {
   fetchSessionById: (breweryId: string | null | undefined, sessionId: string | null | undefined) => Promise<void>;
   createSession: (breweryId: string | null | undefined, session: BrewSession) => Promise<void>;
   addLogToSession: (breweryId: string | null | undefined, sessionId: string | null | undefined, log: BrewLog) => Promise<void>;
-  updateSessionStatus: (breweryId: string | null | undefined, sessionId: string | null | undefined, status: BrewSession['status']) => Promise<void>;
+  updateSessionStatus: (breweryId: string | null | undefined, sessionId: string | null | undefined, status: BrewSession['status'], actualOg?: number) => Promise<void>;
   clearCurrentSession: () => void;
 }
 
@@ -105,16 +105,37 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       await setDoc(logRef, log);
 
       const sessionRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
-      await updateDoc(sessionRef, {
-        updatedAt: new Date().toISOString()
-      });
-
       const currentSession = get().currentSession;
       
+      let updatedTosnaSchedule = currentSession?.tosnaSchedule;
+
+      if (currentSession && currentSession.status === 'fermenting' && updatedTosnaSchedule && log.sg !== null) {
+        if (!updatedTosnaSchedule.isCompressed && log.sg <= updatedTosnaSchedule.targetOneThirdBreak) {
+          updatedTosnaSchedule = {
+            ...updatedTosnaSchedule,
+            isCompressed: true
+          };
+        }
+      }
+
+      const updateData: Partial<BrewSession> = {
+        updatedAt: new Date().toISOString()
+      };
+
+      if (updatedTosnaSchedule && currentSession?.tosnaSchedule?.isCompressed !== updatedTosnaSchedule.isCompressed) {
+        updateData.tosnaSchedule = updatedTosnaSchedule;
+      }
+
+      await updateDoc(sessionRef, updateData);
+
       if (currentSession && currentSession.id === sessionId) {
         const updatedLogs = [...(currentSession.logs || []), log];
         set({
-          currentSession: { ...currentSession, logs: updatedLogs }
+          currentSession: { 
+            ...currentSession, 
+            logs: updatedLogs,
+            tosnaSchedule: updatedTosnaSchedule 
+          }
         });
       }
     } catch (error: any) {
@@ -125,13 +146,37 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 
-  updateSessionStatus: async (breweryId, sessionId, status) => {
+  updateSessionStatus: async (breweryId, sessionId, status, actualOg?: number) => {
     if (!breweryId || !sessionId || !status || !db) return;
     set({ isLoading: true, error: null });
     try {
       const docRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
+      const session = get().currentSession;
+      
       const updateData: Partial<BrewSession> = { status, updatedAt: new Date().toISOString() };
       
+      if (status === 'fermenting' && session && session.status === 'planned') {
+        const pitchTimestamp = new Date().toISOString();
+        const ogToUse = actualOg || session.targetOg || 1.000;
+        const targetOneThirdBreak = ogToUse - ((ogToUse - 1.000) / 3);
+        
+        if (actualOg) {
+          updateData.actualOg = actualOg;
+        }
+
+        updateData.pitchTimestamp = pitchTimestamp;
+        updateData.tosnaSchedule = {
+          targetOneThirdBreak: Math.round(targetOneThirdBreak * 1000) / 1000,
+          isCompressed: false,
+          additions: [
+            { id: 1, type: '24h', targetDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), isCompleted: false },
+            { id: 2, type: '48h', targetDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), isCompleted: false },
+            { id: 3, type: '72h', targetDate: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(), isCompleted: false },
+            { id: 4, type: '1/3 Sugar Break', isCompleted: false }
+          ]
+        };
+      }
+
       if (status === 'completed') {
         updateData.completedDate = new Date().toISOString();
       }

@@ -1,0 +1,211 @@
+@use '../settings/variables' as *;
+@use '../settings/font-family' as *;
+@use '../settings/font-size' as *;
+
+.brew-dashboard {
+  max-width: 1200px;
+  padding: 20px;
+  margin: 0 auto;
+
+  &__header {
+    margin-bottom: 32px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 2rem;
+    color: $color-text-main;
+  }
+
+  &__loading {
+    padding: 40px 0;
+    color: $color-text-muted;
+    text-align: center;
+  }
+
+  &__empty {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+    padding: 60px 20px;
+    color: $color-text-muted;
+    text-align: center;
+    background-color: $color-surface;
+    border: 1px dashed $color-border;
+    border-radius: $border-radius-md;
+  }
+
+  &__sections {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  &__section-title {
+    padding-bottom: 12px;
+    margin: 0 0 20px;
+    font-size: 1.5rem;
+    color: $color-text-main;
+    border-bottom: 2px solid $color-border;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+
+    @media (width >= 768px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (width >= 1024px) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  &__card {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    background-color: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-md;
+    box-shadow: $box-shadow-base;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    &.interactive {
+      cursor: pointer;
+
+      &:hover,
+      &:focus {
+        border-color: $color-primary;
+        outline: none;
+        box-shadow: $box-shadow-hover;
+        transform: translateY(-2px);
+      }
+    }
+  }
+
+  &__card--active-step {
+    border-color: rgb(59 130 246 / 40%);
+    box-shadow: 0 4px 12px rgb(59 130 246 / 10%);
+  }
+
+  &__active-indicator {
+    padding: 12px;
+    margin-bottom: 16px;
+    background-color: rgb(59 130 246 / 5%);
+    border: 1px solid rgb(59 130 246 / 20%);
+    border-radius: 6px;
+  }
+
+  &__active-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  &__active-label {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #3b82f6;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    
+    svg {
+      animation: pulse 2s infinite;
+    }
+  }
+
+  &__active-time {
+    font-size: 0.85rem;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+    color: #1d4ed8;
+  }
+
+  &__active-title {
+    display: block;
+    font-size: 0.95rem;
+    color: #1e293b;
+  }
+
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+  }
+
+  &__card-header {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  &__card-title {
+    margin: 0;
+    font-size: 1.1rem;
+    line-height: 1.4;
+    color: $color-text-main;
+  }
+
+  &__badge {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    border-radius: 4px;
+
+    &[data-status="planned"] {
+      color: #475569;
+      background-color: #f1f5f9;
+    }
+
+    &[data-status="fermenting"] {
+      color: #1d4ed8;
+      background-color: #eff6ff;
+    }
+
+    &[data-status="aging"] {
+      color: #7e22ce;
+      background-color: #faf5ff;
+    }
+
+    &[data-status="completed"] {
+      color: #15803d;
+      background-color: #f0fdf4;
+    }
+  }
+
+  &__card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 16px;
+    margin-top: auto;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  &__meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.9rem;
+  }
+
+  &__meta-label {
+    color: $color-text-muted;
+  }
+
+  &__meta-value {
+    font-weight: 600;
+    color: $color-text-main;
+  }
+}

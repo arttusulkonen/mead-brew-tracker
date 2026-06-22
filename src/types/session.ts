@@ -11,6 +11,21 @@ export interface BrewLog {
   tempC: number | null;
   notes: string;
   actionTaken: string;
+  stepId?: string | null;
+}
+
+export interface TosnaAddition {
+  id: number;
+  type: '24h' | '48h' | '72h' | '1/3 Sugar Break';
+  targetDate?: string;
+  isCompleted: boolean;
+  actualDate?: string;
+}
+
+export interface TosnaSchedule {
+  targetOneThirdBreak: number;
+  isCompressed: boolean;
+  additions: TosnaAddition[];
 }
 
 export interface BrewSession {
@@ -22,7 +37,11 @@ export interface BrewSession {
   targetStyle?: MeadStyleTarget;
   batchSizeLiters: number;
   targetOg: number;
+  actualOg?: number | null;
   targetFg: number;
+  
+  pitchTimestamp?: string | null;
+  tosnaSchedule?: TosnaSchedule | null;
   
   sessionIngredients: RecipeIngredientReference[];
   sessionSteps: RecipeStep[];

@@ -2,224 +2,1115 @@
 @use '../settings/font-family' as *;
 @use '../settings/font-size' as *;
 
-.brew-session-page {
+/* 1. Блок: Brew Session (Общий каркас для активной варки) */
+.brew-session {
   max-width: 1200px;
   padding: 20px;
   margin: 0 auto;
 
-  &.error-state {
+  &--empty {
     padding-top: 40px;
     text-align: center;
-
-    h2 {
-      margin-bottom: 16px;
-    }
   }
 
-  .session-header {
+  &__loader {
+    padding: 2rem;
+    color: #666;
+    text-align: center;
+  }
+
+  &__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-
-    .header-info {
-      h1 {
-        margin: 0;
-      }
-
-      .meta-tags {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        margin-top: 8px;
-
-        .status-badge {
-          padding: 4px 8px;
-          font-size: 0.9rem;
-          color: #666;
-          background-color: #e2e8f0;
-          border-radius: 4px;
-        }
-
-        .start-date {
-          font-size: 0.9rem;
-          color: #666;
-        }
-      }
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 12px;
-    }
   }
 
-  .session-grid {
+  &__info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__title {
+    margin: 0;
+  }
+
+  &__tags {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+  }
+
+  &__badge {
+    padding: 4px 8px;
+    font-size: 0.9rem;
+    color: #475569;
+    background-color: #e2e8f0;
+    border-radius: 4px;
+  }
+
+  &__date {
+    font-size: 0.9rem;
+    color: #64748b;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  &__grid {
     display: grid;
-    grid-template-columns: 1fr 350px;
+    grid-template-columns: 1fr;
     gap: 24px;
+    align-items: start;
     margin-top: 24px;
 
-    .main-column,
-    .side-column {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
+    @media (width >=992px) {
+      grid-template-columns: 1fr 350px;
     }
   }
 
-  .chart-card {
-    .chart-container {
-      width: 100%;
-      height: 400px;
+  &__col-main,
+  &__col-side {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  &__card {
+    padding: 20px;
+    background-color: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-md;
+    box-shadow: $box-shadow-base;
+  }
+
+  &__card-title {
+    margin: 0 0 16px;
+  }
+}
+
+/* 2. Блок: Timeline (Таймлайн шагов) */
+.timeline {
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  &__title {
+    margin: 0;
+  }
+
+  &__btn-add {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    padding-top: 8px;
+  }
+
+  &__empty {
+    padding: 20px 0;
+    color: #888;
+    text-align: center;
+  }
+
+  &__item {
+    display: flex;
+    gap: 16px;
+    padding: 12px;
+    margin-bottom: 8px;
+    background-color: #fff;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+
+    &:hover {
+      box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
+
+      .timeline__drag-handle {
+        opacity: 1;
+      }
+
+      .timeline__context-actions {
+        opacity: 1;
+      }
     }
 
-    .empty-text {
-      padding: 40px 0;
-      color: #888;
-      text-align: center;
+    &--active {
+      background-color: rgb(59 130 246 / 2%);
+      border-color: var(--color-primary);
+
+      .timeline__circle {
+        color: white;
+        background-color: var(--color-primary);
+        box-shadow: 0 0 0 4px rgb(59 130 246 / 20%);
+      }
+    }
+
+    &--completed {
+      background-color: #f8fafc;
+      opacity: 0.7;
+
+      .timeline__circle {
+        color: white;
+        background-color: #22c55e;
+      }
+    }
+
+    &--editing {
+      border-color: var(--color-primary);
+      box-shadow: 0 4px 12px rgb(0 0 0 / 5%);
     }
   }
 
-  .logs-list {
+  &__drag-handle {
+    display: flex;
+    align-items: center;
+    color: #cbd5e1;
+    cursor: grab;
+    opacity: 0.3;
+    transition: opacity 0.2s;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  &__indicator {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 24px;
+  }
+
+  &__circle {
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: #64748b;
+    background-color: #f1f5f9;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+  }
+
+  &__line {
+    position: absolute;
+    top: 24px;
+    bottom: -20px;
+    z-index: 1;
+    width: 2px;
+    background-color: #e2e8f0;
+  }
+
+  &__content {
+    flex: 1;
+  }
+
+  &__item-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  &__title-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  &__phase {
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background-color: #e2e8f0;
+    border-radius: 4px;
+  }
+
+  &__item-title {
+    font-size: 1rem;
+    color: #1e293b;
+  }
+
+  &__target {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 0.85rem;
+    color: #64748b;
+  }
+
+  &__temp {
+    color: #ef4444;
+  }
+
+  &__duration {
+    color: #3b82f6;
+  }
+
+  &__context-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  &__btn-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+
+    &:hover {
+      color: #334155;
+      background-color: #f1f5f9;
+    }
+
+    &--danger:hover {
+      color: #ef4444;
+      background-color: #fef2f2;
+    }
+  }
+
+  &__desc {
+    margin: 0 0 12px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: #475569;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  &__btn-timer {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #3b82f6;
+    cursor: pointer;
+    background-color: rgb(59 130 246 / 10%);
+    border: none;
+    border-radius: 6px;
+    transition: all 0.2s;
+
+    &:hover {
+      background-color: rgb(59 130 246 / 20%);
+    }
+
+    &--active {
+      color: #eab308;
+      background-color: rgb(234 179 8 / 10%);
+
+      &:hover {
+        background-color: rgb(234 179 8 / 20%);
+      }
+    }
+  }
+
+  &__btn-complete {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #22c55e;
+    cursor: pointer;
+    background-color: rgb(34 197 94 / 10%);
+    border: none;
+    border-radius: 6px;
+    transition: all 0.2s;
+
+    &:hover {
+      background-color: rgb(34 197 94 / 20%);
+    }
+  }
+
+  &__progress {
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+
+    &--primary {
+      color: #3b82f6;
+    }
+
+    &--success {
+      color: #22c55e;
+    }
+  }
+
+  &__quick-log {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding-top: 12px;
+    margin-top: 12px;
+    border-top: 1px dashed #e2e8f0;
+  }
+
+  &__quick-input {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    background-color: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+
+    &:focus {
+      border-color: var(--color-primary);
+      outline: none;
+    }
+  }
+
+  &__quick-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: #fff;
+    cursor: pointer;
+    background-color: var(--color-primary);
+    border: none;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+
+    &:hover:not(:disabled) {
+      opacity: 0.9;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      background-color: #cbd5e1;
+    }
+  }
+
+  /* Форма редактирования внутри таймлайна */
+  &__edit-form {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    width: 100%;
+  }
 
-    .log-entry {
-      padding: 16px;
-      background-color: #fafafa;
-      border: 1px solid #eee;
-      border-radius: 8px;
+  &__edit-input,
+  &__edit-select,
+  &__edit-textarea {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 0.95rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
 
-      .log-header {
-        display: flex;
-        justify-content: space-between;
-        padding-bottom: 8px;
-        margin-bottom: 8px;
-        border-bottom: 1px solid #eee;
-
-        .day-label {
-          color: var(--color-primary);
-        }
-
-        .timestamp {
-          font-size: 0.85rem;
-          color: #888;
-        }
-      }
-
-      .log-metrics {
-        display: flex;
-        gap: 24px;
-        margin-bottom: 12px;
-        font-size: 0.95rem;
-
-        strong {
-          color: #555;
-        }
-      }
-
-      .log-action {
-        margin-bottom: 4px;
-        font-size: 0.9rem;
-      }
-
-      .log-notes {
-        font-size: 0.9rem;
-        font-style: italic;
-        color: #666;
-      }
+    &:focus {
+      border-color: var(--color-primary);
+      outline: none;
     }
   }
 
-  .measurement-form-card {
-    h3 {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    form {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .form-group {
-      margin-bottom: 0;
-    }
-
-    .full-width {
-      width: 100%;
-    }
+  &__edit-input--title {
+    font-weight: bold;
   }
 
-  .stat-card {
-    .stat-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-
-      .stat-row {
-        display: flex;
-        justify-content: space-between;
-        padding-bottom: 8px;
-        border-bottom: 1px solid rgb(0 0 0 / 5%);
-
-        &:last-child {
-          padding-bottom: 0;
-          border-bottom: none;
-        }
-
-        .label {
-          color: #666;
-        }
-
-        .value {
-          font-weight: bold;
-
-          &.primary-text {
-            color: var(--color-primary);
-          }
-        }
-      }
-    }
+  &__edit-textarea {
+    resize: vertical;
   }
 
-  .warning-banner {
-    display: flex;
+  &__edit-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 12px;
-    align-items: flex-start;
+  }
+
+  &__edit-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #475569;
+    }
+  }
+
+  &__edit-duration {
+    display: flex;
+    gap: 8px;
+
+    input {
+      width: 80px;
+      padding: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+    }
+
+    select {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+    }
+  }
+
+  &__edit-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+
+    button {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      padding: 8px 16px;
+      font-size: 0.9rem;
+      border-radius: 6px;
+    }
+  }
+}
+
+/* 3. Блок: Session Chart */
+.session-chart {
+  &__container {
+    width: 100%;
+    height: 400px;
+  }
+
+  &__empty {
+    padding: 40px 0;
+    color: #888;
+    text-align: center;
+  }
+}
+
+/* 4. Блок: Session Logs */
+.session-logs {
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__empty {
+    padding: 20px 0;
+    color: #888;
+    text-align: center;
+  }
+
+  &__item {
     padding: 16px;
+    background-color: #fafafa;
+    border: 1px solid #eee;
+    border-radius: 8px;
+  }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #eee;
+  }
+
+  &__day {
+    color: var(--color-primary);
+  }
+
+  &__time {
+    font-size: 0.85rem;
+    color: #888;
+  }
+
+  &__step-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    margin-bottom: 12px;
+    font-size: 0.8rem;
+    color: #1d4ed8;
+    background-color: rgb(59 130 246 / 10%);
+    border-radius: 4px;
+  }
+
+  &__metrics {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+
+    strong {
+      color: #555;
+    }
+  }
+
+  &__action {
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+  }
+
+  &__notes {
+    font-size: 0.9rem;
+    font-style: italic;
+    color: #666;
+  }
+}
+
+/* 5. Блок: Measurement Form */
+.measurement-form {
+  &__title {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 0 0 16px;
+  }
+
+  &__context {
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+    color: #1d4ed8;
+    background-color: rgb(59 130 246 / 10%);
+    border-radius: 6px;
+  }
+
+  &__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  &__group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+  }
+
+  &__label {
+    font-weight: 600;
+  }
+
+  &__btn {
+    width: 100%;
+  }
+}
+
+/* 6. Блок: Target Stats */
+.target-stats {
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgb(0 0 0 / 5%);
+
+    &:last-child {
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+  }
+
+  &__label {
+    color: #666;
+  }
+
+  &__value {
+    font-weight: bold;
+
+    &--primary {
+      color: var(--color-primary);
+    }
+  }
+}
+
+/* 7. Блок: Session Alert */
+.session-alert {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 16px;
+  border-radius: 8px;
+
+  &--success {
+    background-color: #f0fdf4;
+    border: 1px solid #bbf7d0;
+
+    .session-alert__icon,
+    .session-alert__title {
+      color: #16a34a;
+    }
+
+    .session-alert__text {
+      color: #166534;
+    }
+  }
+
+  &--warning {
     background-color: #fdf3f4;
     border: 1px solid #f5c2c7;
-    border-radius: 8px;
 
-    .warning-icon {
-      flex-shrink: 0;
-      margin-top: 4px;
-      font-size: 24px;
+    .session-alert__icon,
+    .session-alert__title {
       color: #dc3545;
     }
 
-    .warning-content {
-      h4 {
-        margin: 0 0 4px;
-        color: #dc3545;
-      }
-
-      p {
-        margin: 0;
-        font-size: 0.85rem;
-        line-height: 1.4;
-        color: #842029;
-      }
+    .session-alert__text {
+      color: #842029;
     }
+  }
+
+  &__icon {
+    flex-shrink: 0;
+    margin-top: 4px;
+    font-size: 24px;
+  }
+
+  &__title {
+    margin: 0 0 4px;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+}
+
+/* 8. Блок: Brew Session Setup (Настройка перед варкой) */
+.brew-session-setup {
+  max-width: 1200px;
+  padding: 20px;
+  margin: 0 auto;
+
+  &--empty {
+    padding-top: 40px;
+    text-align: center;
+  }
+
+  &__loading {
+    padding: 2rem;
+    color: #666;
+    text-align: center;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__header-title {
+    margin: 0;
+  }
+
+  &__header-subtitle {
+    font-size: 0.9rem;
+    color: #666;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    align-items: start;
+    margin-top: 24px;
+
+    @media (width >=768px) {
+      grid-template-columns: 2fr 1fr;
+    }
+  }
+
+  &__main-column,
+  &__side-column {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  &__card {
+    padding: 20px;
+    background-color: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-md;
+    box-shadow: $box-shadow-base;
+
+    &--volume {
+      background-color: #f8fafc;
+      border-color: #e2e8f0;
+    }
+  }
+
+  &__card-title {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 0 0 16px;
+
+    &--static {
+      padding-bottom: 12px;
+      border-bottom: 1px solid #eee;
+    }
+  }
+
+  &__card-subtitle {
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+    color: #666;
+  }
+
+  &__form-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+
+    @media (width >=480px) {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  &__form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__label {
+    font-weight: bold;
+  }
+
+  &__input {
+    padding: 8px;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-sm;
+
+    &--primary {
+      border: 2px solid $color-primary;
+    }
+  }
+
+  &__hint {
+    margin-top: 4px;
+    font-size: 0.85rem;
+    color: #666;
+
+    &--highlight {
+      font-weight: 500;
+      color: $color-primary;
+    }
+  }
+
+  &__ingredients-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__ingredient-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background-color: #f9f9f9;
+    border: 1px solid #eee;
+    border-radius: 8px;
+  }
+
+  &__category {
+    padding: 4px 8px;
+    margin-right: 12px;
+    font-size: 0.8rem;
+    background-color: #eef;
+    border-radius: 4px;
+  }
+
+  &__ingredient-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  &__quantity-input {
+    width: 80px;
+    padding: 6px;
+    text-align: right;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-sm;
+  }
+
+  &__unit {
+    font-weight: bold;
+    color: #666;
+  }
+
+  &__btn {
+    padding: 8px 16px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-radius: $border-radius-sm;
+
+    &--secondary {
+      color: $color-primary;
+      background-color: transparent;
+      border-color: $color-primary;
+    }
+
+    &--action {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 16px;
+      font-size: 1.2rem;
+      color: #fff;
+      background-color: #22c55e;
+      border-color: #22c55e;
+    }
+  }
+
+  &__spec-list,
+  &__tosna-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__spec-row,
+  &__tosna-row {
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed #eee;
+
+    &:last-child {
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+  }
+
+  &__spec-label {
+    color: #666;
+  }
+
+  &__spec-value {
+    font-weight: bold;
+
+    &--accent {
+      color: $color-primary;
+    }
+  }
+
+  &__schedule {
+    padding: 12px;
+    margin-top: 16px;
+    background-color: #f9f9f9;
+    border: 1px solid #eee;
+    border-radius: 8px;
+  }
+
+  &__schedule-title {
+    margin: 0 0 12px;
+    font-size: 0.95rem;
+  }
+
+  &__schedule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-left: 20px;
+    margin: 0;
+    font-size: 0.85rem;
+    color: #444;
+  }
+
+  &__schedule-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__step-value {
+    color: $color-primary;
+  }
+
+  &__step-hint {
+    font-size: 0.75rem;
+    color: #666;
+  }
+
+  &__empty-text {
+    color: #888;
+    text-align: center;
+  }
+
+  &__icon {
+    &--water {
+      color: #06c;
+    }
+  }
+}
+
+/* 9. Блок: TOSNA Tracker Widget */
+.tosna-widget {
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  &__target {
+    font-size: 0.85rem;
+    color: #64748b;
+
+    strong {
+      color: var(--color-primary);
+    }
+  }
+
+  &__alert {
+    margin-bottom: 16px;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+
+    &--completed {
+      background-color: #f1f5f9;
+      opacity: 0.6;
+    }
+
+    &--overdue {
+      background-color: #fef2f2;
+      border-color: #fca5a5;
+    }
+
+    &--due-now {
+      background-color: #fefce8;
+      border-color: #fcd34d;
+      box-shadow: 0 0 0 2px rgb(252 211 77 / 30%);
+    }
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__item-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1e293b;
+  }
+
+  &__time {
+    font-size: 0.8rem;
+    color: #64748b;
+
+    &--success {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      color: #16a34a;
+    }
+
+    &--overdue {
+      font-weight: bold;
+      color: #dc2626;
+    }
+  }
+}
+
+.og-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgb(0 0 0 / 50%);
+
+  &__content {
+    width: 100%;
+    max-width: 400px;
+    padding: 24px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgb(0 0 0 / 20%);
+  }
+
+  &__title {
+    margin: 0 0 8px;
+    font-size: 1.25rem;
+  }
+
+  &__desc {
+    margin: 0 0 16px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: #64748b;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
   }
 }

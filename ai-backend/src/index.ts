@@ -1,13 +1,12 @@
-import { gemini15Flash, googleAI } from "@genkit-ai/googleai";
-import * as logger from "firebase-functions/logger";
+import { googleAI } from "@genkit-ai/google-genai";
+import { defineSecret } from "firebase-functions/params";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { genkit, z } from "genkit";
+import { knowledgeBase } from "./knowledge_base";
+import { systemRules } from "./mead_rules";
 
-// 1. Инициализация инстанса Genkit по новым стандартам v1.x
-const ai = genkit({
-  plugins: [googleAI()],
-});
+const geminiApiKey = defineSecret("GOOGLE_GENAI_API_KEY");
 
 setGlobalOptions({ maxInstances: 10, region: "europe-west1" });
 
@@ -27,52 +26,87 @@ const RecipeGenerationSchema = z.object({
   }))
 });
 
-// Схема валидации входящих данных от клиента
 const RequestDataSchema = z.object({
   style: z.string(),
-  volumeLiters: z.number().positive(),
-  selectedIngredients: z.array(z.any())
+  sweetness: z.string(),
+  honeyTerroir: z.string(),
+  targetAbv: z.number().positive(),
+  batchSizeLiters: z.number().positive(),
+  targetFg: z.number().positive(),
+  ingredients: z.array(z.object({
+    ingredientId: z.string(), 
+    globalIngredientId: z.string().optional(),
+    name: z.string(),
+    category: z.string(),
+    quantity: z.number()
+  })),
+  locale: z.string()
 });
 
-export const generateRecipeAI = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "You must be logged in to generate recipes.");
-  }
+const LANGUAGE_MAPPING: Record<string, string> = {
+  ru: "Russian (Русский язык)",
+  fi: "Finnish (Suomi)",
+  ko: "Korean (한국어)",
+  et: "Estonian (Eesti)",
+  en: "English"
+};
 
-  const parsedData = RequestDataSchema.safeParse(request.data);
-  if (!parsedData.success) {
-    throw new HttpsError("invalid-argument", "Invalid payload structure.", parsedData.error);
-  }
+export const generateRecipeAI = onCall(
+  { secrets: [geminiApiKey] }, 
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated to generate recipes.");
+    }
 
-  const { style, volumeLiters, selectedIngredients } = parsedData.data;
+    const parsedData = RequestDataSchema.safeParse(request.data);
+    if (!parsedData.success) {
+      throw new HttpsError("invalid-argument", "Invalid payload format provided by the client.");
+    }
 
-  const prompt = `
-    Ты — профессиональный мастер-технолог классических медовух.
-    Пользователь хочет сварить ${volumeLiters} литров медовухи в стиле "${style}".
-    
-    Вот ингредиенты, которые есть у пользователя (с их характеристиками):
-    ${JSON.stringify(selectedIngredients, null, 2)}
-    
-    Твоя задача:
-    1. Рассчитать идеальные граммовки для хмеля (опираясь на Альфа-кислотность), дрожжей и добавок. Мёд рассчитывать не нужно.
-    2. Расписать подробные технологические шаги (Preparation, Fermentation, Aging).
-    3. Обязательно учитывай температурные режимы (Толерантность дрожжей).
-    
-    Верни результат СТРОГО в указанном JSON формате.
-  `;
+    process.env.GEMINI_API_KEY = geminiApiKey.value();
 
-  try {
-    // 2. В v1.x метод generate вызывается у инстанса ai
-    const aiResponse = await ai.generate({
-      model: gemini15Flash,
-      prompt: prompt,
-      output: { schema: RecipeGenerationSchema }
+    const ai = genkit({
+      plugins: [googleAI({ apiKey: geminiApiKey.value() })],
     });
 
-    // В v1.x output - это свойство (геттер), а не функция
-    return { status: "success", data: aiResponse.output };
-  } catch (error) {
-    logger.error("AI Generation failed", error);
-    throw new HttpsError("internal", "Failed to generate recipe. Please try again later.");
+    const { style, sweetness, honeyTerroir, targetAbv, batchSizeLiters, targetFg, ingredients, locale } = parsedData.data;
+    const cleanLocale = (locale || "en").split("-")[0].toLowerCase();
+    const targetLanguage = LANGUAGE_MAPPING[cleanLocale] || "English";
+
+    try {
+      const userPrompt = `
+        # KNOWLEDGE BASE
+        ${knowledgeBase}
+
+        # CURRENT USER REQUEST
+        - Style ID: ${style}
+        - Sweetness ID: ${sweetness}
+        - Honey Terroir ID: ${honeyTerroir}
+        - Target ABV: ${targetAbv}%
+        - Batch Size: ${batchSizeLiters} Liters
+        - Target Final Gravity (FG): ${targetFg}
+
+        # SELECTED INGREDIENTS
+        ${JSON.stringify(ingredients, null, 2)}
+
+        TASK:
+        1. Evaluate the provided ingredients. Do NOT calculate honey grams. Calculate precise dosages for yeast nutrients, hops, and additives.
+        2. Generate detailed technological steps strictly following constraints.
+        3. CRITICAL: You MUST generate all text fields ("title", "description" inside steps array AND "aiNote" inside ingredientQuantities array) strictly in ${targetLanguage}. Do not leave any structural explanations or notes in English if the target language is different.
+      `;
+
+      const aiResponse = await ai.generate({
+        model: "googleai/gemini-3.1-flash-lite",
+        system: systemRules,
+        prompt: userPrompt,
+        output: { schema: RecipeGenerationSchema }
+      });
+
+      return { status: "success", data: aiResponse.output };
+
+    } catch (error) {
+      console.error(error);
+      throw new HttpsError("internal", "AI Generation failed.");
+    }
   }
-});
+);

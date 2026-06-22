@@ -21,10 +21,10 @@
     "fix": "npm run lint:js:fix && npm run lint:css:fix",
     "db:clear": "npx tsx scripts/clearIngredients.ts",
     "deploy:prod": "npm run build && firebase deploy",
-    "deploy:all": "npm run deploy:prod"
+    "deploy:all": "npm run fix && npm run lint:types && npm run i18n:sync && npm run deploy:prod"
   },
   "dependencies": {
-    "@genkit-ai/googleai": "^1.28.0",
+    "@genkit-ai/google-genai": "^1.37.0",
     "date-fns": "^4.4.0",
     "firebase": "^12.14.0",
     "genkit": "^1.36.0",
@@ -35,8 +35,10 @@
     "react-dom": "^19.2.6",
     "react-i18next": "^17.0.8",
     "react-icons": "^5.6.0",
+    "react-is": "^19.2.7",
     "react-router-dom": "^7.16.0",
     "recharts": "^3.8.1",
+    "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
@@ -45,7 +47,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "eslint": "^9.20.0",
+    "eslint": "^10.5.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "firebase-admin": "^13.1.0",

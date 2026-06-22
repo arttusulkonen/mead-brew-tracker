@@ -9,7 +9,8 @@ import { useInventoryStore } from '../store/useInventoryStore';
 import { useRecipeStore } from '../store/useRecipeStore';
 import type { BaseIngredient, HoneyIngredient, YeastIngredient } from '../types/ingredient';
 import type { BrewSession } from '../types/session';
-import { calculateAbvCrouch, calculateTosna, estimateOG } from '../utils/calculations';
+import { calculateAbvCrouch, calculateOneThirdSugarBreak, calculateTosna, estimateOG } from '../utils/calculations';
+import { MEAD_STYLES } from '../utils/meadConstants';
 
 const BrewSessionSetup: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,7 +23,7 @@ const BrewSessionSetup: React.FC = () => {
   const [globalCatalog, setGlobalCatalog] = useState<BaseIngredient[]>([]);
   
   const [actualVolume, setActualVolume] = useState<number>(10);
-  const [preBoilVolume, setPreBoilVolume] = useState<number>(12);
+  const [preBoilVolume, setPreBoilVolume] = useState<number>(10);
   const [sessionIngredients, setSessionIngredients] = useState<any[]>([]);
   const [isStarting, setIsStarting] = useState(false);
 
@@ -41,6 +42,7 @@ const BrewSessionSetup: React.FC = () => {
         })) as BaseIngredient[];
         setGlobalCatalog(catalogData);
       } catch {
+        console.error('Failed to fetch global ingredient catalog');
       }
     };
     fetchCatalog();
@@ -49,7 +51,14 @@ const BrewSessionSetup: React.FC = () => {
   useEffect(() => {
     if (currentRecipe) {
       setActualVolume(currentRecipe.expectedBatchSizeLiters);
-      setPreBoilVolume(currentRecipe.expectedBatchSizeLiters * 1.2); 
+      
+      const rAny = currentRecipe as any;
+      const baseStyle = rAny.baseStyle || 'traditional';
+      
+      const styleDef = MEAD_STYLES.find(s => s.id === baseStyle);
+      const isBoil = styleDef?.boilProtocol?.includes('Boil');
+      setPreBoilVolume(isBoil ? Math.round(currentRecipe.expectedBatchSizeLiters * 1.15 * 10) / 10 : currentRecipe.expectedBatchSizeLiters);
+      
       setSessionIngredients(currentRecipe.ingredients);
     }
   }, [currentRecipe]);
@@ -58,13 +67,18 @@ const BrewSessionSetup: React.FC = () => {
     if (!currentRecipe || newVolume <= 0) return;
     
     const scaleFactor = newVolume / currentRecipe.expectedBatchSizeLiters;
-    
     setActualVolume(newVolume);
-    setPreBoilVolume(Math.round(newVolume * 1.2 * 10) / 10);
+    
+    const rAny = currentRecipe as any;
+    const baseStyle = rAny.baseStyle || 'traditional';
+    
+    const styleDef = MEAD_STYLES.find(s => s.id === baseStyle);
+    const isBoil = styleDef?.boilProtocol?.includes('Boil');
+    setPreBoilVolume(Math.round(newVolume * (isBoil ? 1.15 : 1) * 10) / 10);
     
     const scaledIngredients = currentRecipe.ingredients.map(ing => ({
       ...ing,
-      quantity: Math.round(ing.quantity * scaleFactor * 100) / 100
+      quantity: Math.round(ing.quantity * scaleFactor * 10) / 10
     }));
     
     setSessionIngredients(scaledIngredients);
@@ -103,7 +117,6 @@ const BrewSessionSetup: React.FC = () => {
     }
 
     const estimatedOg = estimateOG(actualVolume, totalHoneyGrams, averageBrix);
-    
     const targetFg = currentRecipe?.targetFinalGravity || 1.000;
     const estimatedAbv = calculateAbvCrouch(estimatedOg, targetFg);
 
@@ -117,7 +130,7 @@ const BrewSessionSetup: React.FC = () => {
       tosnaData = calculateTosna(actualVolume, estimatedOg, nFactor);
     }
 
-    return { og: estimatedOg, abv: estimatedAbv, tosna: tosnaData };
+    return { og: estimatedOg, abv: estimatedAbv, fg: targetFg, tosna: tosnaData };
   }, [sessionIngredients, actualVolume, globalCatalog, currentRecipe]);
 
   const handleStartSession = async () => {
@@ -138,8 +151,8 @@ const BrewSessionSetup: React.FC = () => {
       const sessionId = crypto.randomUUID();
       const newSession: BrewSession = {
         id: sessionId,
-        breweryId: activeBreweryId,
         recipeId: currentRecipe.id,
+        breweryId: activeBreweryId,
         recipeName: currentRecipe.name,
         status: 'planned',
         startDate: new Date().toISOString(),
@@ -169,14 +182,14 @@ const BrewSessionSetup: React.FC = () => {
   };
 
   if (isLoading) {
-      return <div className="loading-text" style={{ padding: '2rem' }}>{t('Preparing session...')}</div>;
-    }
+    return <div className="brew-session-setup__loading">{t('Preparing session...')}</div>;
+  }
 
   if (!currentRecipe) {
     return (
-      <div className="recipes-page" style={{ padding: '20px', textAlign: 'center' }}>
-        <h2>{t('Recipe not found')}</h2>
-        <button type="button" className="btn-secondary" onClick={() => navigate('/recipes')} style={{ marginTop: '16px' }}>
+      <div className="brew-session-setup brew-session-setup--empty">
+        <h2 className="brew-session-setup__header-title">{t('Recipe not found')}</h2>
+        <button type="button" className="brew-session-setup__btn brew-session-setup__btn--secondary" onClick={() => navigate('/recipes')}>
           {t('Back to list')}
         </button>
       </div>
@@ -186,81 +199,86 @@ const BrewSessionSetup: React.FC = () => {
   const boilOffAmount = Math.max(0, preBoilVolume - actualVolume).toFixed(1);
 
   return (
-    <div className="recipes-page" style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <h1 style={{ margin: 0 }}>{t('Brew Day Setup')}</h1>
-          <span style={{ fontSize: '0.9rem', color: '#666' }}>{t('Recipe')}: {currentRecipe.name}</span>
+    <div className="brew-session-setup">
+      <header className="brew-session-setup__header">
+        <div>
+          <h1 className="brew-session-setup__header-title">{t('Brew Day Setup')}</h1>
+          <span className="brew-session-setup__header-subtitle">{t('Recipe')}: {currentRecipe.name}</span>
         </div>
-        <button type="button" className="btn-secondary" onClick={() => navigate(`/recipes/${currentRecipe.id}`)}>
+        <button type="button" className="brew-session-setup__btn brew-session-setup__btn--secondary" onClick={() => navigate(`/recipes/${currentRecipe.id}`)}>
           {t('Cancel')}
         </button>
       </header>
 
-      <div className="recipe-grid" style={{ display: 'grid', gap: '24px', gridTemplateColumns: '2fr 1fr', alignItems: 'start', marginTop: '24px' }}>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div className="brew-session-setup__grid">
+        <div className="brew-session-setup__main-column">
           
-          <div className="card" style={{ backgroundColor: '#f0f7ff', border: '1px solid #cce0ff' }}>
-            <h3 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="brew-session-setup__card brew-session-setup__card--volume">
+            <h3 className="brew-session-setup__card-title">
               <FaSlidersH /> {t('Volume & Scaling')}
             </h3>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div className="form-group">
-                <label style={{ fontWeight: 'bold' }}>{t('Target Fermenter Volume (L)')}</label>
+            <div className="brew-session-setup__form-row">
+              <div className="brew-session-setup__form-group">
+                <label className="brew-session-setup__label">{t('Target Fermenter Volume (L)')}</label>
                 <input 
                   type="number" 
                   step="0.5"
+                  className="brew-session-setup__input brew-session-setup__input--primary"
                   value={actualVolume || ''} 
                   onChange={(e) => handleScaleVolume(parseFloat(e.target.value) || 0)}
-                  style={{ border: '2px solid var(--color-primary)' }}
                   disabled={isStarting}
                 />
-                <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
+                <span className="brew-session-setup__hint">
                   {t('Changing this will auto-scale all ingredients below.')}
-                </small>
+                </span>
               </div>
               
-              <div className="form-group">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'bold' }}>
-                  <FaWater color="#0066cc" /> {t('Pre-boil Volume (L)')}
+              <div className="brew-session-setup__form-group">
+                <label className="brew-session-setup__label">
+                  <FaWater className="brew-session-setup__icon--water" /> {t('Pre-boil Volume (L)')}
                 </label>
                 <input 
                   type="number" 
                   step="0.5"
+                  className="brew-session-setup__input"
                   value={preBoilVolume || ''} 
                   onChange={(e) => setPreBoilVolume(parseFloat(e.target.value) || 0)}
                   disabled={isStarting}
                 />
-                <small style={{ color: '#0066cc', display: 'block', marginTop: '4px', fontWeight: '500' }}>
+                <span className="brew-session-setup__hint brew-session-setup__hint--highlight">
                   {t('Estimated boil-off')}: {boilOffAmount} {t('L')}
-                </small>
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="card">
-            <h3 style={{ margin: '0 0 16px 0', borderBottom: '1px solid #eee', paddingBottom: '12px' }}>{t('Review Ingredients')}</h3>
-            <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '16px' }}>
+          <div className="brew-session-setup__card">
+            <div className="brew-session-setup__card-title brew-session-setup__card-title--static">
+              <h3 className="brew-session-setup__header-title">{t('Review Ingredients')}</h3>
+            </div>
+            <p className="brew-session-setup__card-subtitle">
               {t('You can manually adjust the scaled quantities based on what you actually have on hand.')}
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            
+            <div className="brew-session-setup__ingredients-list">
               {sessionIngredients.map(ing => (
-                <div key={ing.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee' }}>
+                <div key={ing.id} className="brew-session-setup__ingredient-item">
                   <div>
-                    <span className="category-tag" data-category={ing.category} style={{ marginRight: '12px', fontSize: '0.8rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: '#eef' }}>{t(ing.category)}</span>
-                    <strong style={{ fontSize: '0.95rem' }}>{ing.name}</strong>
+                    <span className="brew-session-setup__category" data-category={ing.category}>
+                      {t(ing.category)}
+                    </span>
+                    <strong>{ing.name}</strong>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="brew-session-setup__ingredient-controls">
                     <input 
                       type="number"
+                      className="brew-session-setup__quantity-input"
                       value={ing.quantity}
                       onChange={(e) => handleIngredientChange(ing.id, parseFloat(e.target.value) || 0)}
-                      style={{ width: '80px', padding: '6px', textAlign: 'right' }}
                       disabled={isStarting}
                     />
-                    <span style={{ fontWeight: 'bold', color: '#666' }}>{t('g')}</span>
+                    <span className="brew-session-setup__unit">{t('g')}</span>
                   </div>
                 </div>
               ))}
@@ -268,47 +286,85 @@ const BrewSessionSetup: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="brew-session-setup__side-column">
           
           <button 
             type="button"
-            className="btn-primary" 
-            style={{ width: '100%', padding: '16px', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: '#28a745' }}
+            className="brew-session-setup__btn brew-session-setup__btn--action" 
             onClick={handleStartSession}
             disabled={isStarting}
           >
             <FaPlay /> {isStarting ? t('Starting...') : t('Start Brew Day')}
           </button>
 
-          <div className="card stat-card primary">
-            <h3 style={{ margin: '0 0 16px 0' }}>{t('Dynamic Specifications')}</h3>
-            <div className="stat-grid" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '8px' }}>
-                <span style={{ color: '#666' }}>{t('Target Style')}</span>
-                <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{currentRecipe.targetStyle}</span>
+          <div className="brew-session-setup__card">
+            <h3 className="brew-session-setup__card-title">{t('Dynamic Specifications')}</h3>
+            <div className="brew-session-setup__spec-list">
+              <div className="brew-session-setup__spec-row">
+                <span className="brew-session-setup__spec-label">{t('Target Style')}</span>
+                <span className="brew-session-setup__spec-value">{t(currentRecipe.targetStyle)}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '8px' }}>
-                <span style={{ color: '#666' }}>{t('Estimated OG')}</span>
-                <span style={{ fontWeight: 'bold' }}>{sessionDetails.og.toFixed(3)}</span>
+              <div className="brew-session-setup__spec-row">
+                <span className="brew-session-setup__spec-label">{t('Estimated OG')}</span>
+                <span className="brew-session-setup__spec-value">{sessionDetails.og.toFixed(3)}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#666' }}>{t('Estimated ABV')}</span>
-                <span style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>{sessionDetails.abv.toFixed(1)}%</span>
+              <div className="brew-session-setup__spec-row">
+                <span className="brew-session-setup__spec-label">{t('Target Final Gravity')}</span>
+                <span className="brew-session-setup__spec-value">{sessionDetails.fg.toFixed(3)}</span>
+              </div>
+              <div className="brew-session-setup__spec-row">
+                <span className="brew-session-setup__spec-label">{t('Estimated ABV')}</span>
+                <span className="brew-session-setup__spec-value brew-session-setup__spec-value--accent">{sessionDetails.abv.toFixed(1)}%</span>
               </div>
             </div>
           </div>
 
-          <div className="card stat-card secondary">
-            <h3 style={{ margin: '0 0 16px 0' }}>{t('TOSNA 3.0 Guide')}</h3>
+          <div className="brew-session-setup__card">
+            <h3 className="brew-session-setup__card-title">{t('TOSNA 3.0 Guide')}</h3>
             {!sessionDetails.tosna ? (
-              <div className="empty-text">{t('No yeast added')}</div>
+              <div className="brew-session-setup__empty-text">{t('No yeast added')}</div>
             ) : (
-              <div className="tosna-grid">
-                <div className="tosna-row"><span>{t('Required Yeast')}</span><strong>{sessionDetails.tosna.totalYeastGrams} g</strong></div>
-                <div className="tosna-row"><span>{t('Go-Ferm')}</span><strong>{sessionDetails.tosna.goFermGrams} g</strong></div>
-                <div className="tosna-row"><span>{t('Total Fermaid-O')}</span><strong>{sessionDetails.tosna.totalFermaidOGrams} g</strong></div>
-                <div className="tosna-row highlight"><span>{t('Per Addition (x4)')}</span><strong>{sessionDetails.tosna.dosePerAdditionGrams} g</strong></div>
-              </div>
+              <>
+                <div className="brew-session-setup__tosna-summary">
+                  <div className="brew-session-setup__tosna-row">
+                    <span className="brew-session-setup__spec-label">{t('Required Yeast')}</span>
+                    <strong className="brew-session-setup__spec-value">{sessionDetails.tosna.totalYeastGrams} g</strong>
+                  </div>
+                  <div className="brew-session-setup__tosna-row">
+                    <span className="brew-session-setup__spec-label">{t('Go-Ferm')}</span>
+                    <strong className="brew-session-setup__spec-value">{sessionDetails.tosna.goFermGrams} g</strong>
+                  </div>
+                  <div className="brew-session-setup__tosna-row">
+                    <span className="brew-session-setup__spec-label">{t('Total Fermaid-O')}</span>
+                    <strong className="brew-session-setup__spec-value">{sessionDetails.tosna.totalFermaidOGrams} g</strong>
+                  </div>
+                </div>
+
+                <div className="brew-session-setup__schedule">
+                  <h4 className="brew-session-setup__schedule-title">{t('Feeding Schedule')}</h4>
+                  <ul className="brew-session-setup__schedule-list">
+                    <li className="brew-session-setup__schedule-item">
+                      <span>{t('Addition 1')} ({t('24h')}):</span>
+                      <strong className="brew-session-setup__step-value">{sessionDetails.tosna.dosePerAdditionGrams} g</strong>
+                    </li>
+                    <li className="brew-session-setup__schedule-item">
+                      <span>{t('Addition 2')} ({t('48h')}):</span>
+                      <strong className="brew-session-setup__step-value">{sessionDetails.tosna.dosePerAdditionGrams} g</strong>
+                    </li>
+                    <li className="brew-session-setup__schedule-item">
+                      <span>{t('Addition 3')} ({t('72h')}):</span>
+                      <strong className="brew-session-setup__step-value">{sessionDetails.tosna.dosePerAdditionGrams} g</strong>
+                    </li>
+                    <li className="brew-session-setup__schedule-item">
+                      <span>{t('Addition 4')} ({t('1/3 Sugar Break')}):</span>
+                      <strong className="brew-session-setup__step-value">{sessionDetails.tosna.dosePerAdditionGrams} g</strong>
+                      <span className="brew-session-setup__step-hint">
+                        {t('Target SG for final addition')}: {calculateOneThirdSugarBreak(sessionDetails.og).toFixed(3)}
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+              </>
             )}
           </div>
         </div>
