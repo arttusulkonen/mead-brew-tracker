@@ -3,10 +3,15 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "packages/*",
+    "ai-backend"
+  ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "build:functions": "npm --prefix ai-backend run build",
+    "build:math": "npm run build --workspace=@mead-tracker/math",
+    "build": "npm run build:math && tsc -b && vite build",
+    "build:functions": "npm run build:math && npm --prefix ai-backend run build",
     "preview": "vite preview",
     "i18n:extract": "npx i18next-parser --config i18next-parser.config.cjs \"src/**/*.{ts,tsx}\"",
     "i18n:translate": "npx tsx --env-file=.env scripts/auto-translate.ts",
@@ -25,6 +30,7 @@
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.37.0",
+    "@mead-tracker/math": "*",
     "date-fns": "^4.4.0",
     "firebase": "^12.14.0",
     "genkit": "^1.36.0",

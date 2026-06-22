@@ -1,3 +1,4 @@
+import { calculateAbvCrouch } from '@mead-tracker/math';
 import { doc, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +9,6 @@ import { db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useSessionStore } from '../store/useSessionStore';
 import type { BrewLog } from '../types/session';
-import { calculateAbvCrouch } from '../utils/calculations';
 
 const BrewSession: React.FC = () => {
   const { id } = useParams<{ id: string }>();
