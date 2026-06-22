@@ -15,7 +15,7 @@
     "logs": "firebase functions:log"
   },
   "dependencies": {
-    "@mead-tracker/math": "*",
+    "@mead-tracker/math": "file:../packages/math",
     "@genkit-ai/ai": "^1.37.0",
     "@genkit-ai/core": "^1.37.0",
     "@genkit-ai/google-genai": "^1.37.0",

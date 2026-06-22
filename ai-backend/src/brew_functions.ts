@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase-admin/app";
-import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import { getFirestore } from "firebase-admin/firestore";
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { z } from "genkit";
@@ -48,7 +48,7 @@ export const aggregateRecipeStats = onDocumentUpdated(
           totalBrews: newTotalBrews,
           totalVolumeLiters: newTotalVolume,
           averageAbv: newAverageAbv,
-          updatedAt: FieldValue.serverTimestamp()
+          updatedAt: new Date().toISOString()
         });
 
         transaction.update(sessionRef, {
@@ -56,7 +56,6 @@ export const aggregateRecipeStats = onDocumentUpdated(
         });
       });
     } catch (error) {
-      console.error(error);
       throw new Error("Aggregation failed");
     }
   }
@@ -67,7 +66,7 @@ const SplitBatchSchema = z.object({
   parentSessionId: z.string(),
   splits: z.array(z.object({
     volumeLiters: z.number().positive(),
-    namePostfix: z.string()
+    namePostfix: z.string().trim().min(1)
   }))
 });
 
@@ -125,7 +124,7 @@ export const splitBatch = onCall(async (request) => {
         throw new HttpsError("internal", "Parent data is empty");
       }
 
-      if (parentData.status === "split") {
+      if (parentData.isSplit === true) {
         throw new HttpsError("failed-precondition", "Session is already split");
       }
       
@@ -138,10 +137,12 @@ export const splitBatch = onCall(async (request) => {
 
       const splitTimestamp = new Date().toISOString();
 
+      const { logs, ...restParentData } = parentData;
+
       transaction.update(parentSessionRef, {
-        status: "split",
+        isSplit: true,
         batchSizeLiters: 0,
-        updatedAt: FieldValue.serverTimestamp()
+        updatedAt: splitTimestamp
       });
 
       for (const split of splits) {
@@ -149,16 +150,16 @@ export const splitBatch = onCall(async (request) => {
 
         const childRef = db.collection(`breweries/${breweryId}/brew_sessions`).doc();
         const childData = {
-          ...parentData,
+          ...restParentData, 
           id: childRef.id,
           recipeName: `${parentData.recipeName} - ${split.namePostfix}`,
           batchSizeLiters: split.volumeLiters,
           parentSessionId: parentSessionId,
           splitTimestamp: splitTimestamp,
-          logs: [],
-          createdAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp(),
-          isAggregated: false
+          createdAt: splitTimestamp,
+          updatedAt: splitTimestamp,
+          isAggregated: false,
+          isSplit: false
         };
 
         transaction.set(childRef, childData);
@@ -170,7 +171,6 @@ export const splitBatch = onCall(async (request) => {
     if (error instanceof HttpsError) {
       throw error;
     }
-    console.error(error);
     throw new HttpsError("internal", "Split batch failed");
   }
 });

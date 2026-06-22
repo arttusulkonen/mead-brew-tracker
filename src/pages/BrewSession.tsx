@@ -1,9 +1,10 @@
+// src/pages/BrewSession.tsx
 import { calculateAbvCrouch } from '@mead-tracker/math';
 import { doc, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaCheck, FaCommentDots, FaEdit, FaExclamationTriangle, FaGripLines, FaLock, FaPause, FaPlay, FaPlus, FaSave, FaTrash } from 'react-icons/fa';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { db } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
@@ -12,7 +13,7 @@ import type { BrewLog } from '../types/session';
 
 const BrewSession: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  
   const { t } = useTranslation();
   const { activeBreweryId } = useBreweryStore();
   const { currentSession, fetchSessionById, clearCurrentSession, isLoading, addLogToSession, updateSessionStatus } = useSessionStore();
@@ -592,7 +593,7 @@ const BrewSession: React.FC = () => {
                     className={`timeline__item ${isActive ? 'timeline__item--active' : ''} ${isCompleted ? 'timeline__item--completed' : ''}`}
                     draggable={!editingStepId}
                     onDragStart={() => handleDragStart(index)}
-                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragOver={(e) => handleDragOver(e)}
                     onDrop={() => handleDrop(index)}
                   >
                     <div className="timeline__drag-handle">
