@@ -8,6 +8,8 @@
     "ai-backend"
   ],
   "scripts": {
+    "prepare": "npm run build:math",
+    "predev": "npm run build:math",
     "dev": "vite",
     "build:math": "npm run build --workspace=@mead-tracker/math",
     "build": "npm run build:math && tsc -b && vite build",

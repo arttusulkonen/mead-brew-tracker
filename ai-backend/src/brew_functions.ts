@@ -1,8 +1,10 @@
+import { initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { z } from "genkit";
 
+initializeApp();
 const db = getFirestore();
 
 export const aggregateRecipeStats = onDocumentUpdated(
@@ -54,6 +56,7 @@ export const aggregateRecipeStats = onDocumentUpdated(
         });
       });
     } catch (error) {
+      console.error(error);
       throw new Error("Aggregation failed");
     }
   }
@@ -88,10 +91,30 @@ export const splitBatch = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "Missing required fields");
   }
 
+  const breweryRef = db.collection("breweries").doc(breweryId);
   const parentSessionRef = db.collection(`breweries/${breweryId}/brew_sessions`).doc(parentSessionId);
 
   try {
     await db.runTransaction(async (transaction) => {
+      const breweryDoc = await transaction.get(breweryRef);
+      if (!breweryDoc || !breweryDoc.exists) {
+        throw new HttpsError("not-found", "Brewery not found");
+      }
+
+      const breweryData = breweryDoc.data();
+      const uid = request.auth?.uid;
+      
+      if (!uid) {
+        throw new HttpsError("unauthenticated", "Unauthenticated");
+      }
+
+      const isOwner = breweryData?.ownerId === uid;
+      const isMember = Array.isArray(breweryData?.members) && breweryData.members.includes(uid);
+
+      if (!isOwner && !isMember) {
+        throw new HttpsError("permission-denied", "Unauthorized access to this brewery");
+      }
+
       const parentDoc = await transaction.get(parentSessionRef);
       if (!parentDoc || !parentDoc.exists) {
         throw new HttpsError("not-found", "Parent session not found");
@@ -104,6 +127,13 @@ export const splitBatch = onCall(async (request) => {
 
       if (parentData.status === "split") {
         throw new HttpsError("failed-precondition", "Session is already split");
+      }
+      
+      const parentBatchSize = typeof parentData.batchSizeLiters === "number" ? parentData.batchSizeLiters : 0;
+      const totalSplitVolume = splits.reduce((sum, split) => sum + (typeof split.volumeLiters === "number" ? split.volumeLiters : 0), 0);
+
+      if (totalSplitVolume > parentBatchSize) {
+        throw new HttpsError("invalid-argument", "Total split volume exceeds parent batch size");
       }
 
       const splitTimestamp = new Date().toISOString();
@@ -137,6 +167,10 @@ export const splitBatch = onCall(async (request) => {
 
     return { status: "success" };
   } catch (error) {
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    console.error(error);
     throw new HttpsError("internal", "Split batch failed");
   }
 });
