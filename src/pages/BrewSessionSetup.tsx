@@ -1,3 +1,5 @@
+// src/pages/BrewSessionSetup.tsx
+import { calculateAbvCrouch, calculateOneThirdSugarBreak, calculateTosna, estimateOG } from '@mead-tracker/math';
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +11,6 @@ import { useInventoryStore } from '../store/useInventoryStore';
 import { useRecipeStore } from '../store/useRecipeStore';
 import type { BaseIngredient, HoneyIngredient, YeastIngredient } from '../types/ingredient';
 import type { BrewSession } from '../types/session';
-import { calculateAbvCrouch, calculateOneThirdSugarBreak, calculateTosna, estimateOG } from '../utils/calculations';
 import { MEAD_STYLES } from '../utils/meadConstants';
 
 const BrewSessionSetup: React.FC = () => {

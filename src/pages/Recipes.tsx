@@ -1,3 +1,4 @@
+import { calculateAbvCrouch, calculateTosna, estimateOG } from '@mead-tracker/math';
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -9,7 +10,6 @@ import { useBreweryStore } from '../store/useBreweryStore';
 import { useRecipeStore } from '../store/useRecipeStore';
 import type { BaseIngredient, HoneyIngredient, IngredientCategory, YeastIngredient } from '../types/ingredient';
 import type { MeadStyleTarget, Recipe, StepPhase, TimeUnit } from '../types/recipe';
-import { calculateAbvCrouch, calculateTosna, estimateOG } from '../utils/calculations';
 import { HONEY_TERROIR, MEAD_STYLES, SWEETNESS_LEVELS } from '../utils/meadConstants';
 
 interface RecipeIngredientEntry {

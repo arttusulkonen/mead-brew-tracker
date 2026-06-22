@@ -34,7 +34,7 @@ const RequestDataSchema = z.object({
   batchSizeLiters: z.number().positive(),
   targetFg: z.number().positive(),
   ingredients: z.array(z.object({
-    ingredientId: z.string(), 
+    ingredientId: z.string(),
     globalIngredientId: z.string().optional(),
     name: z.string(),
     category: z.string(),
@@ -110,3 +110,5 @@ export const generateRecipeAI = onCall(
     }
   }
 );
+
+export { aggregateRecipeStats, splitBatch } from "./brew_functions";

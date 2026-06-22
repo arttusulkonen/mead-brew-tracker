@@ -38,8 +38,7 @@ export interface BrewSession {
   batchSizeLiters: number;
   targetOg: number;
   actualOg?: number | null;
-  targetFg: number;
-  
+  targetFg: number;  
   pitchTimestamp?: string | null;
   tosnaSchedule?: TosnaSchedule | null;
   

@@ -1,3 +1,4 @@
+import { calculateOneThirdSugarBreak, calculateTosna } from '@mead-tracker/math';
 import { collection, getDocs } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -6,7 +7,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { db } from '../firebase/config';
 import { useRecipeStore } from '../store/useRecipeStore';
 import type { BaseIngredient, YeastIngredient } from '../types/ingredient';
-import { calculateOneThirdSugarBreak, calculateTosna } from '../utils/calculations';
 
 const RecipeDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
