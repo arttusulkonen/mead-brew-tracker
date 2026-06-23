@@ -16,7 +16,6 @@ const Home: React.FC = () => {
   const [, setTick] = useState(0);
 
   useEffect(() => {
-    // Живой таймер для обновления интерфейса каждую секунду
     const interval = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(interval);
   }, []);
@@ -28,8 +27,8 @@ const Home: React.FC = () => {
     }
   }, [activeBreweryId, fetchRecipes, fetchSessions]);
 
-  const recentRecipes = recipes.slice(0, 3);
-  const activeSessions = sessions.filter(s => ['planned', 'fermenting', 'aging'].includes(s.status));
+  const recentRecipes = (recipes || []).slice(0, 3);
+  const activeSessions = (sessions || []).filter(s => ['planned', 'fermenting', 'aging'].includes(s.status));
 
   const getStepDuration = (step: any) => {
     let total = step.accumulatedSeconds || 0;
