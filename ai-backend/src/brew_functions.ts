@@ -181,7 +181,10 @@ const StartSessionSchema = z.object({
   batchSizeLiters: z.number().positive(),
   targetOg: z.number().nullable().optional(),
   targetFg: z.number().nullable().optional(),
-  sessionIngredients: z.array(z.record(z.any())),
+  sessionIngredients: z.array(z.object({
+    globalIngredientId: z.string().min(1),
+    quantity: z.number().positive()
+  }).passthrough()),
   sessionSteps: z.array(z.record(z.any()))
 });
 
@@ -230,7 +233,7 @@ export const startBrewSession = onCall(async (request) => {
       }
 
       for (const ingredient of sessionIngredients) {
-        if (!ingredient || !ingredient.globalIngredientId || typeof ingredient.quantity !== "number") continue;
+        if (!ingredient || !ingredient.globalIngredientId || typeof ingredient.quantity !== "number" || ingredient.quantity <= 0) continue;
         
         const inventoryRef = db.collection(`breweries/${breweryId}/inventory`).doc(ingredient.globalIngredientId);
         const inventoryDoc = await transaction.get(inventoryRef);
@@ -258,6 +261,7 @@ export const startBrewSession = onCall(async (request) => {
         targetFg: typeof targetFg === "number" ? targetFg : null,
         sessionIngredients: sessionIngredients,
         sessionSteps: sessionSteps,
+        logs: [],
         createdAt: now,
         updatedAt: now,
         createdBy: uid,

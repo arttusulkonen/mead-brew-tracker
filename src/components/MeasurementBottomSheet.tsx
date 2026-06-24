@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaSave, FaTimes } from 'react-icons/fa';
+import { ACTION_CHIPS } from '../utils/meadConstants';
 
 interface MeasurementBottomSheetProps {
   isOpen: boolean;
@@ -8,8 +9,6 @@ interface MeasurementBottomSheetProps {
   onSubmit: (data: { sg: number | null; ph: number | null; tempC: number | null; actionTaken: string; notes: string }) => Promise<void>;
   activeStepTitle?: string;
 }
-
-const ACTION_CHIPS = ['TOSNA_ADDITION', 'DEGASSING', 'AERATION', 'COLD_CRASH', 'RACKING', 'BOTTLING'];
 
 export const MeasurementBottomSheet: React.FC<MeasurementBottomSheetProps> = ({ 
   isOpen, 
@@ -57,8 +56,8 @@ export const MeasurementBottomSheet: React.FC<MeasurementBottomSheetProps> = ({
     }
   };
 
-  const handleChipClick = (chip: string) => {
-    setActionInput(prev => prev === chip ? '' : chip);
+  const handleChipClick = (chipId: string) => {
+    setActionInput(prev => prev === chipId ? '' : chipId);
   };
 
   const isValid = Boolean(sgInput || phInput || tempInput || actionInput || notesInput);
@@ -133,13 +132,13 @@ export const MeasurementBottomSheet: React.FC<MeasurementBottomSheetProps> = ({
             <div className="bottom-sheet__chips">
               {ACTION_CHIPS.map(chip => (
                 <button
-                  key={chip}
+                  key={chip.id}
                   type="button"
-                  className={`bottom-sheet__chip ${actionInput === chip ? 'bottom-sheet__chip--active' : ''}`}
-                  onClick={() => handleChipClick(chip)}
+                  className={`bottom-sheet__chip ${actionInput === chip.id ? 'bottom-sheet__chip--active' : ''}`}
+                  onClick={() => handleChipClick(chip.id)}
                   disabled={isSubmitting}
                 >
-                  {t(chip)}
+                  {t(chip.name)}
                 </button>
               ))}
             </div>

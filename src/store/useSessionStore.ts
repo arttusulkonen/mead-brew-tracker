@@ -1,4 +1,5 @@
-import { collection, doc, getDoc, getDocs, updateDoc } from 'firebase/firestore';
+import { calculateOneThirdSugarBreak } from '@mead-tracker/math';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { create } from 'zustand';
 import { db } from '../firebase/config';
@@ -27,7 +28,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   error: null,
 
   fetchSessions: async (breweryId) => {
-    if (!db || !breweryId) return;
+    if (!db || !breweryId) {
+      set({ sessions: [], isLoading: false, error: null });
+      return;
+    }
     
     set({ isLoading: true, error: null });
     try {
@@ -43,7 +47,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   fetchSessionById: async (breweryId, sessionId) => {
-    if (!db || !breweryId || !sessionId) return;
+    if (!db || !breweryId || !sessionId) {
+      set({ currentSession: null, isLoading: false, error: null });
+      return;
+    }
     
     set({ isLoading: true, error: null });
     try {
@@ -51,7 +58,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const sessionSnap = await getDoc(sessionRef);
       
       if (sessionSnap.exists()) {
-        set({ currentSession: { ...sessionSnap.data(), id: sessionSnap.id } as BrewSession });
+        const data = sessionSnap.data();
+        let logs = data.logs || [];
+        
+        if (!data.logs) {
+          const logsRef = collection(db, `breweries/${breweryId}/brew_sessions/${sessionId}/fermentation_logs`);
+          const logsSnap = await getDocs(logsRef);
+          logs = logsSnap.docs.map(l => l.data() as BrewLog);
+        }
+        
+        set({ currentSession: { ...data, id: sessionSnap.id, logs } as BrewSession });
       } else {
         set({ currentSession: null, error: 'Session not found' });
       }
@@ -70,7 +86,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const functions = getFunctions();
-      const startBrewSessionFn = httpsCallable<{ payload: Record<string, any> }, { status: string, sessionId: string }>(functions, 'startBrewSession');
+      const startBrewSessionFn = httpsCallable<Record<string, any>, { status: string, sessionId: string }>(functions, 'startBrewSession');
       
       const response = await startBrewSessionFn(payload);
       
@@ -78,6 +94,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         set({ isLoading: false });
         return response.data.sessionId;
       }
+      
+      set({ isLoading: false });
       return null;
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'Failed to start session', isLoading: false });
@@ -117,6 +135,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       updateData.actualOg = actualOg;
     }
 
+    if (newStatus === 'fermenting' && currentSession?.status === 'planned') {
+      updateData.pitchTimestamp = new Date().toISOString();
+    } else if (newStatus === 'completed') {
+      updateData.completedDate = new Date().toISOString();
+    }
+
     if (currentSession) {
       set({ currentSession: { ...currentSession, ...updateData } });
     }
@@ -133,22 +157,42 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (!db || !breweryId || !sessionId) return;
 
     const { currentSession } = get();
-    let updatedLogs = [newLog];
+    const updatedLogs = [...(currentSession?.logs || []), newLog];
     
-    if (currentSession?.logs && Array.isArray(currentSession.logs)) {
-      updatedLogs = [...currentSession.logs, newLog];
+    let updatedTosna = currentSession?.tosnaSchedule;
+    const usedOg = currentSession?.actualOg || currentSession?.targetOg;
+
+    if (usedOg && newLog.sg !== null && updatedTosna && !updatedTosna.isCompressed) {
+      const sugarBreak = calculateOneThirdSugarBreak(usedOg);
+      if (newLog.sg <= sugarBreak) {
+        updatedTosna = { ...updatedTosna, isCompressed: true };
+      }
     }
 
     if (currentSession) {
-      set({ currentSession: { ...currentSession, logs: updatedLogs } });
+      set({ 
+        currentSession: { 
+          ...currentSession, 
+          logs: updatedLogs,
+          tosnaSchedule: updatedTosna
+        } 
+      });
     }
 
     try {
+      const logRef = doc(collection(db, `breweries/${breweryId}/brew_sessions/${sessionId}/fermentation_logs`), newLog.id);
+      await setDoc(logRef, newLog);
+
       const sessionRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
-      await updateDoc(sessionRef, { 
-        logs: updatedLogs,
+      const updatePayload: Record<string, any> = {
         updatedAt: new Date().toISOString()
-      });
+      };
+
+      if (updatedTosna && currentSession?.tosnaSchedule?.isCompressed !== updatedTosna.isCompressed) {
+        updatePayload.tosnaSchedule = updatedTosna;
+      }
+
+      await updateDoc(sessionRef, updatePayload);
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'Failed to add log' });
     }
@@ -182,7 +226,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const functions = getFunctions();
-      const splitBatchFn = httpsCallable<{ payload: Record<string, any> }, { status: string }>(functions, 'splitBatch');
+      const splitBatchFn = httpsCallable<Record<string, any>, { status: string }>(functions, 'splitBatch');
       
       await splitBatchFn(payload);
     } catch (err) {

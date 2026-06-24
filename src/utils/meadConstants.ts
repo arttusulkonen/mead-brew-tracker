@@ -34,3 +34,12 @@ export const ADDITIVE_ROLES = [
   { id: 'woods', name: 'constants.additives.woods', stage: 'Aging' },
   { id: 'acids', name: 'constants.additives.acids', stage: 'Bottling' }
 ];
+
+export const ACTION_CHIPS = [
+  { id: 'TOSNA_ADDITION', name: 'constants.actions.tosna' },
+  { id: 'DEGASSING', name: 'constants.actions.degassing' },
+  { id: 'AERATION', name: 'constants.actions.aeration' },
+  { id: 'COLD_CRASH', name: 'constants.actions.cold_crash' },
+  { id: 'RACKING', name: 'constants.actions.racking' },
+  { id: 'BOTTLING', name: 'constants.actions.bottling' }
+];

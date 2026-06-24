@@ -1,4 +1,4 @@
-@keyframes slideUp {
+@keyframes slide-up {
   from {
     transform: translateY(100%);
   }
@@ -8,7 +8,7 @@
   }
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from {
     opacity: 0;
   }
@@ -25,7 +25,7 @@
   display: flex;
   align-items: flex-end;
   background: rgb(0 0 0 / 60%);
-  animation: fadeIn 0.2s ease-out;
+  animation: fade-in 0.2s ease-out;
 }
 
 .bottom-sheet {
@@ -40,7 +40,7 @@
   border-top-left-radius: 24px;
   border-top-right-radius: 24px;
   box-shadow: 0 -4px 20px rgb(0 0 0 / 15%);
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 
   &__header {
     display: flex;

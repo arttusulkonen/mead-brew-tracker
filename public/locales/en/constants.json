@@ -12,5 +12,11 @@
   "constants.honey.acacia": "Acacia",
   "constants.honey.heather": "Heather",
   "constants.honey.buckwheat": "Buckwheat",
-  "constants.honey.wildflower": "Wildflower"
+  "constants.honey.wildflower": "Wildflower",
+  "constants.actions.tosna": "TOSNA Addition",
+  "constants.actions.degassing": "Degassing",
+  "constants.actions.aeration": "Aeration",
+  "constants.actions.cold_crash": "Cold Crash",
+  "constants.actions.racking": "Racking",
+  "constants.actions.bottling": "Bottling"
 }

@@ -21,3 +21,21 @@ $border-radius-sm: 4px;
 $border-radius-md: 8px;
 $box-shadow-base: 0 4px 12px rgb(0 0 0 / 10%);
 $box-shadow-hover: 0 6px 16px rgb(0 0 0 / 15%);
+
+:root {
+  --color-primary: #{$color-primary};
+  --color-primary-dark: #{$color-primary-hover};
+  --color-primary-rgb: 0, 123, 255;
+  --color-success: #28a745;
+  --color-warning: #f39c12;
+  --color-error: #{$color-danger};
+  --bg-main: #{$color-bg};
+  --bg-surface: #{$color-surface};
+  --bg-surface-alt: #eef2f5;
+  --bg-input: #{$color-surface};
+  --bg-hover: #e2e6ea;
+  --text-primary: #{$color-text-main};
+  --text-secondary: #{$color-text-muted};
+  --text-disabled: #999;
+  --border-color: #{$color-border};
+}

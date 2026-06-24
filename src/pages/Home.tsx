@@ -28,7 +28,7 @@ const Home: React.FC = () => {
   }, [activeBreweryId, fetchRecipes, fetchSessions]);
 
   const recentRecipes = (recipes || []).slice(0, 3);
-  const activeSessions = (sessions || []).filter(s => ['planned', 'fermenting', 'aging'].includes(s.status));
+  const activeSessions = (sessions || []).filter(s => ['planned', 'fermenting', 'aging'].includes(s?.status || ''));
 
   const getStepDuration = (step: any) => {
     let total = step.accumulatedSeconds || 0;

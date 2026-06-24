@@ -51,4 +51,9 @@ export interface BrewSession {
   createdAt: string;
   updatedAt: string;
   createdBy: string;
+
+  isSplit?: boolean;
+  parentSessionId?: string | null;
+  splitTimestamp?: string | null;
+  isAggregated?: boolean;
 }

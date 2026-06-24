@@ -21,6 +21,12 @@ export interface RecipeStep {
   durationValue: number;
   durationUnit: TimeUnit;
   targetTempC: number | null;
+  
+  isActive?: boolean;
+  isCompleted?: boolean;
+  startedAt?: string | null;
+  accumulatedSeconds?: number;
+  actualDurationSeconds?: number;
 }
 
 export interface IdealTargetCurves {
