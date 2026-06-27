@@ -71,7 +71,7 @@ async function translateMissing() {
       try {
         const response = await ai.generate({
           prompt: `You are an expert translator specializing in brewing, mead-making, and fermentation terminology. Translate the 'textToTranslate' fields from English to ${localeNames[locale]}. 
-          Context: A web application for homebrewing and mead-making (Mead & Brew Tracker).
+          Context: A web application for homebrewing and mead-making (Ingria Brewcraft).
           
           CRITICAL RULES:
           1. You MUST return exactly ${batchKeys.length} items in the array.

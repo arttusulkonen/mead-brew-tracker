@@ -1,6 +1,11 @@
-import type { MeadStyleTarget, RecipeIngredientReference, RecipeStep } from './recipe';
+/*
+ * File: src/types/session.ts
+ * Description: Data models for tracking active and historical brew sessions.
+ */
 
-export type BrewSessionStage = 'planned' | 'fermenting' | 'aging' | 'completed';
+import type { BeverageType, RecipeIngredientReference, RecipeStep } from './recipe';
+
+export type BrewSessionStage = 'planned' | 'mashing' | 'boiling' | 'fermenting' | 'aging' | 'completed';
 
 export interface BrewLog {
   id: string;
@@ -33,8 +38,9 @@ export interface BrewSession {
   recipeId: string | null;
   breweryId: string;
   recipeName: string;
+  beverageType: BeverageType;
   status: BrewSessionStage;
-  targetStyle?: MeadStyleTarget;
+  targetStyle?: string;
   batchSizeLiters: number;
   targetOg: number;
   actualOg?: number | null;

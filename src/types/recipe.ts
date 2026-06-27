@@ -1,4 +1,11 @@
+/*
+ * File: src/types/recipe.ts
+ * Description: Data models for recipes, steps, and beverage styles.
+ */
+
 import type { IngredientCategory } from './ingredient';
+
+export type BeverageType = 'Beer' | 'Mead' | 'Cider' | 'Other';
 
 export interface RecipeIngredientReference {
   id: string;
@@ -9,7 +16,7 @@ export interface RecipeIngredientReference {
   note: string;
 }
 
-export type StepPhase = 'Preparation' | 'Fermentation' | 'Aging';
+export type StepPhase = 'Preparation' | 'Mashing' | 'Boiling' | 'Fermentation' | 'Aging' | 'Packaging';
 export type TimeUnit = 'minutes' | 'days';
 
 export interface RecipeStep {
@@ -41,17 +48,18 @@ export interface IdealTargetCurves {
   };
 }
 
-export type MeadStyleTarget = 'Session (4-6%)' | 'Standard (7-10%)' | 'Wine/Sack (11%+)' | 'Custom';
-
 export interface Recipe {
   id: string;
   breweryId: string;
   name: string;
-  targetStyle: MeadStyleTarget;
+  beverageType: BeverageType;
+  targetStyle: string;
   expectedBatchSizeLiters: number;
   targetOriginalGravity: number;
   targetFinalGravity: number;
   targetAbv: number;
+  targetIbu?: number;
+  targetColorEbc?: number;
   ingredients: RecipeIngredientReference[];
   steps: RecipeStep[];
   targetCurves?: IdealTargetCurves;

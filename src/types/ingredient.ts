@@ -1,4 +1,10 @@
-export const INGREDIENT_CATEGORIES = ['Honey', 'Yeast', 'Hops', 'Water Profile', 'Additive'] as const;
+/*
+ * File: src/types/ingredient.ts
+ * Description: Type definitions for global and workspace ingredients.
+ * Supports multi-beverage types including Beer, Mead, and Cider.
+ */
+
+export const INGREDIENT_CATEGORIES = ['Fermentable', 'Yeast', 'Hops', 'Water Profile', 'Additive'] as const;
 export type IngredientCategory = typeof INGREDIENT_CATEGORIES[number];
 
 export const UNIT_TYPES = ['g', 'kg', 'L', 'ml', 'oz', 'lb', 'gal', 'ppm', 'unit'] as const;
@@ -17,23 +23,30 @@ export interface BaseIngredient {
   createdBy?: string;
 }
 
-export interface HoneyIngredient extends BaseIngredient {
-  category: 'Honey';
-  sugarContentBrix: number;
-  moistureContentPct: number;
+export interface FermentableIngredient extends BaseIngredient {
+  category: 'Fermentable';
+  type: 'Grain' | 'Extract' | 'Sugar' | 'Honey' | 'Fruit';
+  yieldPpg: number;
+  colorEbc: number;
+  moistureContentPct?: number;
+  diastaticPowerLintner?: number;
+  isMashed: boolean;
 }
 
 export interface YeastIngredient extends BaseIngredient {
   category: 'Yeast';
+  form: 'Liquid' | 'Dry';
   tempMinC: number;
   tempMaxC: number;
   alcoholTolerancePct: number;
+  attenuationPct: number;
   nitrogenDemand: 'Low' | 'Medium' | 'High' | 'Very High';
 }
 
 export interface HopsIngredient extends BaseIngredient {
   category: 'Hops';
   alphaAcidPct: number;
+  form: 'Pellet' | 'Whole' | 'Extract';
 }
 
 export interface WaterProfileIngredient extends BaseIngredient {
@@ -55,7 +68,7 @@ export interface AdditiveIngredient extends BaseIngredient {
 }
 
 export type IngredientUnion =
-  | HoneyIngredient
+  | FermentableIngredient
   | YeastIngredient
   | HopsIngredient
   | WaterProfileIngredient

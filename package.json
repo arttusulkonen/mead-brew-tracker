@@ -33,6 +33,7 @@
   "dependencies": {
     "@genkit-ai/google-genai": "^1.37.0",
     "@mead-tracker/math": "file:packages/math",
+    "@supabase/supabase-js": "^2.108.2",
     "date-fns": "^4.4.0",
     "firebase": "^12.14.0",
     "genkit": "^1.36.0",

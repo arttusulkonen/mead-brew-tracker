@@ -1,4 +1,4 @@
-### 📁 TODO.md — Mead & Brew Tracker PWA
+### 📁 TODO.md — Ingria Brewcraft PWA
 
 #### 🏗️ Этап 1: Инициализация проекта и Базовая настройка
 

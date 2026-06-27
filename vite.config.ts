@@ -8,7 +8,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Mead & Brew Tracker',
+        name: 'Ingria Brewcraft',
         short_name: 'MeadTracker',
         description: 'Professional mead and brew management',
         theme_color: '#ffffff',

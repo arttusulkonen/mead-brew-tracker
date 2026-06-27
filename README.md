@@ -1,4 +1,4 @@
-# 🍯 Mead & Brew Tracker PWA
+# 🍯 Ingria Brewcraft PWA
 
 **Production-Grade System Architecture & Technical Specification**
 
