@@ -1,3 +1,4 @@
+// src/components/MeasurementBottomSheet.tsx
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaSave, FaTimes } from 'react-icons/fa';
@@ -56,8 +57,8 @@ export const MeasurementBottomSheet: React.FC<MeasurementBottomSheetProps> = ({
     }
   };
 
-  const handleChipClick = (chipId: string) => {
-    setActionInput(prev => prev === chipId ? '' : chipId);
+  const handleChipClick = (chipName: string) => {
+    setActionInput(prev => prev === chipName ? '' : chipName);
   };
 
   const isValid = Boolean(sgInput || phInput || tempInput || actionInput || notesInput);
@@ -134,8 +135,8 @@ export const MeasurementBottomSheet: React.FC<MeasurementBottomSheetProps> = ({
                 <button
                   key={chip.id}
                   type="button"
-                  className={`bottom-sheet__chip ${actionInput === chip.id ? 'bottom-sheet__chip--active' : ''}`}
-                  onClick={() => handleChipClick(chip.id)}
+                  className={`bottom-sheet__chip ${actionInput === chip.name ? 'bottom-sheet__chip--active' : ''}`}
+                  onClick={() => handleChipClick(chip.name)}
                   disabled={isSubmitting}
                 >
                   {t(chip.name)}

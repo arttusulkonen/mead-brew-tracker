@@ -1,3 +1,4 @@
+// ai-backend/src/brew_functions.ts
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
@@ -240,6 +241,10 @@ export const startBrewSession = onCall(async (request) => {
         
         const currentData = inventoryDoc.data();
         const currentQty = inventoryDoc.exists && typeof currentData?.quantity === "number" ? currentData.quantity : 0;
+        
+        if (currentQty < ingredient.quantity) {
+          throw new HttpsError("failed-precondition", `Insufficient inventory for ingredient ${ingredient.globalIngredientId}. Required: ${ingredient.quantity}, Available: ${currentQty}`);
+        }
         
         transaction.set(inventoryRef, {
           quantity: currentQty - ingredient.quantity,

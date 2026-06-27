@@ -1,3 +1,4 @@
+// src/store/useSessionStore.ts
 import { calculateOneThirdSugarBreak } from '@mead-tracker/math';
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -38,6 +39,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const sessionsRef = collection(db, `breweries/${breweryId}/brew_sessions`);
       const snapshot = await getDocs(sessionsRef);
       const fetchedSessions = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as BrewSession));
+      
+      fetchedSessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
       set({ sessions: fetchedSessions });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'Unknown error' });

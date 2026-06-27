@@ -1,3 +1,4 @@
+// src/pages/BrewSession.tsx
 import { calculateAbvCrouch } from '@mead-tracker/math';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -6,7 +7,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ActiveTimer } from '../components/ActiveTimer';
 import { MeasurementBottomSheet } from '../components/MeasurementBottomSheet';
-import { SplitBatchModal } from '../components/SplitBatchModal.tsx';
+import { SplitBatchModal } from '../components/SplitBatchModal';
 import { TimelineWidget } from '../components/TimelineWidget';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useSessionStore } from '../store/useSessionStore';
@@ -111,7 +112,6 @@ const BrewSession: React.FC = () => {
 
   return (
     <div className="brew-session">
-      {/* Модалка стартовой плотности */}
       {showOgModal && (
         <div className="og-modal">
           <div className="og-modal__content">
@@ -130,7 +130,6 @@ const BrewSession: React.FC = () => {
         </div>
       )}
 
-      {/* Модалка разделения партии */}
       {showSplitModal && currentSession && (
         <SplitBatchModal 
           currentVolume={currentSession.batchSizeLiters}
@@ -139,7 +138,6 @@ const BrewSession: React.FC = () => {
         />
       )}
 
-      {/* Шторка быстрых замеров (Вызывается через FAB) */}
       <MeasurementBottomSheet 
         isOpen={isBottomSheetOpen}
         onClose={() => setIsBottomSheetOpen(false)}
@@ -147,7 +145,6 @@ const BrewSession: React.FC = () => {
         activeStepTitle={activeStep?.title}
       />
 
-      {/* Плавающая кнопка (FAB) */}
       {currentSession.status !== 'completed' && !currentSession.isSplit && (
         <button 
           className="fab-button" 
@@ -162,7 +159,7 @@ const BrewSession: React.FC = () => {
         <div className="brew-session__info">
           <h1 className="brew-session__title">
             {currentSession.recipeName}
-            {currentSession.isSplit && <span className="brew-session__split-badge">{t('Split')}</span>}
+            {currentSession.isSplit && <span className="brew-session__split-badge">{t('constants.actions.split')}</span>}
           </h1>
           <div className="brew-session__tags">
             <span className="brew-session__badge" data-status={currentSession.status}>
@@ -171,11 +168,10 @@ const BrewSession: React.FC = () => {
           </div>
         </div>
         
-        {/* State Machine Actions */}
         <div className="brew-session__actions">
           {canSplit && (
             <button className="btn-secondary" onClick={() => setShowSplitModal(true)}>
-              <FaCodeBranch /> {t('Split Batch')}
+              <FaCodeBranch /> {t('constants.actions.split_batch')}
             </button>
           )}
 
@@ -199,14 +195,13 @@ const BrewSession: React.FC = () => {
 
       <div className="brew-session__grid">
         <div className="brew-session__col-main">
-          {/* Таймлайн */}
           <TimelineWidget 
             breweryId={activeBreweryId} 
             sessionId={currentSession.id} 
             steps={steps} 
             startDate={currentSession.startDate} 
           />
-          {/* График брожения */}
+          
           <div className="brew-session__card session-chart">
             <h3 className="brew-session__card-title">{t('Fermentation Chart')}</h3>
             {chartData.length === 0 ? (
@@ -227,7 +222,6 @@ const BrewSession: React.FC = () => {
             )}
           </div>
 
-          {/* Журнал логов */}
           <div className="brew-session__card session-logs">
             <h3 className="brew-session__card-title">{t('Session Logs')}</h3>
             <div className="session-logs__list">
@@ -245,7 +239,7 @@ const BrewSession: React.FC = () => {
                       {log.ph !== null && <div><strong>pH:</strong> {log.ph.toFixed(2)}</div>}
                       {log.tempC !== null && <div><strong>{t('Temp')}:</strong> {log.tempC}°C</div>}
                     </div>
-                    {log.actionTaken && <div className="session-logs__action"><strong>{t('Action')}:</strong> {log.actionTaken}</div>}
+                    {log.actionTaken && <div className="session-logs__action"><strong>{t('Action')}:</strong> {t(log.actionTaken)}</div>}
                     {log.notes && <div className="session-logs__notes">"{log.notes}"</div>}
                   </div>
                 ))
@@ -255,7 +249,6 @@ const BrewSession: React.FC = () => {
         </div>
 
         <div className="brew-session__col-side">
-          {/* Активный шаг (Десктоп) */}
           {activeStep && (
             <div className="brew-session__card active-step-card">
               <h3 className="brew-session__card-title">▶ {t('Active Step')}</h3>
@@ -269,7 +262,6 @@ const BrewSession: React.FC = () => {
             </div>
           )}
 
-          {/* Статистика */}
           <div className="brew-session__card target-stats">
             <h3 className="brew-session__card-title">{t('Session Metrics')}</h3>
             <div className="target-stats__list">
