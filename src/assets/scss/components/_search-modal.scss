@@ -1,0 +1,211 @@
+@use '../settings/variables' as *;
+
+.search-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgb(0 0 0 / 50%);
+  backdrop-filter: blur(4px);
+}
+
+.search-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  background-color: var(--bg-surface);
+  border-radius: $border-radius-md;
+  box-shadow: 0 10px 25px rgb(0 0 0 / 20%);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-md $spacing-lg;
+    border-bottom: 1px solid var(--border-color);
+
+    h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      color: var(--text-primary);
+    }
+  }
+
+  &__close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: var(--bg-hover);
+    }
+  }
+
+  &__filters {
+    padding: $spacing-md $spacing-lg;
+    background-color: var(--bg-surface-alt);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  &__search-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    input {
+      width: 100%;
+      padding: $spacing-sm $spacing-md $spacing-sm 40px;
+      font-family: inherit;
+      font-size: 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: $border-radius-sm;
+
+      &:focus {
+        border-color: var(--color-primary);
+        outline: none;
+      }
+    }
+  }
+
+  &__search-icon {
+    position: absolute;
+    left: 12px;
+    color: var(--text-secondary);
+  }
+
+  &__category-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+    margin-top: $spacing-md;
+  }
+
+  &__tab {
+    padding: 4px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    transition: all 0.2s;
+
+    &:hover {
+      background-color: var(--bg-hover);
+    }
+
+    &--active {
+      color: #fff;
+      background-color: var(--color-primary);
+      border-color: var(--color-primary);
+    }
+  }
+
+  &__body {
+    flex: 1;
+    padding: 0;
+    overflow-y: auto;
+  }
+
+  &__list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+
+  &__list-item {
+    padding: $spacing-md $spacing-lg;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: rgb(0 123 255 / 5%);
+    }
+  }
+
+  &__item-header {
+    display: flex;
+    gap: $spacing-sm;
+    align-items: center;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__badge {
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: #fff;
+    background-color: #64748b;
+    border-radius: $border-radius-sm;
+
+    &--fermentable { background-color: #d97706; }
+    &--hops { background-color: #16a34a; }
+    &--yeast { background-color: #2563eb; }
+  }
+
+  &__item-title {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+  }
+
+  &__item-category {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  &__meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: $spacing-sm;
+    margin-top: $spacing-sm;
+
+    &--tight {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  &__meta-item {
+    display: flex;
+    flex-direction: column;
+    
+    span {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    strong {
+      font-size: 0.9rem;
+      color: var(--text-primary);
+    }
+  }
+
+  &__item-desc {
+    margin: $spacing-sm 0 0 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+
+  &__empty {
+    padding: $spacing-xxl;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaCheck, FaCommentDots, FaEdit, FaGripLines, FaPause, FaPlay, FaPlus, FaSave, FaTrash } from 'react-icons/fa';
 import { useSessionStore } from '../store/useSessionStore';
+import type { StepPhase, TimeUnit } from '../types/recipe';
 import type { BrewLog } from '../types/session';
 import { ActiveTimer } from './ActiveTimer';
 
@@ -11,6 +12,9 @@ interface TimelineWidgetProps {
   steps: any[];
   startDate: string;
 }
+
+const VALID_PHASES: StepPhase[] = ['Preparation', 'Mashing', 'Boiling', 'Fermentation', 'Aging', 'Packaging'];
+const VALID_UNITS: TimeUnit[] = ['minutes', 'days'];
 
 export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessionId, steps, startDate }) => {
   const { t } = useTranslation();
@@ -92,11 +96,11 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
     const newStep = {
       id: newId,
       stepNumber: steps.length + 1,
-      phase: 'Preparation',
+      phase: 'Preparation' as StepPhase,
       title: '',
       description: '',
       durationValue: 0,
-      durationUnit: 'minutes',
+      durationUnit: 'minutes' as TimeUnit,
       targetTempC: null,
       isCompleted: false,
       isActive: false,
@@ -174,44 +178,85 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
   };
 
   return (
-    <div className="brew-session__card timeline-widget">
-      <div className="timeline__header">
-        <h3 className="timeline__title">{t('Brewing Timeline')}</h3>
-        <button type="button" className="btn-secondary timeline__btn-add" onClick={addManualStep} disabled={!!editingStepId}>
+    <div className="timeline-widget">
+      <div className="timeline-widget__header">
+        <h3 className="timeline-widget__title">{t('Brewing Timeline')}</h3>
+        <button type="button" className="timeline-widget__btn-add" onClick={addManualStep} disabled={!!editingStepId}>
           <FaPlus /> {t('Add Step')}
         </button>
       </div>
       
-      <div className="timeline__list">
+      <div className="timeline-widget__list">
         {isNewStep && editStepData && editingStepId === editStepData.id && (
-          <div className="timeline__item timeline__item--editing">
-             <div className="timeline__edit-form">
-                <input className="timeline__edit-input timeline__edit-input--title" type="text" value={editStepData.title} onChange={e => setEditStepData({...editStepData, title: e.target.value})} placeholder={t('Step Title')} />
-                <select className="timeline__edit-select" value={editStepData.phase} onChange={e => setEditStepData({...editStepData, phase: e.target.value})}>
-                  <option value="Preparation">{t('Preparation')}</option>
-                  <option value="Fermentation">{t('Fermentation')}</option>
-                  <option value="Aging">{t('Aging')}</option>
+          <div className="timeline-item timeline-item--editing">
+             <div className="timeline-edit-form">
+                <input 
+                  className="timeline-edit-form__input timeline-edit-form__input--title" 
+                  type="text" 
+                  value={editStepData.title} 
+                  onChange={e => setEditStepData({...editStepData, title: e.target.value})} 
+                  placeholder={t('Step Title')} 
+                />
+                <select 
+                  className="timeline-edit-form__select" 
+                  value={editStepData.phase} 
+                  onChange={e => setEditStepData({...editStepData, phase: e.target.value})}
+                >
+                  {VALID_PHASES.map(phase => (
+                    <option key={phase} value={phase}>
+                      {t(`constants.step_phases.${phase.toLowerCase()}`, phase)}
+                    </option>
+                  ))}
                 </select>
-                <textarea className="timeline__edit-textarea" value={editStepData.description} onChange={e => setEditStepData({...editStepData, description: e.target.value})} placeholder={t('Detailed instructions...')} rows={3} />
-                <div className="timeline__edit-row">
-                  <div className="timeline__edit-group">
-                    <label>{t('Duration')}</label>
-                    <div className="timeline__edit-duration">
-                      <input type="number" min="0" value={editStepData.durationValue} onChange={e => setEditStepData({...editStepData, durationValue: parseFloat(e.target.value) || 0})} />
-                      <select value={editStepData.durationUnit} onChange={e => setEditStepData({...editStepData, durationUnit: e.target.value})}>
-                        <option value="minutes">{t('Minutes')}</option>
-                        <option value="days">{t('Days')}</option>
+                <textarea 
+                  className="timeline-edit-form__textarea" 
+                  value={editStepData.description} 
+                  onChange={e => setEditStepData({...editStepData, description: e.target.value})} 
+                  placeholder={t('Detailed instructions...')} 
+                  rows={3} 
+                />
+                <div className="timeline-edit-form__row">
+                  <div className="timeline-edit-form__group">
+                    <label className="timeline-edit-form__label">{t('Duration')}</label>
+                    <div className="timeline-edit-form__duration">
+                      <input 
+                        className="timeline-edit-form__input"
+                        type="number" 
+                        min="0" 
+                        value={editStepData.durationValue} 
+                        onChange={e => setEditStepData({...editStepData, durationValue: parseFloat(e.target.value) || 0})} 
+                      />
+                      <select 
+                        className="timeline-edit-form__select" 
+                        value={editStepData.durationUnit} 
+                        onChange={e => setEditStepData({...editStepData, durationUnit: e.target.value})}
+                      >
+                        {VALID_UNITS.map(unit => (
+                           <option key={unit} value={unit}>
+                             {t(`constants.units.${unit.toLowerCase()}`, unit)}
+                           </option>
+                        ))}
                       </select>
                     </div>
                   </div>
-                  <div className="timeline__edit-group">
-                    <label>{t('Target Temp (°C)')}</label>
-                    <input type="number" value={editStepData.targetTempC ?? ''} onChange={e => setEditStepData({...editStepData, targetTempC: e.target.value === '' ? null : parseFloat(e.target.value)})} placeholder={t('Optional')} />
+                  <div className="timeline-edit-form__group">
+                    <label className="timeline-edit-form__label">{t('Target Temp (°C)')}</label>
+                    <input 
+                      className="timeline-edit-form__input"
+                      type="number" 
+                      value={editStepData.targetTempC ?? ''} 
+                      onChange={e => setEditStepData({...editStepData, targetTempC: e.target.value === '' ? null : parseFloat(e.target.value)})} 
+                      placeholder={t('Optional')} 
+                    />
                   </div>
                 </div>
-                <div className="timeline__edit-actions">
-                  <button type="button" className="btn-primary" onClick={saveEditedStep} disabled={!editStepData.title}><FaSave /> {t('Save')}</button>
-                  <button type="button" className="btn-secondary" onClick={cancelEditStep}>{t('Cancel')}</button>
+                <div className="timeline-edit-form__actions">
+                  <button type="button" className="timeline-edit-form__btn-save" onClick={saveEditedStep} disabled={!editStepData.title}>
+                    <FaSave /> {t('Save')}
+                  </button>
+                  <button type="button" className="timeline-edit-form__btn-cancel" onClick={cancelEditStep}>
+                    {t('Cancel')}
+                  </button>
                 </div>
               </div>
           </div>
@@ -224,7 +269,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
           
           let targetText = '';
           if (step.durationValue > 0) {
-            targetText = `${step.durationValue} ${t(step.durationUnit)}`;
+            targetText = `${step.durationValue} ${t(`constants.units.${step.durationUnit.toLowerCase()}`, step.durationUnit)}`;
           }
 
           let progressText = '';
@@ -240,34 +285,75 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
 
           if (isEditing && editStepData) {
             return (
-              <div key={step.id} className="timeline__item timeline__item--editing">
-                <div className="timeline__edit-form">
-                  <input className="timeline__edit-input timeline__edit-input--title" type="text" value={editStepData.title} onChange={e => setEditStepData({...editStepData, title: e.target.value})} placeholder={t('Step Title')} />
-                  <select className="timeline__edit-select" value={editStepData.phase} onChange={e => setEditStepData({...editStepData, phase: e.target.value})}>
-                    <option value="Preparation">{t('Preparation')}</option>
-                    <option value="Fermentation">{t('Fermentation')}</option>
-                    <option value="Aging">{t('Aging')}</option>
+              <div key={step.id} className="timeline-item timeline-item--editing">
+                <div className="timeline-edit-form">
+                  <input 
+                    className="timeline-edit-form__input timeline-edit-form__input--title" 
+                    type="text" 
+                    value={editStepData.title} 
+                    onChange={e => setEditStepData({...editStepData, title: e.target.value})} 
+                    placeholder={t('Step Title')} 
+                  />
+                  <select 
+                    className="timeline-edit-form__select" 
+                    value={editStepData.phase} 
+                    onChange={e => setEditStepData({...editStepData, phase: e.target.value})}
+                  >
+                    {VALID_PHASES.map(phase => (
+                      <option key={phase} value={phase}>
+                        {t(`constants.step_phases.${phase.toLowerCase()}`, phase)}
+                      </option>
+                    ))}
                   </select>
-                  <textarea className="timeline__edit-textarea" value={editStepData.description} onChange={e => setEditStepData({...editStepData, description: e.target.value})} placeholder={t('Detailed instructions...')} rows={3} />
-                  <div className="timeline__edit-row">
-                    <div className="timeline__edit-group">
-                      <label>{t('Duration')}</label>
-                      <div className="timeline__edit-duration">
-                        <input type="number" min="0" value={editStepData.durationValue} onChange={e => setEditStepData({...editStepData, durationValue: parseFloat(e.target.value) || 0})} />
-                        <select value={editStepData.durationUnit} onChange={e => setEditStepData({...editStepData, durationUnit: e.target.value})}>
-                          <option value="minutes">{t('Minutes')}</option>
-                          <option value="days">{t('Days')}</option>
+                  <textarea 
+                    className="timeline-edit-form__textarea" 
+                    value={editStepData.description} 
+                    onChange={e => setEditStepData({...editStepData, description: e.target.value})} 
+                    placeholder={t('Detailed instructions...')} 
+                    rows={3} 
+                  />
+                  <div className="timeline-edit-form__row">
+                    <div className="timeline-edit-form__group">
+                      <label className="timeline-edit-form__label">{t('Duration')}</label>
+                      <div className="timeline-edit-form__duration">
+                        <input 
+                          className="timeline-edit-form__input"
+                          type="number" 
+                          min="0" 
+                          value={editStepData.durationValue} 
+                          onChange={e => setEditStepData({...editStepData, durationValue: parseFloat(e.target.value) || 0})} 
+                        />
+                        <select 
+                          className="timeline-edit-form__select" 
+                          value={editStepData.durationUnit} 
+                          onChange={e => setEditStepData({...editStepData, durationUnit: e.target.value})}
+                        >
+                          {VALID_UNITS.map(unit => (
+                            <option key={unit} value={unit}>
+                              {t(`constants.units.${unit.toLowerCase()}`, unit)}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
-                    <div className="timeline__edit-group">
-                      <label>{t('Target Temp (°C)')}</label>
-                      <input type="number" value={editStepData.targetTempC ?? ''} onChange={e => setEditStepData({...editStepData, targetTempC: e.target.value === '' ? null : parseFloat(e.target.value)})} placeholder={t('Optional')} />
+                    <div className="timeline-edit-form__group">
+                      <label className="timeline-edit-form__label">{t('Target Temp (°C)')}</label>
+                      <input 
+                        className="timeline-edit-form__input"
+                        type="number" 
+                        value={editStepData.targetTempC ?? ''} 
+                        onChange={e => setEditStepData({...editStepData, targetTempC: e.target.value === '' ? null : parseFloat(e.target.value)})} 
+                        placeholder={t('Optional')} 
+                      />
                     </div>
                   </div>
-                  <div className="timeline__edit-actions">
-                    <button type="button" className="btn-primary" onClick={saveEditedStep} disabled={!editStepData.title}><FaSave /> {t('Save')}</button>
-                    <button type="button" className="btn-secondary" onClick={cancelEditStep}>{t('Cancel')}</button>
+                  <div className="timeline-edit-form__actions">
+                    <button type="button" className="timeline-edit-form__btn-save" onClick={saveEditedStep} disabled={!editStepData.title}>
+                      <FaSave /> {t('Save')}
+                    </button>
+                    <button type="button" className="timeline-edit-form__btn-cancel" onClick={cancelEditStep}>
+                      {t('Cancel')}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -277,67 +363,67 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
           return (
             <div 
               key={step.id} 
-              className={`timeline__item ${isActive ? 'timeline__item--active' : ''} ${isCompleted ? 'timeline__item--completed' : ''}`}
+              className={`timeline-item ${isActive ? 'timeline-item--active' : ''} ${isCompleted ? 'timeline-item--completed' : ''}`}
               draggable={!editingStepId}
               onDragStart={() => handleDragStart(index)}
               onDragOver={(e) => handleDragOver(e)}
               onDrop={() => handleDrop(index)}
             >
-              <div className="timeline__drag-handle">
+              <div className="timeline-item__drag-handle">
                 <FaGripLines />
               </div>
-              <div className="timeline__indicator">
-                <div className="timeline__circle">{isCompleted ? <FaCheck size={10} /> : step.stepNumber}</div>
-                {index < steps.length - 1 && <div className="timeline__line"></div>}
+              <div className="timeline-item__indicator">
+                <div className="timeline-item__circle">{isCompleted ? <FaCheck size={10} /> : step.stepNumber}</div>
+                {index < steps.length - 1 && <div className="timeline-item__line"></div>}
               </div>
-              <div className="timeline__content">
-                <div className="timeline__item-header">
-                  <div className="timeline__title-group">
-                    <span className="timeline__phase">{t(step.phase)}</span>
-                    <strong className="timeline__item-title">{step.title}</strong>
+              <div className="timeline-item__content">
+                <div className="timeline-item__header">
+                  <div className="timeline-item__title-group">
+                    <span className="timeline-item__phase">{t(`constants.step_phases.${step.phase.toLowerCase()}`, step.phase)}</span>
+                    <strong className="timeline-item__title">{step.title}</strong>
                   </div>
-                  <div className="timeline__target">
-                    {step.targetTempC !== null && step.targetTempC !== undefined && <span className="timeline__temp">🌡 {step.targetTempC}°C</span>}
-                    {targetText && <span className="timeline__duration">⏱ {targetText}</span>}
-                    <div className="timeline__context-actions">
-                      <button type="button" className="timeline__btn-icon" onClick={() => startEditStep(step)} title={t('Edit Step')}><FaEdit /></button>
-                      <button type="button" className="timeline__btn-icon timeline__btn-icon--danger" onClick={() => deleteStep(step.id)} title={t('Delete Step')}><FaTrash /></button>
+                  <div className="timeline-item__target">
+                    {step.targetTempC !== null && step.targetTempC !== undefined && <span className="timeline-item__temp">🌡 {step.targetTempC}°C</span>}
+                    {targetText && <span className="timeline-item__duration">⏱ {targetText}</span>}
+                    <div className="timeline-item__context-actions">
+                      <button type="button" className="timeline-item__btn-icon" onClick={() => startEditStep(step)} title={t('Edit Step')}><FaEdit /></button>
+                      <button type="button" className="timeline-item__btn-icon timeline-item__btn-icon--danger" onClick={() => deleteStep(step.id)} title={t('Delete Step')}><FaTrash /></button>
                     </div>
                   </div>
                 </div>
-                <p className="timeline__desc">{step.description}</p>
+                <p className="timeline-item__desc">{step.description}</p>
                 
-                <div className="timeline__actions">
+                <div className="timeline-item__actions">
                   {!isCompleted && (
                     <>
-                      <button type="button" className={`timeline__btn-timer ${isActive ? 'timeline__btn-timer--active' : ''}`} onClick={() => toggleStepTimer(step.id)}>
+                      <button type="button" className={`timeline-item__btn-timer ${isActive ? 'timeline-item__btn-timer--active' : ''}`} onClick={() => toggleStepTimer(step.id)}>
                         {isActive ? <><FaPause /> {t('Pause')}</> : <><FaPlay /> {t('Start')}</>}
                       </button>
                       {isActive && (
-                        <button type="button" className="timeline__btn-complete" onClick={() => completeStep(step.id)}>
+                        <button type="button" className="timeline-item__btn-complete" onClick={() => completeStep(step.id)}>
                           <FaCheck /> {t('Complete')}
                         </button>
                       )}
                     </>
                   )}
                   {(isActive || isCompleted) && (
-                    <span className={`timeline__progress ${isCompleted ? 'timeline__progress--success' : 'timeline__progress--primary'}`}>
+                    <span className={`timeline-item__progress ${isCompleted ? 'timeline-item__progress--success' : 'timeline-item__progress--primary'}`}>
                       {isActive && step.durationUnit === 'minutes' ? <ActiveTimer startedAt={step.startedAt} accumulatedSeconds={step.accumulatedSeconds} isActive={true} /> : progressText}
                     </span>
                   )}
                 </div>
 
                 {isActive && (
-                  <div className="timeline__quick-log">
+                  <div className="timeline-item__quick-log">
                     <input 
                       type="text" 
-                      className="timeline__quick-input"
+                      className="timeline-item__quick-input"
                       placeholder={t('Add a quick note...')} 
                       value={quickNoteInputs[step.id] || ''}
                       onChange={(e) => setQuickNoteInputs(prev => ({ ...prev, [step.id]: e.target.value }))}
                       onKeyDown={(e) => e.key === 'Enter' && handleQuickNoteSubmit(step.id)}
                     />
-                    <button type="button" className="timeline__quick-btn" onClick={() => handleQuickNoteSubmit(step.id)} disabled={!quickNoteInputs[step.id]?.trim()}>
+                    <button type="button" className="timeline-item__quick-btn" onClick={() => handleQuickNoteSubmit(step.id)} disabled={!quickNoteInputs[step.id]?.trim()}>
                       <FaCommentDots />
                     </button>
                   </div>
@@ -346,7 +432,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
             </div>
           );
         })}
-        {steps.length === 0 && !isNewStep && <div className="timeline__empty">{t('No steps available.')}</div>}
+        {steps.length === 0 && !isNewStep && <div className="timeline-widget__empty">{t('No steps available.')}</div>}
       </div>
     </div>
   );
