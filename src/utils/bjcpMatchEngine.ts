@@ -8,12 +8,17 @@ export interface BjcpStyle {
   category: string;
   style_id: string;
   beverage_type: string;
-  original_gravity: StyleRange;
-  international_bitterness_units: StyleRange;
-  final_gravity: StyleRange;
-  alcohol_by_volume: StyleRange;
-  color: StyleRange;
-  ingredients?: string;
+  ogMin: number | null;
+  ogMax: number | null;
+  fgMin: number | null;
+  fgMax: number | null;
+  abvMin: number | null;
+  abvMax: number | null;
+  ibuMin: number | null;
+  ibuMax: number | null;
+  ebcMin: number | null;
+  ebcMax: number | null;
+  notes?: string;
 }
 
 export interface StyleValidationResult {
@@ -25,16 +30,6 @@ export interface StyleValidationResult {
   isValidOverall: boolean;
 }
 
-/**
- * Validates given parameters against BJCP style boundaries.
- * @param style The selected BJCP style object.
- * @param og The original gravity.
- * @param fg The final gravity.
- * @param abv The alcohol by volume percentage.
- * @param ibu The international bitterness units.
- * @param ebc The color in EBC.
- * @returns An object containing validation booleans for each parameter.
- */
 export const validateStyleBounds = (
   style: BjcpStyle | null | undefined,
   og: number,
@@ -46,25 +41,17 @@ export const validateStyleBounds = (
   const defaultResult = { isOgValid: true, isFgValid: true, isAbvValid: true, isIbuValid: true, isColorValid: true, isValidOverall: true };
   if (!style) return defaultResult;
 
-  const srmColor = ebc / 1.97;
-
-  const isOgValid = og >= (style.original_gravity?.minimum?.value || 0) && og <= (style.original_gravity?.maximum?.value || 2);
-  const isFgValid = fg >= (style.final_gravity?.minimum?.value || 0) && fg <= (style.final_gravity?.maximum?.value || 2);
-  const isAbvValid = abv >= (style.alcohol_by_volume?.minimum?.value || 0) && abv <= (style.alcohol_by_volume?.maximum?.value || 100);
-  const isIbuValid = ibu >= (style.international_bitterness_units?.minimum?.value || 0) && ibu <= (style.international_bitterness_units?.maximum?.value || 1000);
-  const isColorValid = srmColor >= (style.color?.minimum?.value || 0) && srmColor <= (style.color?.maximum?.value || 100);
+  const isOgValid = !style.ogMin || !style.ogMax || (og >= style.ogMin && og <= style.ogMax);
+  const isFgValid = !style.fgMin || !style.fgMax || (fg >= style.fgMin && fg <= style.fgMax);
+  const isAbvValid = !style.abvMin || !style.abvMax || (abv >= style.abvMin && abv <= style.abvMax);
+  const isIbuValid = !style.ibuMin || !style.ibuMax || (ibu >= style.ibuMin && ibu <= style.ibuMax);
+  const isColorValid = !style.ebcMin || !style.ebcMax || (ebc >= style.ebcMin && ebc <= style.ebcMax);
 
   const isValidOverall = isOgValid && isFgValid && isAbvValid && isIbuValid && isColorValid;
 
   return { isOgValid, isFgValid, isAbvValid, isIbuValid, isColorValid, isValidOverall };
 };
 
-/**
- * Retrieves ingredient suggestions based on the selected BJCP style.
- * @param style The selected BJCP style object.
- * @param globalIngredients The array of global catalog ingredients.
- * @returns An object containing arrays of suggested hops and yeasts.
- */
 export const getSuggestedIngredients = (
   style: BjcpStyle | null | undefined,
   globalIngredients: any[]
@@ -77,14 +64,13 @@ export const getSuggestedIngredients = (
   const matchedHops = globalIngredients.filter(ing => {
     if (ing.category !== 'Hops') return false;
     const notes = (ing.notes || '').toLowerCase();
-    return notes.includes(styleNameLower) || notes.includes(categoryLower);
+    return notes.includes(styleNameLower) || notes.includes(categoryLower) || notes.includes('ale') || notes.includes('lager'); // Базовый фоллбек
   });
 
   const matchedYeasts = globalIngredients.filter(ing => {
     if (ing.category !== 'Yeast') return false;
-    const bestFor = (ing.best_for || '').toLowerCase();
     const notes = (ing.notes || '').toLowerCase();
-    return bestFor.includes(styleNameLower) || notes.includes(styleNameLower) || bestFor.includes(categoryLower);
+    return notes.includes(styleNameLower) || notes.includes(categoryLower);
   });
 
   return {

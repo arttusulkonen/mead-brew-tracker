@@ -2,7 +2,7 @@ import { calculateAbvCrouch, calculateIbuTinseth, calculateMcu, calculateOneThir
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaCheck, FaChevronDown, FaChevronUp, FaExclamationTriangle, FaMagic, FaPlus, FaSearch, FaTimes, FaTrash } from 'react-icons/fa';
+import { FaCheck, FaChevronDown, FaChevronUp, FaExclamationTriangle, FaInfoCircle, FaMagic, FaPlus, FaTimes, FaTrash } from 'react-icons/fa';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { IngredientSearchModal } from '../components/IngredientSearchModal';
 import { StyleSearchModal } from '../components/StyleSearchModal';
@@ -57,11 +57,11 @@ const Recipes: React.FC = () => {
   const [view, setView] = useState<'list' | 'builder'>('list');
   const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
 
-  const [beverageType, setBeverageType] = useState<BeverageType>('Mead');
+  const [beverageType, setBeverageType] = useState<BeverageType>('Beer');
   const [recipeName, setRecipeName] = useState('');
-  const [batchSizeLiters, setBatchSizeLiters] = useState<number>(10);
+  const [batchSizeLiters, setBatchSizeLiters] = useState<number>(20);
   const [targetStyle, setTargetStyle] = useState<string>('Standard');
-  const [targetFg, setTargetFg] = useState<number>(1.000);
+  const [targetFg, setTargetFg] = useState<number>(1.010);
   const [targetAutoAbv, setTargetAutoAbv] = useState<number>(5.0);
 
   const [wizardStyle, setWizardStyle] = useState<string>(MEAD_STYLES[0].id);
@@ -75,6 +75,9 @@ const Recipes: React.FC = () => {
   const [globalCatalog, setGlobalCatalog] = useState<BaseIngredient[]>([]);
   
   const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
+  const [modalInitialCategory, setModalInitialCategory] = useState('All');
+  const [modalInitialSearch, setModalInitialSearch] = useState('');
+  
   const [isStyleModalOpen, setIsStyleModalOpen] = useState(false);
   
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredientEntry[]>([]);
@@ -90,17 +93,44 @@ const Recipes: React.FC = () => {
         const { data: ingData } = await supabase.from('ingredients').select('*');
         if (ingData) {
           const formattedCatalog = ingData.map(item => ({
-            ...item,
             id: item.id,
+            name: item.name,
             category: item.category,
-            name: item.name
+            form: item.form,
+            alphaAcidPct: item.alpha_acid_pct,
+            alcoholTolerancePct: item.alcohol_tolerance_pct,
+            tempMinC: item.temp_min_c,
+            tempMaxC: item.temp_max_c,
+            attenuationPct: item.attenuation_pct,
+            notes: item.notes,
+            origin: item.origin,
+            producer: item.producer,
+            yieldPpg: 36, 
+            colorEbc: 5
           })) as BaseIngredient[];
           setGlobalCatalog(formattedCatalog);
         }
 
         const { data: styleData } = await supabase.from('styles').select('*');
         if (styleData) {
-          setBjcpStyles(styleData as BjcpStyle[]);
+          const formattedStyles = styleData.map(item => ({
+            style_id: item.style_id,
+            name: item.name,
+            category: item.category,
+            beverage_type: item.beverage_type,
+            ogMin: item.og_min,
+            ogMax: item.og_max,
+            fgMin: item.fg_min,
+            fgMax: item.fg_max,
+            abvMin: item.abv_min,
+            abvMax: item.abv_max,
+            ibuMin: item.ibu_min,
+            ibuMax: item.ibu_max,
+            ebcMin: item.ebc_min,
+            ebcMax: item.ebc_max,
+            notes: item.notes
+          })) as BjcpStyle[];
+          setBjcpStyles(formattedStyles);
         }
       } catch {
         setGlobalCatalog([]);
@@ -133,6 +163,9 @@ const Recipes: React.FC = () => {
       const matchedSweetness = SWEETNESS_LEVELS.find(lvl => Math.abs(lvl.minFg - (r.targetFinalGravity || 1.000)) < 0.005);
       if (matchedSweetness) setWizardSweetness(matchedSweetness.id);
 
+      const matchedStyle = bjcpStyles.find(s => s.name === r.targetStyle);
+      if (matchedStyle) setSelectedStyleId(matchedStyle.style_id);
+
       const mappedIngredients = r.ingredients.map(ing => ({
         ...ing,
         showNote: !!ing.note,
@@ -151,14 +184,14 @@ const Recipes: React.FC = () => {
       
       navigate(location.pathname, { replace: true });
     }
-  }, [location.state, navigate, location.pathname]);
+  }, [location.state, navigate, location.pathname, bjcpStyles]);
 
   const resetForm = () => {
     setRecipeName('');
-    setBeverageType('Mead');
-    setBatchSizeLiters(10);
+    setBeverageType('Beer');
+    setBatchSizeLiters(20);
     setTargetStyle('Standard');
-    setTargetFg(1.000);
+    setTargetFg(1.010);
     setSelectedStyleId('');
     setRecipeIngredients([]);
     setRecipeSteps([]);
@@ -175,6 +208,12 @@ const Recipes: React.FC = () => {
   const currentSelectedStyle = useMemo(() => {
     return bjcpStyles.find(s => s.style_id === selectedStyleId) || null;
   }, [selectedStyleId, bjcpStyles]);
+
+  const openIngredientModal = (category: string, search: string = '') => {
+    setModalInitialCategory(category);
+    setModalInitialSearch(search);
+    setIsIngredientModalOpen(true);
+  };
 
   const handleAddIngredient = (idToAdd: string) => {
     if (!idToAdd) return;
@@ -241,9 +280,7 @@ const Recipes: React.FC = () => {
   const handleAutoCalculateHoney = () => {
     const fermentableItems = recipeIngredients.filter(i => i.category === 'Fermentable');
     
-    if (fermentableItems.length === 0) {
-      return;
-    }
+    if (fermentableItems.length === 0) return;
 
     const targetEntry = fermentableItems[0];
     const template = globalCatalog.find(t => t.id === targetEntry.globalIngredientId) as unknown as FermentableIngredient;
@@ -553,6 +590,116 @@ const Recipes: React.FC = () => {
     }
   };
 
+  const renderIngredientGroup = (category: string, title: string) => {
+    const items = recipeIngredients.filter(i => 
+      category === 'Additive' ? (i.category === 'Additive' || i.category === 'Water Profile') : i.category === category
+    );
+    
+    return (
+      <div className="ingredient-group">
+        <div className="ingredient-group__header">
+          <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{title}</h3>
+          <button type="button" className="recipe-lab__btn-secondary" style={{ padding: '4px 12px', fontSize: '0.85rem' }} onClick={() => openIngredientModal(category)}>
+            <FaPlus /> {t('Add')}
+          </button>
+        </div>
+        
+        {items.length === 0 ? (
+          <div className="ingredient-group__empty" style={{ fontStyle: 'italic', color: 'var(--text-disabled)', fontSize: '0.9rem', padding: '0.5rem 0' }}>{t('Not added yet')}</div>
+        ) : (
+          <div className="ingredient-list" style={{ marginTop: '0.5rem' }}>
+            {items.map(item => {
+              const aiProposal = aiProposedIngredients.find(p => p.ingredientId === item.id);
+              return (
+                <div key={item.id} className="recipe-ingredient">
+                  <div className="recipe-ingredient__main">
+                    <div className="recipe-ingredient__info">
+                      <span className="recipe-ingredient__name">{item.name}</span>
+                    </div>
+                    <div className="recipe-ingredient__controls">
+                      <button 
+                        type="button"
+                        className="recipe-ingredient__btn-note" 
+                        onClick={() => updateIngredient(item.id, { showNote: !item.showNote })}
+                        disabled={isSaving}
+                      >
+                        {item.showNote ? t('- Note') : t('+ Note')}
+                      </button>
+
+                      {beverageType === 'Beer' && item.category === 'Hops' && (
+                         <div className="recipe-ingredient__hop-boil">
+                            <input 
+                              className="form-field__input form-field__input--small" 
+                              type="number" 
+                              min="0" 
+                              value={item.boilTimeMinutes === 0 ? '' : item.boilTimeMinutes} 
+                              onChange={(e) => updateIngredient(item.id, { boilTimeMinutes: parseFloat(e.target.value) || 0 })} 
+                              placeholder={t('min')} 
+                              disabled={isSaving}
+                            />
+                            <span className="recipe-ingredient__unit">{t('min')}</span>
+                         </div>
+                      )}
+
+                      <input 
+                        className="form-field__input form-field__input--small"
+                        type="number" 
+                        min="0" 
+                        value={item.quantity === 0 ? '' : item.quantity} 
+                        onChange={(e) => updateIngredient(item.id, { quantity: parseFloat(e.target.value) || 0 })}
+                        placeholder="0"
+                        disabled={isSaving}
+                      />
+                      <span className="recipe-ingredient__unit">{t('g')}</span>
+                      <button 
+                        type="button"
+                        className="recipe-ingredient__btn-delete" 
+                        onClick={() => handleRemoveIngredient(item.id)} 
+                        disabled={isSaving}
+                        aria-label={t('Remove')}
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                  </div>
+                  {item.showNote && (
+                    <div className="recipe-ingredient__note">
+                      <textarea 
+                        value={item.note}
+                        onChange={(e) => updateIngredient(item.id, { note: e.target.value })}
+                        placeholder={t('Add detailed notes for this ingredient...')}
+                        className="form-field__textarea"
+                        rows={2}
+                        disabled={isSaving}
+                      />
+                    </div>
+                  )}
+                  {aiProposal && (
+                    <div className="ai-diff-box">
+                      <h4><FaMagic /> {t('AI Proposed Adjustment')}</h4>
+                      <div>
+                        <strong>{t('Suggested Quantity')}:</strong> {aiProposal.suggestedQuantityGrams} {t('g')} <br />
+                        {aiProposal.aiNote && <span><strong>{t('Note')}:</strong> {aiProposal.aiNote}</span>}
+                      </div>
+                      <div className="diff-actions">
+                        <button type="button" className="btn-accept" onClick={() => acceptIngredientProposal(aiProposal)}>
+                          <FaCheck /> {t('Accept')}
+                        </button>
+                        <button type="button" className="btn-reject" onClick={() => rejectIngredientProposal(item.id)}>
+                          <FaTimes /> {t('Reject')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (!activeBrewery) {
     return (
       <div className="recipe-lab">
@@ -630,6 +777,8 @@ const Recipes: React.FC = () => {
         onClose={() => setIsIngredientModalOpen(false)} 
         onSelect={handleAddIngredient} 
         catalog={globalCatalog} 
+        initialCategory={modalInitialCategory}
+        initialSearchQuery={modalInitialSearch}
       />
       <StyleSearchModal 
         isOpen={isStyleModalOpen} 
@@ -768,13 +917,13 @@ const Recipes: React.FC = () => {
 
           {beverageType === 'Beer' && currentSelectedStyle && (suggestions.hops.length > 0 || suggestions.yeasts.length > 0) && (
             <section className="builder-section builder-section--suggestions">
-              <h3 className="builder-section__title">{t('Suggested for Style')}</h3>
+              <h3 className="builder-section__title"><FaInfoCircle /> {t('Suggested for')} {currentSelectedStyle.name}</h3>
               <div className="suggestions-box">
                 {suggestions.yeasts.length > 0 && (
                   <div className="suggestions-box__group">
                     <h4>{t('Yeasts')}</h4>
                     {suggestions.yeasts.map(y => (
-                      <button type="button" key={y.id} className="suggestion-tag" onClick={() => handleAddIngredient(y.id)}>+ {y.name}</button>
+                      <button type="button" key={y.id} className="suggestion-tag" onClick={() => openIngredientModal('Yeast', y.name)}>{y.name}</button>
                     ))}
                   </div>
                 )}
@@ -782,7 +931,7 @@ const Recipes: React.FC = () => {
                   <div className="suggestions-box__group">
                     <h4>{t('Hops')}</h4>
                     {suggestions.hops.map(h => (
-                      <button type="button" key={h.id} className="suggestion-tag" onClick={() => handleAddIngredient(h.id)}>+ {h.name}</button>
+                      <button type="button" key={h.id} className="suggestion-tag" onClick={() => openIngredientModal('Hops', h.name)}>{h.name}</button>
                     ))}
                   </div>
                 )}
@@ -792,7 +941,7 @@ const Recipes: React.FC = () => {
 
           <section className="builder-section">
             <div className="builder-section__header builder-section__header--flex">
-              <h2 className="builder-section__title">{t('Ingredients')}</h2>
+              <h2 className="builder-section__title">{t('Ingredients Formulation')}</h2>
               <div className="builder-auto-calc">
                 <span className="builder-auto-calc__label">{t('Target ABV')}:</span>
                 <input 
@@ -815,103 +964,11 @@ const Recipes: React.FC = () => {
               </div>
             </div>
             
-            <div className="builder-section__body">
-              <button type="button" className="form-field__fake-input" style={{ marginBottom: '1.5rem', justifyContent: 'center', color: 'var(--color-primary)', fontWeight: 'bold' }} onClick={() => setIsIngredientModalOpen(true)}>
-                <FaSearch style={{ marginRight: '8px' }} /> {t('Search and Add Ingredients...')}
-              </button>
-
-              <div className="ingredient-list">
-                {recipeIngredients.map(item => {
-                  const aiProposal = aiProposedIngredients.find(p => p.ingredientId === item.id);
-                  return (
-                    <div key={item.id} className="recipe-ingredient">
-                      <div className="recipe-ingredient__main">
-                        <div className="recipe-ingredient__info">
-                          <span className="recipe-ingredient__badge" data-category={item.category}>{t(`constants.categories.${item.category.toLowerCase().replace(' ', '_')}`, item.category)}</span>
-                          <span className="recipe-ingredient__name">{item.name}</span>
-                        </div>
-                        <div className="recipe-ingredient__controls">
-                          <button 
-                            type="button"
-                            className="recipe-ingredient__btn-note" 
-                            onClick={() => updateIngredient(item.id, { showNote: !item.showNote })}
-                            disabled={isSaving}
-                          >
-                            {item.showNote ? t('- Note') : t('+ Note')}
-                          </button>
-
-                          {beverageType === 'Beer' && item.category === 'Hops' && (
-                             <div className="recipe-ingredient__hop-boil">
-                                <input 
-                                  className="form-field__input form-field__input--small" 
-                                  type="number" 
-                                  min="0" 
-                                  value={item.boilTimeMinutes === 0 ? '' : item.boilTimeMinutes} 
-                                  onChange={(e) => updateIngredient(item.id, { boilTimeMinutes: parseFloat(e.target.value) || 0 })} 
-                                  placeholder={t('min')} 
-                                  disabled={isSaving}
-                                />
-                                <span className="recipe-ingredient__unit">{t('min')}</span>
-                             </div>
-                          )}
-
-                          <input 
-                            className="form-field__input form-field__input--small"
-                            type="number" 
-                            min="0" 
-                            value={item.quantity === 0 ? '' : item.quantity} 
-                            onChange={(e) => updateIngredient(item.id, { quantity: parseFloat(e.target.value) || 0 })}
-                            placeholder="0"
-                            disabled={isSaving}
-                          />
-                          <span className="recipe-ingredient__unit">{t('g')}</span>
-                          <button 
-                            type="button"
-                            className="recipe-ingredient__btn-delete" 
-                            onClick={() => handleRemoveIngredient(item.id)} 
-                            disabled={isSaving}
-                            aria-label={t('Remove')}
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                      </div>
-                      {item.showNote && (
-                        <div className="recipe-ingredient__note">
-                          <textarea 
-                            value={item.note}
-                            onChange={(e) => updateIngredient(item.id, { note: e.target.value })}
-                            placeholder={t('Add detailed notes for this ingredient...')}
-                            className="form-field__textarea"
-                            rows={2}
-                            disabled={isSaving}
-                          />
-                        </div>
-                      )}
-                      {aiProposal && (
-                        <div className="ai-diff-box">
-                          <h4><FaMagic /> {t('AI Proposed Adjustment')}</h4>
-                          <div>
-                            <strong>{t('Suggested Quantity')}:</strong> {aiProposal.suggestedQuantityGrams} {t('g')} <br />
-                            {aiProposal.aiNote && <span><strong>{t('Note')}:</strong> {aiProposal.aiNote}</span>}
-                          </div>
-                          <div className="diff-actions">
-                            <button type="button" className="btn-accept" onClick={() => acceptIngredientProposal(aiProposal)}>
-                              <FaCheck /> {t('Accept')}
-                            </button>
-                            <button type="button" className="btn-reject" onClick={() => rejectIngredientProposal(item.id)}>
-                              <FaTimes /> {t('Reject')}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {recipeIngredients.length === 0 && (
-                  <div className="recipe-lab__empty-text">{t('No ingredients added yet.')}</div>
-                )}
-              </div>
+            <div className="builder-section__body" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {renderIngredientGroup('Fermentable', t('Fermentables (Malts, Extracts, Sugars)'))}
+              {beverageType === 'Beer' && renderIngredientGroup('Hops', t('Hops'))}
+              {renderIngredientGroup('Yeast', t('Yeasts'))}
+              {renderIngredientGroup('Additive', t('Additives & Water Chemistry'))}
             </div>
           </section>
 
