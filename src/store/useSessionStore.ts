@@ -4,7 +4,7 @@ import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/fi
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { create } from 'zustand';
 import { db } from '../firebase/config';
-import type { BrewLog, BrewSession } from '../types/session';
+import type { BrewLog, BrewSession, BrewSessionStage } from '../types/session';
 
 interface SessionState {
   sessions: BrewSession[];
@@ -16,10 +16,10 @@ interface SessionState {
   clearCurrentSession: () => void;
   startSession: (payload: Record<string, any>) => Promise<string | null>;
   updateSteps: (breweryId: string | null | undefined, sessionId: string | null | undefined, newSteps: any[]) => Promise<void>;
-  updateSessionStatus: (breweryId: string | null | undefined, sessionId: string | null | undefined, newStatus: 'planned' | 'fermenting' | 'aging' | 'completed', actualOg?: number) => Promise<void>;
   addLogToSession: (breweryId: string | null | undefined, sessionId: string | null | undefined, newLog: BrewLog) => Promise<void>;
   updateTosnaSchedule: (breweryId: string | null | undefined, sessionId: string | null | undefined, updatedAdditions: any[]) => Promise<void>;
   splitBrewSession: (payload: Record<string, any>) => Promise<void>;
+  updateSessionStatus: (breweryId: string | null | undefined, sessionId: string | null | undefined, newStatus: BrewSessionStage, actualOg?: number) => Promise<void>;
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({

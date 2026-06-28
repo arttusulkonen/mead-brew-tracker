@@ -1,8 +1,3 @@
-/*
- * File: src/utils/bjcpMatchEngine.ts
- * Description: Match engine for BJCP styles, hop notes, and yeast profile compatibility.
- */
-
 export interface StyleRange {
   minimum: { value: number };
   maximum: { value: number };
@@ -12,6 +7,7 @@ export interface BjcpStyle {
   name: string;
   category: string;
   style_id: string;
+  beverage_type: string;
   original_gravity: StyleRange;
   international_bitterness_units: StyleRange;
   final_gravity: StyleRange;
@@ -29,6 +25,16 @@ export interface StyleValidationResult {
   isValidOverall: boolean;
 }
 
+/**
+ * Validates given parameters against BJCP style boundaries.
+ * @param style The selected BJCP style object.
+ * @param og The original gravity.
+ * @param fg The final gravity.
+ * @param abv The alcohol by volume percentage.
+ * @param ibu The international bitterness units.
+ * @param ebc The color in EBC.
+ * @returns An object containing validation booleans for each parameter.
+ */
 export const validateStyleBounds = (
   style: BjcpStyle | null | undefined,
   og: number,
@@ -53,6 +59,12 @@ export const validateStyleBounds = (
   return { isOgValid, isFgValid, isAbvValid, isIbuValid, isColorValid, isValidOverall };
 };
 
+/**
+ * Retrieves ingredient suggestions based on the selected BJCP style.
+ * @param style The selected BJCP style object.
+ * @param globalIngredients The array of global catalog ingredients.
+ * @returns An object containing arrays of suggested hops and yeasts.
+ */
 export const getSuggestedIngredients = (
   style: BjcpStyle | null | undefined,
   globalIngredients: any[]

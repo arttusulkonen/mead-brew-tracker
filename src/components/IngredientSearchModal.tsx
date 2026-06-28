@@ -111,7 +111,7 @@ export const IngredientSearchModal: React.FC<IngredientSearchModalProps> = ({ is
               </li>
             ))}
             {filteredCatalog.length === 0 && (
-              <div className="search-modal__empty">{t('No ingredients found.')}</div>
+              <li className="search-modal__empty">{t('No ingredients found.')}</li>
             )}
           </ul>
         </div>

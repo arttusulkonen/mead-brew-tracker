@@ -66,7 +66,7 @@ export const StyleSearchModal: React.FC<StyleSearchModalProps> = ({ isOpen, onCl
               </li>
             ))}
             {filteredStyles.length === 0 && (
-              <div className="search-modal__empty">{t('No styles found.')}</div>
+              <li className="search-modal__empty">{t('No styles found.')}</li>
             )}
           </ul>
         </div>

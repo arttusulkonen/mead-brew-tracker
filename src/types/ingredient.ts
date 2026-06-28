@@ -1,10 +1,4 @@
-/*
- * File: src/types/ingredient.ts
- * Description: Type definitions for global and workspace ingredients.
- * Supports multi-beverage types including Beer, Mead, and Cider.
- */
-
-export const INGREDIENT_CATEGORIES = ['Fermentable', 'Yeast', 'Hops', 'Water Profile', 'Additive'] as const;
+export const INGREDIENT_CATEGORIES = ['Fermentable', 'Honey', 'Yeast', 'Hops', 'Water Profile', 'Additive'] as const;
 export type IngredientCategory = typeof INGREDIENT_CATEGORIES[number];
 
 export const UNIT_TYPES = ['g', 'kg', 'L', 'ml', 'oz', 'lb', 'gal', 'ppm', 'unit'] as const;
@@ -31,6 +25,12 @@ export interface FermentableIngredient extends BaseIngredient {
   moistureContentPct?: number;
   diastaticPowerLintner?: number;
   isMashed: boolean;
+}
+
+export interface HoneyIngredient extends BaseIngredient {
+  category: 'Honey';
+  sugarContentBrix: number;
+  moistureContentPct: number;
 }
 
 export interface YeastIngredient extends BaseIngredient {
@@ -69,6 +69,7 @@ export interface AdditiveIngredient extends BaseIngredient {
 
 export type IngredientUnion =
   | FermentableIngredient
+  | HoneyIngredient
   | YeastIngredient
   | HopsIngredient
   | WaterProfileIngredient

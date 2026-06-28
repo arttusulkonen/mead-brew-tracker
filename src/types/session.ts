@@ -1,8 +1,3 @@
-/*
- * File: src/types/session.ts
- * Description: Data models for tracking active and historical brew sessions.
- */
-
 import type { BeverageType, RecipeIngredientReference, RecipeStep } from './recipe';
 
 export type BrewSessionStage = 'planned' | 'mashing' | 'boiling' | 'fermenting' | 'aging' | 'completed';
@@ -38,7 +33,7 @@ export interface BrewSession {
   recipeId: string | null;
   breweryId: string;
   recipeName: string;
-  beverageType: BeverageType;
+  beverageType?: BeverageType;
   status: BrewSessionStage;
   targetStyle?: string;
   batchSizeLiters: number;

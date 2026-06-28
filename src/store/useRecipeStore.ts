@@ -20,6 +20,10 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
   isLoading: false,
   error: null,
 
+  /**
+   * Fetches all recipes associated with a specific brewery.
+   * @param breweryId The ID of the brewery workspace.
+   */
   fetchRecipes: async (breweryId) => {
     if (!breweryId) {
       set({ recipes: [], isLoading: false, error: null });
@@ -36,8 +40,7 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
 
       if (error) throw error;
       
-      // Маппинг snake_case (БД) в camelCase (Frontend)
-      const formattedRecipes = data.map(item => ({
+      const formattedRecipes = (data ?? []).map(item => ({
         id: item.id,
         breweryId: item.brewery_id,
         name: item.name,
@@ -60,6 +63,67 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       set({ recipes: formattedRecipes, isLoading: false });
     } catch (error: any) {
       set({ error: error?.message || 'Failed to fetch recipes', isLoading: false });
+    }
+  },
+
+  /**
+   * Saves a new recipe or updates an existing one.
+   * @param recipeData The recipe object excluding auto-generated fields.
+   * @returns The saved recipe object.
+   */
+  saveRecipe: async (recipeData) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('recipes')
+        .insert([{
+          brewery_id: recipeData.breweryId,
+          name: recipeData.name,
+          beverage_type: recipeData.beverageType,
+          target_style: recipeData.targetStyle,
+          expected_batch_size_liters: recipeData.expectedBatchSizeLiters,
+          target_original_gravity: recipeData.targetOriginalGravity,
+          target_final_gravity: recipeData.targetFinalGravity,
+          target_abv: recipeData.targetAbv,
+          target_ibu: recipeData.targetIbu,
+          target_color_ebc: recipeData.targetColorEbc,
+          ingredients: recipeData.ingredients,
+          steps: recipeData.steps,
+          target_curves: recipeData.targetCurves,
+          created_by: recipeData.createdBy
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      await get().fetchRecipes(recipeData.breweryId);
+      
+      if (!data) return null;
+      
+      return {
+        id: data.id,
+        breweryId: data.brewery_id,
+        name: data.name,
+        beverageType: data.beverage_type,
+        targetStyle: data.target_style,
+        expectedBatchSizeLiters: data.expected_batch_size_liters,
+        targetOriginalGravity: data.target_original_gravity,
+        targetFinalGravity: data.target_final_gravity,
+        targetAbv: data.target_abv,
+        targetIbu: data.target_ibu,
+        targetColorEbc: data.target_color_ebc,
+        ingredients: data.ingredients || [],
+        steps: data.steps || [],
+        targetCurves: data.target_curves,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        createdBy: data.created_by,
+      } as Recipe;
+      
+    } catch (error: any) {
+      set({ error: error?.message || 'Failed to save recipe', isLoading: false });
+      throw error;
     }
   },
 
@@ -130,39 +194,4 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       throw error;
     }
   },
-
-  saveRecipe: async (recipeData) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { data, error } = await supabase
-        .from('recipes')
-        .insert([{
-          brewery_id: recipeData.breweryId,
-          name: recipeData.name,
-          beverage_type: recipeData.beverageType,
-          target_style: recipeData.targetStyle,
-          expected_batch_size_liters: recipeData.expectedBatchSizeLiters,
-          target_original_gravity: recipeData.targetOriginalGravity,
-          target_final_gravity: recipeData.targetFinalGravity,
-          target_abv: recipeData.targetAbv,
-          target_ibu: recipeData.targetIbu,
-          target_color_ebc: recipeData.targetColorEbc,
-          ingredients: recipeData.ingredients,
-          steps: recipeData.steps,
-          target_curves: recipeData.targetCurves,
-          created_by: recipeData.createdBy
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      // После успешного сохранения перезапрашиваем список
-      await get().fetchRecipes(recipeData.breweryId);
-      return data;
-    } catch (error: any) {
-      set({ error: error?.message || 'Failed to save recipe', isLoading: false });
-      throw error;
-    }
-  }
 }));

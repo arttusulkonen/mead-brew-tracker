@@ -1,11 +1,7 @@
-/*
- * File: src/types/recipe.ts
- * Description: Data models for recipes, steps, and beverage styles.
- */
-
 import type { IngredientCategory } from './ingredient';
 
 export type BeverageType = 'Beer' | 'Mead' | 'Cider' | 'Other';
+export type MeadStyleTarget = 'Session (4-6%)' | 'Standard (7-10%)' | 'Wine/Sack (11%+)' | 'Custom';
 
 export interface RecipeIngredientReference {
   id: string;

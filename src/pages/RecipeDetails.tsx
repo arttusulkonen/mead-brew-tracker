@@ -71,6 +71,9 @@ const RecipeDetails: React.FC = () => {
     navigate('/recipes', { state: { editRecipe: currentRecipe } });
   };
 
+  /**
+   * Handles the deletion of the current recipe.
+   */
   const handleDelete = async () => {
     if (!currentRecipe || !currentRecipe.id) return;
     if (window.confirm(t('Are you sure you want to delete this recipe?'))) {
@@ -78,7 +81,7 @@ const RecipeDetails: React.FC = () => {
         await deleteRecipe(currentRecipe.id);
         navigate('/recipes');
       } catch {
-        // Silently catch delete errors for pure code blocks
+        alert(t('Failed to delete recipe. Check your permissions.'));
       }
     }
   };
