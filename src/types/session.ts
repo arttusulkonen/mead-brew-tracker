@@ -1,6 +1,6 @@
-import type { MeadStyleTarget, RecipeIngredientReference, RecipeStep } from './recipe';
+import type { BeverageType, RecipeIngredientReference, RecipeStep } from './recipe';
 
-export type BrewSessionStage = 'planned' | 'fermenting' | 'aging' | 'completed';
+export type BrewSessionStage = 'planned' | 'mashing' | 'boiling' | 'fermenting' | 'aging' | 'completed';
 
 export interface BrewLog {
   id: string;
@@ -33,8 +33,9 @@ export interface BrewSession {
   recipeId: string | null;
   breweryId: string;
   recipeName: string;
+  beverageType?: BeverageType;
   status: BrewSessionStage;
-  targetStyle?: MeadStyleTarget;
+  targetStyle?: string;
   batchSizeLiters: number;
   targetOg: number;
   actualOg?: number | null;
@@ -51,4 +52,9 @@ export interface BrewSession {
   createdAt: string;
   updatedAt: string;
   createdBy: string;
+
+  isSplit?: boolean;
+  parentSessionId?: string | null;
+  splitTimestamp?: string | null;
+  isAggregated?: boolean;
 }

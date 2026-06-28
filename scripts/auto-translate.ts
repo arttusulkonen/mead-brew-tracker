@@ -70,13 +70,14 @@ async function translateMissing() {
 
       try {
         const response = await ai.generate({
-          prompt: `You are an expert translator specializing in brewing, mead-making, and fermentation terminology. Translate the 'textToTranslate' fields from English to ${localeNames[locale]}. 
-          Context: A web application for homebrewing and mead-making (Mead & Brew Tracker).
+          prompt: `You are an expert translator specializing in brewing (beer, cider) and mead-making terminology. Translate the 'textToTranslate' fields from English to ${localeNames[locale]}.
+          Context: A professional SaaS platform for craft brewers and mead makers (Ingria Brewcraft).
           
           CRITICAL RULES:
           1. You MUST return exactly ${batchKeys.length} items in the array.
           2. Maintain EXACTLY the same 'originalKey' in your response.
           3. Do not translate placeholder variables like {{count}} or {{opponent}}.
+          4. For short units of measurement (g, kg, L, ml, oz, lb, gal, ppm), use the standard local abbreviation (e.g., 'kg' -> 'кг' in Russian, 'lb' -> 'фунт').
           
           Data to translate:
           ${JSON.stringify(inputItems, null, 2)}`,

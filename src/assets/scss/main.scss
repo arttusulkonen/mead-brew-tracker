@@ -8,3 +8,7 @@
 @use 'pages/recipes';
 @use 'pages/brew-session';
 @use 'pages/brew';
+@use 'components/active-timer';
+@use 'components/bottom-sheet';
+@use 'components/timeline-widget';
+@use 'components/search-modal';

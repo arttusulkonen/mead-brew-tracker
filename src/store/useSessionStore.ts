@@ -1,19 +1,25 @@
+// src/store/useSessionStore.ts
+import { calculateOneThirdSugarBreak } from '@mead-tracker/math';
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { create } from 'zustand';
 import { db } from '../firebase/config';
-import type { BrewLog, BrewSession } from '../types/session';
+import type { BrewLog, BrewSession, BrewSessionStage } from '../types/session';
 
-export interface SessionState {
+interface SessionState {
   sessions: BrewSession[];
   currentSession: BrewSession | null;
   isLoading: boolean;
   error: string | null;
   fetchSessions: (breweryId: string | null | undefined) => Promise<void>;
   fetchSessionById: (breweryId: string | null | undefined, sessionId: string | null | undefined) => Promise<void>;
-  createSession: (breweryId: string | null | undefined, session: BrewSession) => Promise<void>;
-  addLogToSession: (breweryId: string | null | undefined, sessionId: string | null | undefined, log: BrewLog) => Promise<void>;
-  updateSessionStatus: (breweryId: string | null | undefined, sessionId: string | null | undefined, status: BrewSession['status'], actualOg?: number) => Promise<void>;
   clearCurrentSession: () => void;
+  startSession: (payload: Record<string, any>) => Promise<string | null>;
+  updateSteps: (breweryId: string | null | undefined, sessionId: string | null | undefined, newSteps: any[]) => Promise<void>;
+  addLogToSession: (breweryId: string | null | undefined, sessionId: string | null | undefined, newLog: BrewLog) => Promise<void>;
+  updateTosnaSchedule: (breweryId: string | null | undefined, sessionId: string | null | undefined, updatedAdditions: any[]) => Promise<void>;
+  splitBrewSession: (payload: Record<string, any>) => Promise<void>;
+  updateSessionStatus: (breweryId: string | null | undefined, sessionId: string | null | undefined, newStatus: BrewSessionStage, actualOg?: number) => Promise<void>;
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -23,7 +29,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   error: null,
 
   fetchSessions: async (breweryId) => {
-    if (!breweryId || !db) {
+    if (!db || !breweryId) {
       set({ sessions: [], isLoading: false, error: null });
       return;
     }
@@ -32,166 +38,206 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     try {
       const sessionsRef = collection(db, `breweries/${breweryId}/brew_sessions`);
       const snapshot = await getDocs(sessionsRef);
+      const fetchedSessions = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as BrewSession));
       
-      const fetched: BrewSession[] = snapshot.docs.map(docSnap => ({
-        ...docSnap.data(),
-        id: docSnap.id,
-        logs: [] as BrewLog[]
-      } as unknown as BrewSession));
+      fetchedSessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
-      fetched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      
-      set({ sessions: fetched, isLoading: false });
-    } catch (error: any) {
-      set({ error: error?.message || 'Error fetching sessions', isLoading: false });
-    }
-  },
-
-  fetchSessionById: async (breweryId, sessionId) => {
-    if (!breweryId || !sessionId || !db) {
-      set({ currentSession: null, isLoading: false, error: null });
-      return;
-    }
-
-    set({ isLoading: true, error: null });
-    try {
-      const docRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
-      const docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        
-        const logsRef = collection(db, `breweries/${breweryId}/brew_sessions/${sessionId}/fermentation_logs`);
-        const logsSnap = await getDocs(logsRef);
-        const logs = logsSnap.docs.map(l => l.data() as BrewLog);
-        
-        set({ 
-          currentSession: { ...data, id: docSnap.id, logs } as BrewSession, 
-          isLoading: false 
-        });
-      } else {
-        set({ currentSession: null, error: 'Session not found', isLoading: false });
-      }
-    } catch (error: any) {
-      set({ error: error?.message || 'Error fetching session', isLoading: false });
-    }
-  },
-
-  createSession: async (breweryId, session) => {
-    if (!breweryId || !session || !db) return;
-    set({ isLoading: true, error: null });
-    try {
-      const docRef = doc(db, `breweries/${breweryId}/brew_sessions`, session.id);
-      const sessionData = { ...session };
-      delete (sessionData as any).logs; 
-      
-      await setDoc(docRef, sessionData);
-      
-      set(state => ({
-        sessions: [session, ...state.sessions],
-        isLoading: false
-      }));
-    } catch (error: any) {
-      set({ error: error?.message || 'Error creating session', isLoading: false });
-      throw error;
-    }
-  },
-
-  addLogToSession: async (breweryId, sessionId, log) => {
-    if (!breweryId || !sessionId || !log || !db) return;
-    set({ isLoading: true, error: null });
-    try {
-      const logRef = doc(db, `breweries/${breweryId}/brew_sessions/${sessionId}/fermentation_logs`, log.id);
-      await setDoc(logRef, log);
-
-      const sessionRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
-      const currentSession = get().currentSession;
-      
-      let updatedTosnaSchedule = currentSession?.tosnaSchedule;
-
-      if (currentSession && currentSession.status === 'fermenting' && updatedTosnaSchedule && log.sg !== null) {
-        if (!updatedTosnaSchedule.isCompressed && log.sg <= updatedTosnaSchedule.targetOneThirdBreak) {
-          updatedTosnaSchedule = {
-            ...updatedTosnaSchedule,
-            isCompressed: true
-          };
-        }
-      }
-
-      const updateData: Partial<BrewSession> = {
-        updatedAt: new Date().toISOString()
-      };
-
-      if (updatedTosnaSchedule && currentSession?.tosnaSchedule?.isCompressed !== updatedTosnaSchedule.isCompressed) {
-        updateData.tosnaSchedule = updatedTosnaSchedule;
-      }
-
-      await updateDoc(sessionRef, updateData);
-
-      if (currentSession && currentSession.id === sessionId) {
-        const updatedLogs = [...(currentSession.logs || []), log];
-        set({
-          currentSession: { 
-            ...currentSession, 
-            logs: updatedLogs,
-            tosnaSchedule: updatedTosnaSchedule 
-          }
-        });
-      }
-    } catch (error: any) {
-      set({ error: error?.message || 'Error adding log', isLoading: false });
-      throw error;
+      set({ sessions: fetchedSessions });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Unknown error' });
     } finally {
       set({ isLoading: false });
     }
   },
 
-  updateSessionStatus: async (breweryId, sessionId, status, actualOg?: number) => {
-    if (!breweryId || !sessionId || !status || !db) return;
+  fetchSessionById: async (breweryId, sessionId) => {
+    if (!db || !breweryId || !sessionId) {
+      set({ currentSession: null, isLoading: false, error: null });
+      return;
+    }
+    
     set({ isLoading: true, error: null });
     try {
-      const docRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
-      const session = get().currentSession;
+      const sessionRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
+      const sessionSnap = await getDoc(sessionRef);
       
-      const updateData: Partial<BrewSession> = { status, updatedAt: new Date().toISOString() };
-      
-      if (status === 'fermenting' && session && session.status === 'planned') {
-        const pitchTimestamp = new Date().toISOString();
-        const ogToUse = actualOg || session.targetOg || 1.000;
-        const targetOneThirdBreak = ogToUse - ((ogToUse - 1.000) / 3);
+      if (sessionSnap.exists()) {
+        const data = sessionSnap.data();
+        let logs = data.logs || [];
         
-        if (actualOg) {
-          updateData.actualOg = actualOg;
+        if (!data.logs) {
+          const logsRef = collection(db, `breweries/${breweryId}/brew_sessions/${sessionId}/fermentation_logs`);
+          const logsSnap = await getDocs(logsRef);
+          logs = logsSnap.docs.map(l => l.data() as BrewLog);
         }
-
-        updateData.pitchTimestamp = pitchTimestamp;
-        updateData.tosnaSchedule = {
-          targetOneThirdBreak: Math.round(targetOneThirdBreak * 1000) / 1000,
-          isCompressed: false,
-          additions: [
-            { id: 1, type: '24h', targetDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), isCompleted: false },
-            { id: 2, type: '48h', targetDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), isCompleted: false },
-            { id: 3, type: '72h', targetDate: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(), isCompleted: false },
-            { id: 4, type: '1/3 Sugar Break', isCompleted: false }
-          ]
-        };
+        
+        set({ currentSession: { ...data, id: sessionSnap.id, logs } as BrewSession });
+      } else {
+        set({ currentSession: null, error: 'Session not found' });
       }
-
-      if (status === 'completed') {
-        updateData.completedDate = new Date().toISOString();
-      }
-
-      await updateDoc(docRef, updateData);
-
-      set(state => ({
-        currentSession: state.currentSession?.id === sessionId ? { ...state.currentSession, ...updateData } : state.currentSession,
-        isLoading: false
-      }));
-    } catch (error: any) {
-      set({ error: error?.message || 'Error updating status', isLoading: false });
-      throw error;
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Unknown error' });
+    } finally {
+      set({ isLoading: false });
     }
   },
 
-  clearCurrentSession: () => set({ currentSession: null, error: null })
+  clearCurrentSession: () => {
+    set({ currentSession: null, error: null });
+  },
+
+  startSession: async (payload) => {
+    set({ isLoading: true, error: null });
+    try {
+      const functions = getFunctions();
+      const startBrewSessionFn = httpsCallable<Record<string, any>, { status: string, sessionId: string }>(functions, 'startBrewSession');
+      
+      const response = await startBrewSessionFn(payload);
+      
+      if (response.data && response.data.sessionId) {
+        set({ isLoading: false });
+        return response.data.sessionId;
+      }
+      
+      set({ isLoading: false });
+      return null;
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to start session', isLoading: false });
+      throw err;
+    }
+  },
+
+  updateSteps: async (breweryId, sessionId, newSteps) => {
+    if (!db || !breweryId || !sessionId) return;
+    
+    const { currentSession } = get();
+    if (currentSession) {
+      set({ currentSession: { ...currentSession, sessionSteps: newSteps } });
+    }
+
+    try {
+      const sessionRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
+      await updateDoc(sessionRef, { 
+        sessionSteps: newSteps, 
+        updatedAt: new Date().toISOString() 
+      });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to update steps' });
+    }
+  },
+
+  updateSessionStatus: async (breweryId, sessionId, newStatus, actualOg) => {
+    if (!db || !breweryId || !sessionId) return;
+    
+    const { currentSession } = get();
+    const updateData: Record<string, any> = {
+      status: newStatus,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (actualOg !== undefined) {
+      updateData.actualOg = actualOg;
+    }
+
+    if (newStatus === 'fermenting' && currentSession?.status === 'planned') {
+      updateData.pitchTimestamp = new Date().toISOString();
+    } else if (newStatus === 'completed') {
+      updateData.completedDate = new Date().toISOString();
+    }
+
+    if (currentSession) {
+      set({ currentSession: { ...currentSession, ...updateData } });
+    }
+
+    try {
+      const sessionRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
+      await updateDoc(sessionRef, updateData);
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to update status' });
+    }
+  },
+
+  addLogToSession: async (breweryId, sessionId, newLog) => {
+    if (!db || !breweryId || !sessionId) return;
+
+    const { currentSession } = get();
+    const updatedLogs = [...(currentSession?.logs || []), newLog];
+    
+    let updatedTosna = currentSession?.tosnaSchedule;
+    const usedOg = currentSession?.actualOg || currentSession?.targetOg;
+
+    if (usedOg && newLog.sg !== null && updatedTosna && !updatedTosna.isCompressed) {
+      const sugarBreak = calculateOneThirdSugarBreak(usedOg);
+      if (newLog.sg <= sugarBreak) {
+        updatedTosna = { ...updatedTosna, isCompressed: true };
+      }
+    }
+
+    if (currentSession) {
+      set({ 
+        currentSession: { 
+          ...currentSession, 
+          logs: updatedLogs,
+          tosnaSchedule: updatedTosna
+        } 
+      });
+    }
+
+    try {
+      const logRef = doc(collection(db, `breweries/${breweryId}/brew_sessions/${sessionId}/fermentation_logs`), newLog.id);
+      await setDoc(logRef, newLog);
+
+      const sessionRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
+      const updatePayload: Record<string, any> = {
+        updatedAt: new Date().toISOString()
+      };
+
+      if (updatedTosna && currentSession?.tosnaSchedule?.isCompressed !== updatedTosna.isCompressed) {
+        updatePayload.tosnaSchedule = updatedTosna;
+      }
+
+      await updateDoc(sessionRef, updatePayload);
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to add log' });
+    }
+  },
+
+  updateTosnaSchedule: async (breweryId, sessionId, updatedAdditions) => {
+    if (!db || !breweryId || !sessionId) return;
+
+    const { currentSession } = get();
+    if (currentSession?.tosnaSchedule) {
+      set({ 
+        currentSession: { 
+          ...currentSession, 
+          tosnaSchedule: { ...currentSession.tosnaSchedule, additions: updatedAdditions } 
+        } 
+      });
+    }
+
+    try {
+      const sessionRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
+      await updateDoc(sessionRef, { 
+        'tosnaSchedule.additions': updatedAdditions,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to update TOSNA' });
+    }
+  },
+
+  splitBrewSession: async (payload) => {
+    set({ isLoading: true, error: null });
+    try {
+      const functions = getFunctions();
+      const splitBatchFn = httpsCallable<Record<string, any>, { status: string }>(functions, 'splitBatch');
+      
+      await splitBatchFn(payload);
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to split session' });
+      throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  }
 }));

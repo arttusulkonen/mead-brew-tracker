@@ -136,7 +136,6 @@ export const splitBatch = onCall(async (request) => {
       }
 
       const splitTimestamp = new Date().toISOString();
-
       const { logs, ...restParentData } = parentData;
 
       transaction.update(parentSessionRef, {
@@ -172,5 +171,128 @@ export const splitBatch = onCall(async (request) => {
       throw error;
     }
     throw new HttpsError("internal", "Split batch failed");
+  }
+});
+
+const StartSessionSchema = z.object({
+  breweryId: z.string(),
+  recipeId: z.string(),
+  recipeName: z.string(),
+  beverageType: z.string().default("Mead"), // Добавлена поддержка beverageType
+  batchSizeLiters: z.number().positive(),
+  targetOg: z.number().nullable().optional(),
+  targetFg: z.number().nullable().optional(),
+  sessionIngredients: z.array(z.object({
+    globalIngredientId: z.string().min(1),
+    quantity: z.number().positive()
+  }).passthrough()),
+  sessionSteps: z.array(z.record(z.any()))
+});
+
+/**
+ * Processes an ingredient transaction against the brewery inventory.
+ */
+function processIngredientTransaction(inventoryDoc: any, ingredient: any, transaction: any, inventoryRef: any) {
+  const currentData = inventoryDoc.data();
+  // Используем корректное поле quantityOnHand
+  const currentQty = inventoryDoc.exists && typeof currentData?.quantityOnHand === "number" ? currentData.quantityOnHand : 0;
+  
+  if (currentQty < ingredient.quantity) {
+    throw new HttpsError("failed-precondition", `Insufficient inventory for ingredient ${ingredient.globalIngredientId}. Required: ${ingredient.quantity}, Available: ${currentQty}`);
+  }
+  
+  transaction.set(inventoryRef, {
+    quantityOnHand: currentQty - ingredient.quantity,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
+}
+
+export const startBrewSession = onCall(async (request) => {
+  if (!request || !request.auth || !request.auth.uid) {
+    throw new HttpsError("unauthenticated", "Unauthenticated");
+  }
+
+  if (!request.data) {
+    throw new HttpsError("invalid-argument", "No data provided");
+  }
+
+  const parsedData = StartSessionSchema.safeParse(request.data);
+  if (!parsedData || !parsedData.success || !parsedData.data) {
+    throw new HttpsError("invalid-argument", "Invalid payload");
+  }
+
+  const { breweryId, recipeId, recipeName, beverageType, batchSizeLiters, targetOg, targetFg, sessionIngredients, sessionSteps } = parsedData.data;
+
+  if (!breweryId || !recipeId) {
+    throw new HttpsError("invalid-argument", "Missing required identifiers");
+  }
+
+  const breweryRef = db.collection("breweries").doc(breweryId);
+  const sessionRef = db.collection(`breweries/${breweryId}/brew_sessions`).doc();
+
+  try {
+    await db.runTransaction(async (transaction) => {
+      const breweryDoc = await transaction.get(breweryRef);
+      if (!breweryDoc || !breweryDoc.exists) {
+        throw new HttpsError("not-found", "Brewery not found");
+      }
+
+      const breweryData = breweryDoc.data();
+      const uid = request.auth?.uid;
+      
+      if (!uid) {
+        throw new HttpsError("unauthenticated", "Unauthenticated");
+      }
+
+      const isOwner = breweryData?.ownerId === uid;
+      const isMember = Array.isArray(breweryData?.members) && breweryData.members.includes(uid);
+
+      if (!isOwner && !isMember) {
+        throw new HttpsError("permission-denied", "Unauthorized access to this brewery");
+      }
+
+      // Списание инвентаря
+      for (const ingredient of sessionIngredients) {
+        if (!ingredient || !ingredient.globalIngredientId || typeof ingredient.quantity !== "number" || ingredient.quantity <= 0) continue;
+        
+        const inventoryRef = db.collection(`breweries/${breweryId}/inventory`).doc(ingredient.globalIngredientId);
+        const inventoryDoc = await transaction.get(inventoryRef);
+        
+        // Вызываем корректную функцию списания (проверяет quantityOnHand)
+        processIngredientTransaction(inventoryDoc, ingredient, transaction, inventoryRef);
+      }
+
+      const now = new Date().toISOString();
+      const sessionData = {
+        id: sessionRef.id,
+        recipeId: recipeId,
+        breweryId: breweryId,
+        recipeName: recipeName,
+        beverageType: beverageType, // Сохраняем тип напитка
+        status: "planned",
+        startDate: now,
+        completedDate: null,
+        batchSizeLiters: batchSizeLiters,
+        targetOg: typeof targetOg === "number" ? targetOg : null,
+        targetFg: typeof targetFg === "number" ? targetFg : null,
+        sessionIngredients: sessionIngredients,
+        sessionSteps: sessionSteps,
+        logs: [],
+        createdAt: now,
+        updatedAt: now,
+        createdBy: uid,
+        isAggregated: false,
+        isSplit: false
+      };
+
+      transaction.set(sessionRef, sessionData);
+    });
+
+    return { status: "success", sessionId: sessionRef.id };
+  } catch (error) {
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError("internal", "Start brew session failed");
   }
 });

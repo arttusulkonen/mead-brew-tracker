@@ -111,4 +111,4 @@ export const generateRecipeAI = onCall(
   }
 );
 
-export { aggregateRecipeStats, splitBatch } from "./brew_functions";
+export { aggregateRecipeStats, splitBatch, startBrewSession } from "./brew_functions";

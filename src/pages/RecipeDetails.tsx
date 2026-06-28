@@ -1,11 +1,9 @@
 import { calculateOneThirdSugarBreak, calculateTosna } from '@mead-tracker/math';
-import { collection, getDocs } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaEdit, FaPlay, FaTrash } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
-import { db } from '../firebase/config';
 import { useRecipeStore } from '../store/useRecipeStore';
+import { supabase } from '../supabase/client';
 import type { BaseIngredient, YeastIngredient } from '../types/ingredient';
 
 const RecipeDetails: React.FC = () => {
@@ -23,29 +21,25 @@ const RecipeDetails: React.FC = () => {
   useEffect(() => {
     const fetchCatalog = async () => {
       try {
-        if (!db) return;
-        const querySnapshot = await getDocs(collection(db, 'ingredients'));
-        const catalogData = querySnapshot.docs.map(docSnap => ({
-          ...docSnap.data(),
-          id: docSnap.id
-        })) as BaseIngredient[];
-        setGlobalCatalog(catalogData);
+        const { data, error } = await supabase.from('ingredients').select('*');
+        if (error) throw error;
+        setGlobalCatalog(data as BaseIngredient[]);
       } catch {
-        console.assert(false, 'Failed to fetch global ingredient catalog');
+        setGlobalCatalog([]);
       }
     };
     fetchCatalog();
   }, []);
 
   const selectedRecipeTosna = useMemo(() => {
-    if (!currentRecipe || globalCatalog.length === 0) return null;
+    if (!currentRecipe || globalCatalog.length === 0 || currentRecipe.beverageType !== 'Mead') return null;
+    
     let selectedYeastTemplate = null;
     let yeastAddedGrams = 0;
     let customNutrientName = '';
 
     currentRecipe.ingredients.forEach(item => {
       const template = globalCatalog.find(t => t.id === item.globalIngredientId);
-      
       if (item.category === 'Yeast') {
         yeastAddedGrams += item.quantity;
         selectedYeastTemplate = template;
@@ -72,19 +66,16 @@ const RecipeDetails: React.FC = () => {
     return null;
   }, [currentRecipe, globalCatalog]);
 
-  const startBrewSession = () => {
-    if (!currentRecipe?.id) return;
-    navigate(`/brew/setup/${currentRecipe.id}`);
-  };
-
   const handleEdit = () => {
     if (!currentRecipe) return;
     navigate('/recipes', { state: { editRecipe: currentRecipe } });
   };
 
+  /**
+   * Handles the deletion of the current recipe.
+   */
   const handleDelete = async () => {
     if (!currentRecipe || !currentRecipe.id) return;
-    
     if (window.confirm(t('Are you sure you want to delete this recipe?'))) {
       try {
         await deleteRecipe(currentRecipe.id);
@@ -96,14 +87,14 @@ const RecipeDetails: React.FC = () => {
   };
 
   if (isLoading) {
-    return <div className="loading-text p-lg text-center">{t('Loading recipe...')}</div>;
+    return <div className="recipe-details__loading">{t('Loading recipe...')}</div>;
   }
 
   if (!currentRecipe) {
     return (
-      <div className="recipes-page text-center p-lg">
-        <h2>{t('Recipe not found')}</h2>
-        <button className="btn-secondary mt-md" onClick={() => navigate('/recipes')}>
+      <div className="recipe-details recipe-details--empty">
+        <h2 className="recipe-details__empty-title">{t('Recipe not found')}</h2>
+        <button type="button" className="recipe-details__btn-secondary" onClick={() => navigate('/recipes')}>
           {t('Back to list')}
         </button>
       </div>
@@ -111,137 +102,116 @@ const RecipeDetails: React.FC = () => {
   }
 
   return (
-    <div className="recipes-page">
-      <header className="page-header">
-        <div className="flex-col gap-xs">
-          <h1 className="m-0">{currentRecipe.name}</h1>
-          <span className="text-sm text-muted">{currentRecipe.targetStyle}</span>
+    <div className="recipe-details">
+      <header className="recipe-details__header">
+        <div className="recipe-details__title-block">
+          <h1 className="recipe-details__title">{currentRecipe.name}</h1>
+          <span className="recipe-details__subtitle">{t(`constants.beverage_types.${currentRecipe.beverageType.toLowerCase()}`, currentRecipe.beverageType)} &bull; {currentRecipe.targetStyle}</span>
         </div>
-        <div className="header-actions" style={{ display: 'flex', gap: '12px' }}>
-          <button className="btn-icon outline" onClick={handleEdit} title={t('Edit Recipe')}>
-            <FaEdit color="#666" />
-          </button>
-          <button className="btn-icon danger-outline" onClick={handleDelete} title={t('Delete Recipe')}>
-            <FaTrash color="#dc3545" />
-          </button>
-          <button className="btn-secondary" onClick={() => navigate('/recipes')}>
-            {t('Back to list')}
-          </button>
+        <div className="recipe-details__actions">
+          <button type="button" className="recipe-details__btn-secondary" onClick={handleEdit}>{t('Edit')}</button>
+          <button type="button" className="recipe-details__btn-danger" onClick={handleDelete}>{t('Delete')}</button>
+          <button type="button" className="recipe-details__btn-primary" onClick={() => navigate(`/brew/setup/${currentRecipe.id}`)}>{t('Start Brew')}</button>
         </div>
       </header>
 
-      <div className="recipe-grid">
-        <div className="flex-col gap-lg">
-          <div className="card">
-            <h3 className="mb-md" style={{ borderBottom: '1px solid #eee', paddingBottom: '12px' }}>{t('Ingredients')}</h3>
-            <div className="flex-col gap-sm">
+      <div className="recipe-details__layout">
+        <main className="recipe-details__main">
+          
+          <section className="recipe-details__section">
+            <h2 className="recipe-details__section-title">{t('Ingredients')}</h2>
+            <ul className="recipe-details__ingredient-list">
               {currentRecipe.ingredients.map(ing => (
-                <div key={ing.id} className="ingredient-list-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
-                  <div>
-                    <span className="category-tag" style={{ marginRight: '12px', fontSize: '0.8rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: '#eef' }} data-category={ing.category}>{t(ing.category)}</span>
-                    <strong className="text-md">{ing.name}</strong>
-                    {ing.note && <div className="text-sm text-muted mt-sm">{ing.note}</div>}
+                <li key={ing.id} className="recipe-details__ingredient-item">
+                  <div className="recipe-details__ingredient-info">
+                    <span className="recipe-details__badge">{t(`constants.categories.${ing.category.toLowerCase().replace(' ', '_')}`, ing.category)}</span>
+                    <strong className="recipe-details__ingredient-name">{ing.name}</strong>
                   </div>
-                  <div className="font-bold no-wrap">{ing.quantity} {t('g')}</div>
-                </div>
+                  <span className="recipe-details__ingredient-quantity">{ing.quantity} {t('g')}</span>
+                </li>
               ))}
-            </div>
-          </div>
+            </ul>
+          </section>
 
-          <div className="card">
-            <h3 className="mb-md" style={{ borderBottom: '1px solid #eee', paddingBottom: '12px' }}>{t('Brewing Steps')}</h3>
-            <div className="flex-col gap-md">
-              {currentRecipe.steps.map((step, idx) => (
-                <div key={step.id} style={{ display: 'flex', gap: '16px' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}>
-                    {idx + 1}
+          <section className="recipe-details__section">
+            <h2 className="recipe-details__section-title">{t('Brewing Steps')}</h2>
+            <ol className="recipe-details__step-list">
+              {currentRecipe.steps.map((step) => (
+                <li key={step.id} className="recipe-details__step-item">
+                  <div className="recipe-details__step-header">
+                    <strong className="recipe-details__step-title">{step.title}</strong>
+                    <span className="recipe-details__badge recipe-details__badge--outline">{t(`constants.step_phases.${step.phase.toLowerCase()}`, step.phase)}</span>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <strong className="text-md">{step.title}</strong>
-                      <span style={{ fontSize: '0.85rem', color: '#666', backgroundColor: '#eee', padding: '2px 8px', borderRadius: '12px' }}>{step.phase}</span>
-                    </div>
-                    <p style={{ margin: '4px 0 8px 0', fontSize: '0.95rem', lineHeight: '1.4' }}>{step.description}</p>
-                    <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem', color: '#666' }}>
-                      <span>⏱ {step.durationValue} {t(step.durationUnit)}</span>
-                      {step.targetTempC && <span>🌡 {step.targetTempC} °C</span>}
-                    </div>
+                  <p className="recipe-details__step-desc">{step.description}</p>
+                  <div className="recipe-details__step-meta">
+                    <span className="recipe-details__step-duration">{step.durationValue} {t(step.durationUnit, step.durationUnit)}</span>
+                    {step.targetTempC && <span className="recipe-details__step-temp">{step.targetTempC} °C</span>}
                   </div>
-                </div>
+                </li>
               ))}
+            </ol>
+          </section>
+
+        </main>
+
+        <aside className="recipe-details__sidebar">
+          <div className="stat-panel">
+            <h3 className="stat-panel__title">{t('Specifications')}</h3>
+            <ul className="stat-panel__list">
+              <li className="stat-panel__item">
+                <span className="stat-panel__label">{t('Batch Size')}</span>
+                <span className="stat-panel__value">{currentRecipe.expectedBatchSizeLiters} {t('L')}</span>
+              </li>
+              <li className="stat-panel__item">
+                <span className="stat-panel__label">{t('Estimated ABV')}</span>
+                <span className="stat-panel__value stat-panel__value--highlight">{currentRecipe.targetAbv?.toFixed(1)}%</span>
+              </li>
+              <li className="stat-panel__item">
+                <span className="stat-panel__label">{t('OG / FG')}</span>
+                <span className="stat-panel__value">{currentRecipe.targetOriginalGravity?.toFixed(3)} / {currentRecipe.targetFinalGravity?.toFixed(3)}</span>
+              </li>
+              {currentRecipe.beverageType === 'Beer' && (
+                <>
+                  <li className="stat-panel__item">
+                    <span className="stat-panel__label">{t('Target IBU')}</span>
+                    <span className="stat-panel__value">{currentRecipe.targetIbu?.toFixed(1) || '0.0'}</span>
+                  </li>
+                  <li className="stat-panel__item">
+                    <span className="stat-panel__label">{t('Target Color (EBC)')}</span>
+                    <span className="stat-panel__value">{currentRecipe.targetColorEbc?.toFixed(1) || '0.0'}</span>
+                  </li>
+                </>
+              )}
+            </ul>
+          </div>
+
+          {selectedRecipeTosna && (
+            <div className="stat-panel">
+              <h3 className="stat-panel__title">{t('TOSNA 3.0 Schedule')}</h3>
+              <ul className="stat-panel__list stat-panel__list--stacked">
+                <li className="stat-panel__item stat-panel__item--row">
+                  <span className="stat-panel__label">{t('Addition 1')} ({t('24h')})</span>
+                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams}g</span>
+                </li>
+                <li className="stat-panel__item stat-panel__item--row">
+                  <span className="stat-panel__label">{t('Addition 2')} ({t('48h')})</span>
+                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams}g</span>
+                </li>
+                <li className="stat-panel__item stat-panel__item--row">
+                  <span className="stat-panel__label">{t('Addition 3')} ({t('72h')})</span>
+                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams}g</span>
+                </li>
+                <li className="stat-panel__item stat-panel__item--row">
+                  <span className="stat-panel__label">{t('Addition 4')} ({t('1/3 Sugar Break')})</span>
+                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams}g</span>
+                </li>
+              </ul>
+              <div className="stat-panel__footer">
+                 <span className="stat-panel__subtext">{t('Target SG for final addition')}: {calculateOneThirdSugarBreak(currentRecipe.targetOriginalGravity).toFixed(3)}</span>
+              </div>
             </div>
-          </div>
-        </div>
-
-        <div className="flex-col gap-lg">
-          <button className="btn-primary full-width" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', padding: '16px', fontSize: '1.1rem' }} onClick={startBrewSession}>
-            <FaPlay /> {t('Start Brew Session')}
-          </button>
-
-          <div className="card stat-card">
-            <h3 className="mb-md">{t('Specifications')}</h3>
-            <div className="flex-col gap-sm">
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '8px' }}>
-                <span className="text-muted">{t('Batch Size')}</span>
-                <span className="font-bold">{currentRecipe.expectedBatchSizeLiters} {t('L')}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '8px' }}>
-                <span className="text-muted">{t('Estimated ABV')}</span>
-                <span className="text-primary-bold">{currentRecipe.targetAbv?.toFixed(1)}%</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '8px' }}>
-                <span className="text-muted">{t('Original Gravity')}</span>
-                <span className="font-bold">{currentRecipe.targetOriginalGravity?.toFixed(3)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="text-muted">{t('Final Gravity')}</span>
-                <span className="font-bold">{currentRecipe.targetFinalGravity?.toFixed(3)}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="card stat-card">
-            <h3 className="mb-md">{t('TOSNA 3.0 Guide')}</h3>
-            {!selectedRecipeTosna ? (
-              <div className="empty-text text-center text-muted">{t('No yeast added')}</div>
-            ) : (
-              <>
-                <div className="tosna-grid mb-md">
-                  <div className="tosna-row">
-                    <span>{t('Required Yeast')}</span>
-                    <div className="text-right">
-                      <strong>{selectedRecipeTosna.totalYeastGrams} g</strong>
-                      {selectedRecipeTosna.yeastAdded > 0 && <div className="text-xs text-muted">({t('Added')}: {selectedRecipeTosna.yeastAdded}g)</div>}
-                    </div>
-                  </div>
-                  <div className="tosna-row"><span>{t('Go-Ferm')}</span><strong>{selectedRecipeTosna.goFermGrams} g</strong></div>
-                  <div className="tosna-row"><span>{t('Total')} {selectedRecipeTosna.customNutrientName}</span><strong>{selectedRecipeTosna.totalFermaidOGrams} g</strong></div>
-                </div>
-
-                <div style={{ backgroundColor: '#f9f9f9', padding: '12px', borderRadius: '8px', border: '1px solid #eee' }}>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>{t('Feeding Schedule')}</h4>
-                  <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: '#444', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <li>
-                      <strong>{t('Addition 1')}</strong> ({t('24h')}): <strong className="text-primary">{selectedRecipeTosna.dosePerAdditionGrams} g</strong>
-                    </li>
-                    <li>
-                      <strong>{t('Addition 2')}</strong> ({t('48h')}): <strong className="text-primary">{selectedRecipeTosna.dosePerAdditionGrams} g</strong>
-                    </li>
-                    <li>
-                      <strong>{t('Addition 3')}</strong> ({t('72h')}): <strong className="text-primary">{selectedRecipeTosna.dosePerAdditionGrams} g</strong>
-                    </li>
-                    <li>
-                      <strong>{t('Addition 4')}</strong> ({t('1/3 Sugar Break')}): <strong className="text-primary">{selectedRecipeTosna.dosePerAdditionGrams} g</strong><br />
-                      <span className="text-xs text-muted">
-                        {t('Target SG for final addition')}: {calculateOneThirdSugarBreak(currentRecipe.targetOriginalGravity).toFixed(3)}
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+          )}
+        </aside>
       </div>
     </div>
   );

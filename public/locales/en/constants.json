@@ -1,16 +1,79 @@
 {
+  "constants.categories.fermentable": "Fermentable",
+  "constants.categories.yeast": "Yeast",
+  "constants.categories.hops": "Hops",
+  "constants.categories.water_profile": "Water Profile",
+  "constants.categories.additive": "Additive",
+
+  "constants.fermentable_types.grain": "Grain",
+  "constants.fermentable_types.extract": "Extract",
+  "constants.fermentable_types.sugar": "Sugar",
+  "constants.fermentable_types.honey": "Honey",
+  "constants.fermentable_types.fruit": "Fruit",
+
+  "constants.yeast_forms.liquid": "Liquid",
+  "constants.yeast_forms.dry": "Dry",
+
+  "constants.nitrogen_demand.low": "Low",
+  "constants.nitrogen_demand.medium": "Medium",
+  "constants.nitrogen_demand.high": "High",
+  "constants.nitrogen_demand.very_high": "Very High",
+
+  "constants.hops_forms.pellet": "Pellet",
+  "constants.hops_forms.whole": "Whole Leaf",
+  "constants.hops_forms.extract": "Hop Extract",
+
+  "constants.additive_types.nutrient": "Nutrient",
+  "constants.additive_types.spice": "Spice",
+  "constants.additive_types.fruit": "Fruit",
+  "constants.additive_types.clarifier": "Clarifier",
+  "constants.additive_types.stabilizer": "Stabilizer",
+  "constants.additive_types.acid": "Acid",
+
+  "constants.beverage_types.beer": "Beer",
+  "constants.beverage_types.mead": "Mead",
+  "constants.beverage_types.cider": "Cider",
+  "constants.beverage_types.other": "Other",
+
+  "constants.step_phases.preparation": "Preparation",
+  "constants.step_phases.mashing": "Mashing",
+  "constants.step_phases.boiling": "Boiling",
+  "constants.step_phases.fermentation": "Fermentation",
+  "constants.step_phases.aging": "Aging",
+  "constants.step_phases.packaging": "Packaging",
+
+  "constants.session_stages.planned": "Planned",
+  "constants.session_stages.mashing": "Mashing",
+  "constants.session_stages.boiling": "Boiling",
+  "constants.session_stages.fermenting": "Fermenting",
+  "constants.session_stages.aging": "Aging",
+  "constants.session_stages.completed": "Completed",
+
+  "constants.units.g": "g",
+  "constants.units.kg": "kg",
+  "constants.units.l": "L",
+  "constants.units.ml": "ml",
+  "constants.units.oz": "oz",
+  "constants.units.lb": "lb",
+  "constants.units.gal": "gal",
+  "constants.units.ppm": "ppm",
+  "constants.units.unit": "unit",
+
   "constants.styles.traditional": "Traditional Mead",
   "constants.styles.session_hopped": "Session Hopped Mead",
   "constants.styles.melomel": "Melomel",
   "constants.styles.metheglin": "Metheglin",
   "constants.styles.braggot": "Braggot",
+
   "constants.sweetness.dry": "Dry",
   "constants.sweetness.semi_dry": "Semi-Dry",
   "constants.sweetness.semi_sweet": "Semi-Sweet",
   "constants.sweetness.sweet": "Sweet",
-  "constants.honey.linden": "Linden",
-  "constants.honey.acacia": "Acacia",
-  "constants.honey.heather": "Heather",
-  "constants.honey.buckwheat": "Buckwheat",
-  "constants.honey.wildflower": "Wildflower"
+
+  "constants.actions.tosna": "TOSNA Addition",
+  "constants.actions.degassing": "Degassing",
+  "constants.actions.aeration": "Aeration",
+  "constants.actions.cold_crash": "Cold Crash",
+  "constants.actions.racking": "Racking",
+  "constants.actions.bottling": "Bottling"
 }
