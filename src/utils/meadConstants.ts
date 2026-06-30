@@ -1,3 +1,4 @@
+//src/utils/meadConstants.ts
 export const MEAD_STYLES = [
   { id: 'traditional', name: 'constants.styles.traditional', boilProtocol: 'No-Boil' },
   { id: 'session_hopped', name: 'constants.styles.session_hopped', boilProtocol: 'Boil (60m)' },

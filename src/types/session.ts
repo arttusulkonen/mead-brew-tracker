@@ -1,3 +1,4 @@
+//src/types/session.ts
 import type { BeverageType, RecipeIngredientReference, RecipeStep } from './recipe';
 
 export type BrewSessionStage = 'planned' | 'mashing' | 'boiling' | 'fermenting' | 'aging' | 'completed';

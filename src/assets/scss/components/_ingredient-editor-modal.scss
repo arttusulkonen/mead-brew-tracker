@@ -1,0 +1,157 @@
+@use '../settings/variables' as *;
+
+.editor-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgb(0 0 0 / 60%);
+  backdrop-filter: blur(4px);
+}
+
+.editor-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 650px;
+  max-height: 95vh;
+  background-color: var(--bg-surface);
+  border-radius: $border-radius-md;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 30%);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-md $spacing-lg;
+    background-color: var(--bg-surface-alt);
+    border-bottom: 1px solid var(--border-color);
+    border-radius: $border-radius-md $border-radius-md 0 0;
+
+    h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      color: var(--text-primary);
+    }
+  }
+
+  &__close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: rgb(0 0 0 / 5%);
+    }
+  }
+
+  &__body {
+    flex: 1;
+    padding: $spacing-lg;
+    overflow-y: auto;
+  }
+
+  &__footer {
+    display: flex;
+    gap: $spacing-md;
+    justify-content: flex-end;
+    padding: $spacing-md $spacing-lg;
+    border-top: 1px solid var(--border-color);
+  }
+
+  /* Автокомплит (Умный поиск) */
+  .autocomplete {
+    position: relative;
+    width: 100%;
+
+    &__input-wrapper {
+      position: relative;
+    }
+
+    &__icon {
+      position: absolute;
+      top: 50%;
+      left: 12px;
+      color: var(--text-secondary);
+      transform: translateY(-50%);
+    }
+
+    &__input {
+      width: 100%;
+      padding: $spacing-sm $spacing-md $spacing-sm 36px;
+      font-size: 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: $border-radius-sm;
+
+      &:focus {
+        border-color: var(--color-primary);
+        outline: none;
+        box-shadow: 0 0 0 2px rgb(0 123 255 / 20%);
+      }
+    }
+
+    &__dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      z-index: 10;
+      width: 100%;
+      max-height: 250px;
+      padding: 0;
+      margin: 4px 0 0;
+      overflow-y: auto;
+      list-style: none;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: $border-radius-sm;
+      box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+    }
+
+    &__item {
+      display: flex;
+      flex-direction: column;
+      padding: $spacing-sm $spacing-md;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border-color);
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover {
+        background-color: rgb(0 123 255 / 5%);
+      }
+
+      &-title {
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      &-meta {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+      }
+    }
+  }
+
+  /* Сетка формы */
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: $spacing-md;
+    margin-top: $spacing-lg;
+  }
+}
