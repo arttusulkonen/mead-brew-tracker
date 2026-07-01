@@ -159,7 +159,7 @@ const Recipes: React.FC = () => {
           sulfatePpm: item.sulfate_ppm,
           chloridePpm: item.chloride_ppm,
           bicarbonatePpm: item.bicarbonate_ppm
-        })) as BaseIngredient[];
+        })) as unknown as BaseIngredient[];
         setGlobalCatalog(formattedCatalog);
       }
 
@@ -517,7 +517,7 @@ const Recipes: React.FC = () => {
     let totalIbu = 0;
 
     let yeastAddedGrams = 0;
-    let yeastNitrogenDemand: RecipeIngredientEntry['nitrogenDemand'] = 'Medium';
+    let yeastNitrogenDemand: string = 'Medium';
 
     let totalWeightedYield = 0;
     let customNutrientName = '';
@@ -560,8 +560,8 @@ const Recipes: React.FC = () => {
     let tosnaData = null;
     if (beverageType === 'Mead' && yeastAddedGrams > 0 && estimatedOg > 1.000) {
       let nFactor = 0.90;
-      if (yeastNitrogenDemand === 'Low') nFactor = 0.75;
-      else if (yeastNitrogenDemand === 'High' || yeastNitrogenDemand === 'Very High') nFactor = 1.25;
+      if ((yeastNitrogenDemand as string) === 'Low') nFactor = 0.75;
+      else if ((yeastNitrogenDemand as string) === 'High' || (yeastNitrogenDemand as string) === 'Very High') nFactor = 1.25;
       tosnaData = calculateTosna(batchSizeLiters, estimatedOg, nFactor);
     }
 

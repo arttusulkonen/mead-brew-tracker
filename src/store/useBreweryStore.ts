@@ -13,6 +13,7 @@ export interface Brewery {
 interface BreweryState {
   breweries: Brewery[];
   activeBrewery: Brewery | null;
+  activeBreweryId: string | null;
   isLoading: boolean;
   fetchBreweries: (userId: string) => Promise<void>;
   createBrewery: (userId: string, name: string, isPersonal?: boolean, inviteEmails?: string) => Promise<Brewery | null>;
@@ -26,6 +27,7 @@ interface BreweryState {
 export const useBreweryStore = create<BreweryState>((set, get) => ({
   breweries: [],
   activeBrewery: null,
+  activeBreweryId: null,
   isLoading: false,
 
   fetchBreweries: async () => {

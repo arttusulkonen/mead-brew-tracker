@@ -1,7 +1,7 @@
 // src/pages/BrewSession.tsx
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaCheck, FaCodeBranch, FaPlus } from 'react-icons/fa';
+import { FaCheck, FaCodeBranch, FaPlay, FaPlus } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ActiveTimer } from '../components/ActiveTimer';

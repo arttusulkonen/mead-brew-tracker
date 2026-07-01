@@ -85,7 +85,8 @@ const BrewSessionSetup: React.FC = () => {
   const sessionDetails = useMemo(() => {
     let totalFermentableGrams = 0;
     let totalWeightedYield = 0;
-    let nitrogenDemand: 'Low' | 'Medium' | 'High' | 'Very High' = 'Medium';
+    // Приводим тип к string, чтобы TS позволил сравнивать с другими вариантами
+    let nitrogenDemand: string = 'Medium';
     let hasYeast = false;
 
     sessionIngredients.forEach(item => {
@@ -110,6 +111,7 @@ const BrewSessionSetup: React.FC = () => {
       let nFactor = 0.90;
       if (nitrogenDemand === 'Low') nFactor = 0.75;
       else if (nitrogenDemand === 'High' || nitrogenDemand === 'Very High') nFactor = 1.25;
+      
       tosnaData = calculateTosna(actualVolume, estimatedOg, nFactor);
     }
 
