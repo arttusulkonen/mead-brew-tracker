@@ -1,19 +1,22 @@
 @use '../settings/variables' as *;
-@use '../settings/font-size' as *;
 @use '../mixins/typography' as *;
+@use '../mixins/buttons' as *;
+@use '../settings/font-family' as *;
+
 
 .app-layout {
   display: flex;
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  background-color: $color-bg;
+  background-color: var(--bg-main);
 
   @media (min-width: $breakpoint-md) {
     flex-direction: row;
   }
 }
 
+// Mobile Bottom Bar / Desktop Sidebar
 .main-nav {
   position: absolute;
   right: 0;
@@ -26,27 +29,31 @@
   justify-content: space-between;
   height: 65px;
   padding-bottom: env(safe-area-inset-bottom);
-  background-color: $color-surface;
-  box-shadow: 0 -2px 10px rgb(0 0 0 / 5%);
+  background-color: var(--bg-surface);
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -1px 2px rgb(0 0 0 / 3%);
 
   @media (min-width: $breakpoint-md) {
     position: relative;
     flex-direction: column;
     justify-content: flex-start;
-    width: 250px;
+    width: 260px;
     height: 100vh;
     padding: $spacing-xl 0;
-    box-shadow: 2px 0 15px rgb(0 0 0 / 5%);
+    border-top: none;
+    border-right: 1px solid var(--border-color);
+    box-shadow: $box-shadow-sm;
   }
 
   .nav-item, .lang-switcher {
     display: flex;
-    flex: 1; // Равномерное распределение
+    flex: 1;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-decoration: none;
     transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
 
     @media (min-width: $breakpoint-md) {
       flex: none;
@@ -59,33 +66,42 @@
   }
 
   .nav-item {
-    color: $color-text-muted;
+    color: var(--text-secondary);
 
     &:hover {
       @media (min-width: $breakpoint-md) {
-        background-color: rgba($color-primary, 0.05);
+        background-color: var(--bg-surface-alt);
       }
     }
 
     .icon {
-      font-size: 1.25rem;
+      margin-bottom: 2px;
+      font-size: 1.5rem; // Увеличенная иконка для мобилок
+      
+      @media (min-width: $breakpoint-md) {
+        margin-bottom: 0;
+        font-size: 1.25rem;
+      }
     }
 
     span {
-      font-size: 0.7rem;
+      @include text-small;
+
+      font-size: 0.65rem;
       font-weight: 500;
 
       @media (min-width: $breakpoint-md) {
         font-size: 1rem;
+        font-weight: 500;
       }
     }
 
     &.active {
-      color: $color-primary;
+      color: var(--color-primary);
 
       @media (min-width: $breakpoint-md) {
-        background-color: rgba($color-primary, 0.1);
-        border-right: 4px solid $color-primary;
+        background-color: rgba($color-primary, 0.08); // Легкий акцент для десктопа
+        border-right: 4px solid var(--color-primary);
       }
     }
   }
@@ -96,19 +112,22 @@
     .lang-btn-mobile {
       display: flex;
       flex-direction: column;
-      gap: 4px;
       align-items: center;
-      color: $color-text-muted;
-      cursor: pointer;
+      justify-content: center;
+      padding: 0;
+      color: var(--text-secondary);
       background: none;
       border: none;
 
       .icon {
-        font-size: 1.25rem;
+        margin-bottom: 2px;
+        font-size: 1.5rem;
       }
 
       span {
-        font-size: 0.7rem;
+        @include text-small;
+
+        font-size: 0.65rem;
         font-weight: 700;
         text-transform: uppercase;
       }
@@ -121,7 +140,7 @@
     @media (min-width: $breakpoint-md) {
       flex: none;
       width: 100%;
-      padding: $spacing-md;
+      padding: $spacing-md $spacing-xl;
       margin-top: auto;
 
       .lang-btn-mobile {
@@ -131,9 +150,18 @@
       .lang-select-desktop {
         display: block;
         width: 100%;
-        padding: $spacing-xs;
-        border: 1px solid $color-border;
+        padding: $spacing-xs $spacing-sm;
+        font-family: $font-family-base;
+        color: var(--text-primary);
+        cursor: pointer;
+        background-color: var(--bg-surface);
+        border: 1px solid var(--border-color);
         border-radius: $border-radius-sm;
+        outline: none;
+
+        &:focus {
+          border-color: var(--color-primary);
+        }
       }
     }
   }
@@ -141,12 +169,12 @@
 
 .main-content {
   flex: 1;
-  padding-top: $spacing-md;
-  padding-bottom: 80px;
+  padding-top: $spacing-lg;
+  padding-bottom: 85px; // Увеличен отступ снизу для мобильного меню
   overflow-y: auto;
+  scroll-behavior: smooth;
 
   @media (min-width: $breakpoint-md) {
     padding: $spacing-xl;
-    padding-bottom: $spacing-xl;
   }
 }

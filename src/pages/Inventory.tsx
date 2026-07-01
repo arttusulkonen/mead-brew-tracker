@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaPlus } from 'react-icons/fa';
+import { FaPen, FaPlus, FaTimes, FaTrash } from 'react-icons/fa';
 import { EditedIngredientData, IngredientEditorModal } from '../components/IngredientEditorModal';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useInventoryStore } from '../store/useInventoryStore';
-import type { IngredientCategory } from '../types/ingredient';
+import type { PopulatedInventoryItem, UnitType } from '../types/ingredient';
+import { UNIT_TYPES } from '../types/ingredient';
 
 const Inventory: React.FC = () => {
   const { t } = useTranslation();
@@ -18,10 +19,16 @@ const Inventory: React.FC = () => {
     fetchInventory,
     addInventoryItem,
     addCustomIngredient,
+    updateItem,
     removeItem,
   } = useInventoryStore();
 
-  const [activeModalCategory, setActiveModalCategory] = useState<IngredientCategory | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const [editingStockItem, setEditingStockItem] = useState<PopulatedInventoryItem | null>(null);
+  const [editStockQty, setEditStockQty] = useState<number | ''>('');
+  const [editStockUnit, setEditStockUnit] = useState<UnitType>('g');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     fetchGlobalIngredients();
@@ -54,18 +61,29 @@ const Inventory: React.FC = () => {
         baseData.colorEbc = data.colorEbc || 0;
         baseData.isMashed = data.form === 'Grain';
         if (data.moistureContentPct) baseData.moistureContentPct = data.moistureContentPct;
+      } else if (data.category === 'Honey') {
+        baseData.sugarContentBrix = data.sugarContentBrix ?? 80;
+        baseData.moistureContentPct = data.moistureContentPct ?? 18;
       } else if (data.category === 'Yeast') {
         baseData.form = data.form || 'Dry';
         baseData.tempMinC = data.tempMinC ?? 15;
         baseData.tempMaxC = data.tempMaxC ?? 25;
         baseData.alcoholTolerancePct = data.alcoholTolerancePct ?? 14;
+        baseData.alcoholTolerancePctMin = data.alcoholTolerancePctMin ?? 14;
         baseData.attenuationPct = data.attenuationPct ?? 75;
+        baseData.attenuationPctMin = data.attenuationPctMin ?? 75;
         baseData.nitrogenDemand = data.nitrogenDemand ?? 'Medium';
       } else if (data.category === 'Hops') {
         baseData.form = data.form || 'Pellet';
         baseData.alphaAcidPct = data.alphaAcidPct ?? 5;
+        baseData.alphaAcidPctMin = data.alphaAcidPctMin ?? 5;
       } else if (data.category === 'Additive') {
         baseData.additiveType = data.additiveType ?? 'Nutrient';
+        if (data.additiveType === 'Nutrient' && data.nutrientRole) {
+          baseData.nutrientRole = data.nutrientRole;
+        }
+        if (data.additionStage) baseData.additionStage = data.additionStage;
+        if (data.yanValuePerGramPerLiter) baseData.yanValuePerGramPerLiter = data.yanValuePerGramPerLiter;
         if (data.dosagePerGramYeast) baseData.dosagePerGramYeast = data.dosagePerGramYeast;
         if (data.dosagePer10Liters) baseData.dosagePer10Liters = data.dosagePer10Liters;
       } else if (data.category === 'Water Profile') {
@@ -97,17 +115,54 @@ const Inventory: React.FC = () => {
     }
   };
 
+  const handleOpenEdit = (item: PopulatedInventoryItem) => {
+    setEditingStockItem(item);
+    setEditStockQty(item.quantityOnHand);
+    setEditStockUnit(item.unit);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!activeBrewery?.id || !editingStockItem || editStockQty === '') return;
+    setIsUpdating(true);
+    try {
+      await updateItem(activeBrewery.id, editingStockItem.id, {
+        quantityOnHand: Number(editStockQty),
+        unit: editStockUnit
+      });
+      setEditingStockItem(null);
+    } catch (err) {
+      console.error(err);
+      alert(t('Failed to update stock.'));
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const renderIngredientMeta = (ing: any) => {
     if (!ing) return null;
+
+    const formatRange = (min: number | undefined, max: number | undefined) => {
+      return min && min !== max ? `${min}-${max}` : `${max}`;
+    };
+
     switch (ing.category) {
       case 'Fermentable':
         return `${ing.yieldPpg ?? 36} PPG | ${ing.colorEbc ?? 5} EBC`;
+      case 'Honey':
+        return `${ing.sugarContentBrix ?? 80} Brix | ${ing.moistureContentPct ?? 18}% ${t('Moisture')}`;
       case 'Yeast':
-        return `${ing.attenuationPct ?? 75}% ${t('Atten.')} | ${ing.alcoholTolerancePct ?? 12}% ABV`;
+        return `${formatRange(ing.attenuationPctMin, ing.attenuationPct)}% ${t('Attenuation')} | ${formatRange(ing.alcoholTolerancePctMin, ing.alcoholTolerancePct)}% ABV`;
       case 'Hops':
-        return `Alpha: ${ing.alphaAcidPct ?? 5}% | ${t(`constants.hops_forms.${ing.form?.toLowerCase() || 'pellet'}`, ing.form)}`;
-      case 'Additive':
-        return ing.dosagePer10Liters ? `${ing.dosagePer10Liters}g/10L` : t(`constants.additive_types.${ing.additiveType?.toLowerCase()}`, ing.additiveType);
+        return `${t('Alpha')}: ${formatRange(ing.alphaAcidPctMin, ing.alphaAcidPct)}% | ${t(`constants.hops_forms.${ing.form?.toLowerCase() || 'pellet'}`)}`;
+      case 'Additive': {
+        // Оборачиваем в блок, чтобы переменная была локальной для этого case
+        const roleStr = ing.additiveType === 'Nutrient' && ing.nutrientRole
+          ? ` | ${t(`constants.nutrient_roles.${ing.nutrientRole.toLowerCase()}`, ing.nutrientRole)}`
+          : '';
+        return ing.dosagePer10Liters 
+          ? `${ing.dosagePer10Liters}g/10L${roleStr}` 
+          : `${t(`constants.additive_types.${ing.additiveType?.toLowerCase().replace(' ', '_')}`)}${roleStr}`;
+      }
       default:
         return null;
     }
@@ -129,15 +184,64 @@ const Inventory: React.FC = () => {
 
   return (
     <div className="inventory-page">
-      {activeModalCategory && (
+      {isAddModalOpen && (
         <IngredientEditorModal
-          isOpen={!!activeModalCategory}
-          onClose={() => setActiveModalCategory(null)}
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
           onSave={handleSaveFromModal}
           catalog={globalIngredients}
-          category={activeModalCategory}
+          category="Fermentable"
           mode="inventory"
         />
+      )}
+
+      {editingStockItem && (
+        <div className="editor-modal-overlay" onMouseDown={() => setEditingStockItem(null)}>
+          <div className="editor-modal" onMouseDown={e => e.stopPropagation()}>
+            <div className="editor-modal__header">
+              <h2>{t('Edit Stock')}</h2>
+              <button type="button" className="editor-modal__close-btn" onClick={() => setEditingStockItem(null)} style={{ padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="editor-modal__body">
+              <p className="form-field__label">{editingStockItem.ingredient.name}</p>
+              <div className="editor-modal__grid editor-modal__grid--stock">
+                <div className="form-field">
+                  <label className="form-field__label">{t('Quantity')}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="form-field__input"
+                    value={editStockQty}
+                    onChange={e => setEditStockQty(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                  />
+                </div>
+                <div className="form-field">
+                  <label className="form-field__label">{t('Unit')}</label>
+                  <select
+                    className="form-field__select"
+                    value={editStockUnit}
+                    onChange={e => setEditStockUnit(e.target.value as UnitType)}
+                  >
+                    {UNIT_TYPES.map(u => (
+                      <option key={u} value={u}>{t(`constants.units.${u.toLowerCase()}`)}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="editor-modal__footer">
+              <button type="button" className="editor-modal__close-btn" onClick={() => setEditingStockItem(null)} style={{ padding: '8px 16px', border: '1px solid var(--border-color)', borderRadius: '6px', background: 'transparent' }}>{t('Cancel')}</button>
+              <button type="button" style={{ padding: '8px 16px', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold' }} onClick={handleSaveEdit} disabled={isUpdating || editStockQty === ''}>
+                {isUpdating ? t('Saving...') : t('Save')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <header className="inventory-page__header">
@@ -145,20 +249,21 @@ const Inventory: React.FC = () => {
           <h1 className="inventory-page__title">{t('Workspace Inventory')}</h1>
           <span className="inventory-page__subtitle">{activeBrewery.name}</span>
         </div>
-        <div className="inventory-page__actions" style={{ display: 'flex', gap: '8px' }}>
-          <button type="button" className="recipe-lab__btn-secondary" onClick={() => setActiveModalCategory('Fermentable')}><FaPlus /> {t('Fermentable')}</button>
-          <button type="button" className="recipe-lab__btn-secondary" onClick={() => setActiveModalCategory('Hops')}><FaPlus /> {t('Hops')}</button>
-          <button type="button" className="recipe-lab__btn-secondary" onClick={() => setActiveModalCategory('Yeast')}><FaPlus /> {t('Yeast')}</button>
-          <button type="button" className="recipe-lab__btn-secondary" onClick={() => setActiveModalCategory('Additive')}><FaPlus /> {t('Additive')}</button>
+        <div className="inventory-page__actions">
+          <button type="button" style={{ padding: '8px 16px', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => setIsAddModalOpen(true)}>
+            <FaPlus /> {t('Add Ingredient', 'Добавить ингредиент')}
+          </button>
         </div>
       </header>
 
       {error && <div className="inventory-page__error">{error}</div>}
 
-      <div className="inventory-page__layout" style={{ display: 'block' }}>
+      <div className="inventory-page__layout">
         <main className="inventory-page__main">
           {isLoading && (!inventory || inventory.length === 0) ? (
-            <div className="inventory-page__loading">{t('Loading inventory...')}</div>
+            <div className="global-loader">
+              <div className="spinner"></div>
+            </div>
           ) : !inventory || inventory.length === 0 ? (
             <div className="inventory-page__empty-state">
               <p className="inventory-page__empty-text">{t('Your inventory is empty. Add ingredients to get started.')}</p>
@@ -168,26 +273,34 @@ const Inventory: React.FC = () => {
               {inventory.map((item) => {
                 if (!item || !item.id) return null;
                 const isOutOfStock = item.quantityOnHand <= 0;
-                
+
                 return (
                   <li key={item.id} className={`stock-card ${isOutOfStock ? 'stock-card--empty' : ''}`}>
                     <div className="stock-card__header">
                       <span className={`stock-card__badge stock-card__badge--${getCategoryClassModifier(item.ingredient.category)}`}>
-                        {t(`constants.categories.${item.ingredient.category.toLowerCase().replace(' ', '_')}`, item.ingredient.category)}
+                        {t(`constants.categories.${item.ingredient.category.toLowerCase().replace(' ', '_')}`)}
                       </span>
-                      <button 
-                        className="stock-card__delete-btn" 
-                        onClick={() => handleDeleteItem(item.id)} 
-                        aria-label={t('Remove item')}
-                        title={t('Remove from inventory')}
-                      >
-                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none">
-                          <line x1="18" y1="6" x2="6" y2="18"></line>
-                          <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                      </button>
+                      <div className="form-field__group" style={{ gap: '4px' }}>
+                        <button
+                          className="btn-icon"
+                          onClick={() => handleOpenEdit(item)}
+                          title={t('Edit')}
+                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                        >
+                          <FaPen />
+                        </button>
+                        <button
+                          className="btn-icon danger-outline"
+                          onClick={() => handleDeleteItem(item.id)}
+                          aria-label={t('Remove item')}
+                          title={t('Remove from inventory')}
+                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-danger)' }}
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
                     </div>
-                    
+
                     <div className="stock-card__body">
                       <h3 className="stock-card__title" title={item.ingredient.name}>
                         {item.ingredient.name}
@@ -203,7 +316,7 @@ const Inventory: React.FC = () => {
                       ) : (
                         <div className="stock-card__amount">
                           <span className="stock-card__value">{item.quantityOnHand}</span>
-                          <span className="stock-card__unit">{t(`constants.units.${item.unit.toLowerCase()}`, item.unit)}</span>
+                          <span className="stock-card__unit">{t(`constants.units.${item.unit.toLowerCase()}`)}</span>
                         </div>
                       )}
                     </div>

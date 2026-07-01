@@ -1,11 +1,11 @@
 // src/pages/Recipes.tsx
-import { calculateAbvCrouch, calculateIbuTinseth, calculateMcu, calculateOneThirdSugarBreak, calculateTosna, estimateOG, estimateSrmMorey, srmToEbc } from '@mead-tracker/math';
+import { calculateAbvCrouch, calculateIbuTinseth, calculateMcu, calculateTosna, estimateOG, estimateSrmMorey, srmToEbc } from '@mead-tracker/math';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaCheck, FaChevronDown, FaChevronUp, FaExclamationTriangle, FaInfoCircle, FaMagic, FaPlus, FaTimes, FaTrash } from 'react-icons/fa';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { IngredientEditorModal, type EditedIngredientData } from '../components/IngredientEditorModal';
+import { IngredientEditorModal, type EditedIngredientData, type NutrientRole } from '../components/IngredientEditorModal';
 import { StyleSearchModal } from '../components/StyleSearchModal';
 import { app } from '../firebase/config';
 import { useBreweryStore } from '../store/useBreweryStore';
@@ -16,13 +16,6 @@ import type { BeverageType, Recipe, StepPhase, TimeUnit } from '../types/recipe'
 import { getSuggestedIngredients, validateStyleBounds, type BjcpStyle } from '../utils/bjcpMatchEngine';
 import { HONEY_TERROIR, MEAD_STYLES, SWEETNESS_LEVELS } from '../utils/meadConstants';
 
-// Ингредиент в рецепте хранит "снимок" (snapshot) своих характеристик на момент
-// добавления (Альфа-кислотность, Экстрактивность/PPG, Цветность, Толерантность
-// дрожжей, правило дозировки добавки и т.д.). Это значит, что все калькуляторы
-// ниже (IBU/EBC/ABV/TOSNA/дозировка добавок) считают по цифрам, сохранённым в
-// самом рецепте, а не по текущим данным из глобального каталога — поэтому
-// правки каталога или ручной ввод кастомного ингредиента никогда не "ломают"
-// уже посчитанный рецепт.
 interface RecipeIngredientEntry {
   id: string;
   globalIngredientId: string | null;
@@ -32,35 +25,32 @@ interface RecipeIngredientEntry {
   note: string;
   showNote: boolean;
 
-  // --- Универсальные поля каталога ---
   form?: string;
   origin?: string;
   producer?: string;
   description?: string;
 
-  // --- Snapshot stats (Fermentable) ---
   yieldPpg?: number;
   colorEbc?: number;
   moistureContentPct?: number;
   diastaticPowerLintner?: number;
 
-  // --- Snapshot stats (Honey) ---
   sugarContentBrix?: number;
 
-  // --- Snapshot stats (Hops) ---
   alphaAcidPct?: number;
+  alphaAcidPctMin?: number;
   boilTimeMinutes?: number;
 
-  // --- Snapshot stats (Yeast) ---
   alcoholTolerancePct?: number;
+  alcoholTolerancePctMin?: number;
   attenuationPct?: number;
+  attenuationPctMin?: number;
   tempMinC?: number;
   tempMaxC?: number;
   nitrogenDemand?: 'Low' | 'Medium' | 'High' | 'Very High';
 
-  // --- Snapshot stats (Additive / Water Profile) ---
   additiveType?: AdditiveType;
-  additionStage?: string;
+  nutrientRole?: NutrientRole;
   yanValuePerGramPerLiter?: number;
   dosagePerGramYeast?: number;
   dosagePer10Liters?: number;
@@ -71,7 +61,6 @@ interface RecipeIngredientEntry {
   chloridePpm?: number;
   bicarbonatePpm?: number;
 
-  // --- Other / Spices ---
   additionStage?: string;
 }
 
@@ -136,72 +125,72 @@ const Recipes: React.FC = () => {
   const [aiProposedIngredients, setAiProposedIngredients] = useState<AiIngredientProposal[]>([]);
   const [aiProposedSteps, setAiProposedSteps] = useState<RecipeStepEntry[]>([]);
 
-  useEffect(() => {
-    const fetchCatalogAndStyles = async () => {
-      try {
-        const { data: ingData } = await supabase.from('ingredients').select('*');
-        if (ingData) {
-          // Раньше тут yieldPpg/colorEbc были захардкожены (36/5) для ВСЕХ категорий,
-          // а часть колонок (additiveType, dosagePerGramYeast, dosagePer10Liters,
-          // nitrogenDemand, moistureContentPct, минералы Water Profile) вообще не
-          // мапилась — из-за этого карточка ингредиента в модалке показывала
-          // неверные/пустые значения. Теперь читаем все колонки как они есть.
-          const formattedCatalog = ingData.map(item => ({
-            id: item.id,
-            name: item.name,
-            category: item.category,
-            form: item.form,
-            alphaAcidPct: item.alpha_acid_pct,
-            alcoholTolerancePct: item.alcohol_tolerance_pct,
-            tempMinC: item.temp_min_c,
-            tempMaxC: item.temp_max_c,
-            attenuationPct: item.attenuation_pct,
-            notes: item.notes,
-            origin: item.origin,
-            producer: item.producer,
-            yieldPpg: item.yield_ppg ?? 36,
-            colorEbc: item.color_ebc ?? 5,
-            moistureContentPct: item.moisture_content_pct,
-            nitrogenDemand: item.nitrogen_demand,
-            additiveType: item.additive_type,
-            dosagePerGramYeast: item.dosage_per_gram_yeast,
-            dosagePer10Liters: item.dosage_per_10_liters,
-            calciumPpm: item.calcium_ppm,
-            magnesiumPpm: item.magnesium_ppm,
-            sodiumPpm: item.sodium_ppm,
-            sulfatePpm: item.sulfate_ppm,
-            chloridePpm: item.chloride_ppm,
-            bicarbonatePpm: item.bicarbonate_ppm
-          })) as BaseIngredient[];
-          setGlobalCatalog(formattedCatalog);
-        }
-
-        const { data: styleData } = await supabase.from('styles').select('*');
-        if (styleData) {
-          const formattedStyles = styleData.map(item => ({
-            style_id: item.style_id,
-            name: item.name,
-            category: item.category,
-            beverage_type: item.beverage_type,
-            ogMin: item.og_min,
-            ogMax: item.og_max,
-            fgMin: item.fg_min,
-            fgMax: item.fg_max,
-            abvMin: item.abv_min,
-            abvMax: item.abv_max,
-            ibuMin: item.ibu_min,
-            ibuMax: item.ibu_max,
-            ebcMin: item.ebc_min,
-            ebcMax: item.ebc_max,
-            notes: item.notes
-          })) as BjcpStyle[];
-          setBjcpStyles(formattedStyles);
-        }
-      } catch {
-        setGlobalCatalog([]);
-        setBjcpStyles([]);
+  const fetchCatalogAndStyles = async () => {
+    try {
+      const { data: ingData } = await supabase.from('ingredients').select('*');
+      if (ingData) {
+        const formattedCatalog = ingData.map(item => ({
+          id: item.id,
+          name: item.name,
+          category: item.category,
+          form: item.form,
+          alphaAcidPct: item.alpha_acid_pct,
+          alphaAcidPctMin: item.alpha_acid_pct_min,
+          alcoholTolerancePct: item.alcohol_tolerance_pct,
+          alcoholTolerancePctMin: item.alcohol_tolerance_pct_min,
+          tempMinC: item.temp_min_c,
+          tempMaxC: item.temp_max_c,
+          attenuationPct: item.attenuation_pct,
+          attenuationPctMin: item.attenuation_pct_min,
+          notes: item.notes,
+          origin: item.origin,
+          producer: item.producer,
+          yieldPpg: item.yield_ppg ?? 36,
+          colorEbc: item.color_ebc ?? 5,
+          moistureContentPct: item.moisture_content_pct,
+          nitrogenDemand: item.nitrogen_demand,
+          additiveType: item.additive_type,
+          nutrientRole: item.nutrient_role,
+          dosagePerGramYeast: item.dosage_per_gram_yeast,
+          dosagePer10Liters: item.dosage_per_10_liters,
+          calciumPpm: item.calcium_ppm,
+          magnesiumPpm: item.magnesium_ppm,
+          sodiumPpm: item.sodium_ppm,
+          sulfatePpm: item.sulfate_ppm,
+          chloridePpm: item.chloride_ppm,
+          bicarbonatePpm: item.bicarbonate_ppm
+        })) as BaseIngredient[];
+        setGlobalCatalog(formattedCatalog);
       }
-    };
+
+      const { data: styleData } = await supabase.from('styles').select('*');
+      if (styleData) {
+        const formattedStyles = styleData.map(item => ({
+          style_id: item.style_id,
+          name: item.name,
+          category: item.category,
+          beverage_type: item.beverage_type,
+          ogMin: item.og_min,
+          ogMax: item.og_max,
+          fgMin: item.fg_min,
+          fgMax: item.fg_max,
+          abvMin: item.abv_min,
+          abvMax: item.abv_max,
+          ibuMin: item.ibu_min,
+          ibuMax: item.ibu_max,
+          ebcMin: item.ebc_min,
+          ebcMax: item.ebc_max,
+          notes: item.notes
+        })) as BjcpStyle[];
+        setBjcpStyles(formattedStyles);
+      }
+    } catch {
+      setGlobalCatalog([]);
+      setBjcpStyles([]);
+    }
+  };
+
+  useEffect(() => {
     fetchCatalogAndStyles();
   }, []);
 
@@ -241,7 +230,6 @@ const Recipes: React.FC = () => {
           quantity: ing.quantity,
           note: ing.note || '',
           showNote: !!ing.note,
-          // Snapshot restore
           form: ingAny.form,
           origin: ingAny.origin,
           producer: ingAny.producer,
@@ -253,12 +241,16 @@ const Recipes: React.FC = () => {
           diastaticPowerLintner: ingAny.diastaticPowerLintner,
           sugarContentBrix: ingAny.sugarContentBrix,
           alphaAcidPct: ingAny.alphaAcidPct,
+          alphaAcidPctMin: ingAny.alphaAcidPctMin,
           alcoholTolerancePct: ingAny.alcoholTolerancePct,
+          alcoholTolerancePctMin: ingAny.alcoholTolerancePctMin,
           attenuationPct: ingAny.attenuationPct,
+          attenuationPctMin: ingAny.attenuationPctMin,
           tempMinC: ingAny.tempMinC,
           tempMaxC: ingAny.tempMaxC,
           nitrogenDemand: ingAny.nitrogenDemand,
           additiveType: ingAny.additiveType,
+          nutrientRole: ingAny.nutrientRole,
           additionStage: ingAny.additionStage,
           yanValuePerGramPerLiter: ingAny.yanValuePerGramPerLiter,
           dosagePerGramYeast: ingAny.dosagePerGramYeast,
@@ -368,10 +360,8 @@ const Recipes: React.FC = () => {
     setRecipeSteps(prev => prev.map(step => step.id === id ? { ...step, ...updates } : step));
   };
 
-  // Бисекция теперь учитывает ВСЕ ферментируемые ингредиенты рецепта (а не только
-  // первый, как раньше), поэтому корректно работает и со смешанным засыпом.
   const handleAutoCalculateHoney = () => {
-    const fermentableItems = recipeIngredients.filter(i => i.category === 'Fermentable');
+    const fermentableItems = recipeIngredients.filter(i => i.category === 'Fermentable' || i.category === 'Honey');
     if (fermentableItems.length === 0) return;
 
     const targetEntry = fermentableItems[0];
@@ -388,7 +378,7 @@ const Recipes: React.FC = () => {
       let totalWeightedYield = 0;
 
       recipeIngredients.forEach(ing => {
-        if (ing.category === 'Fermentable') {
+        if (ing.category === 'Fermentable' || ing.category === 'Honey') {
           const qty = ing.id === targetEntry.id ? midGrams : ing.quantity;
           const yld = ing.yieldPpg || 36;
           totalGramsForCalc += qty;
@@ -437,7 +427,9 @@ const Recipes: React.FC = () => {
           globalIngredientId: i.globalIngredientId,
           name: i.name,
           category: i.category,
-          quantity: i.quantity
+          quantity: i.quantity,
+          nutrientRole: i.nutrientRole, 
+          additiveType: i.additiveType  
         }))
       };
 
@@ -533,13 +525,6 @@ const Recipes: React.FC = () => {
 
     recipeIngredients.forEach(item => {
       if (item.category === 'Fermentable' || item.category === 'Honey') {
-        // У "Fermentable" yieldPpg - реальная характеристика солода/сахара.
-        // У "Honey" в каталоге официально хранится sugarContentBrix, а не PPG -
-        // но estimateOG() в этом проекте принимает только yieldPpg-подобное
-        // значение, поэтому используем приближённый yieldPpg, который
-        // редактируется прямо в модалке для категории Honey (по умолчанию 36 -
-        // стандартная домашняя оценка, т.к. формулы Brix->gravity в
-        // @mead-tracker/math нет).
         const yieldVal = item.yieldPpg || 36;
         const colorVal = item.colorEbc || 5;
         const qty = item.quantity || 0;
@@ -587,12 +572,13 @@ const Recipes: React.FC = () => {
       let ruleApplied = '';
 
       if (item.additiveType === 'Nutrient' && tosnaData) {
-        if (item.name.toLowerCase().includes('go-ferm') || item.dosagePerGramYeast) {
+        // Умное распределение на основе роли нутриента
+        if (item.nutrientRole === 'Rehydration' || (!item.nutrientRole && item.name.toLowerCase().includes('go-ferm'))) {
           calculatedGrams = tosnaData.goFermGrams;
-          ruleApplied = 'TOSNA 3.0: Go-Ferm';
-        } else {
+          ruleApplied = 'TOSNA 3.0: Rehydration';
+        } else if (item.nutrientRole === 'Fermentation' || !item.nutrientRole) {
           calculatedGrams = tosnaData.totalFermaidOGrams;
-          ruleApplied = 'TOSNA 3.0: Total Fermaid-O';
+          ruleApplied = 'TOSNA 3.0: Total Fermentation Nutrient';
           if (!customNutrientName) customNutrientName = item.name;
         }
       }
@@ -645,11 +631,6 @@ const Recipes: React.FC = () => {
     return false;
   }, [targetStyle, recipeDetails.abv, beverageType]);
 
-  // У пива стиль подбирается из таблицы BJCP, у мёда — нет аналогичного объекта
-  // стиля, поэтому толерантность дрожжей оцениваем по выбранному ABV-тиру
-  // напрямую (используются те же текстовые значения, что и в селекте "Target
-  // ABV Tier", чтобы не трогать формат targetStyle, который уже сохраняется
-  // в рецептах как читаемая строка).
   const meadYeastToleranceRange = useMemo((): { min: number; max: number } | null => {
     if (targetStyle === 'Session (4-6%)') return { min: 0, max: 9 };
     if (targetStyle === 'Standard (7-10%)') return { min: 9, max: 14 };
@@ -666,11 +647,6 @@ const Recipes: React.FC = () => {
     }).slice(0, 5);
   }, [beverageType, meadYeastToleranceRange, globalCatalog]);
 
-  // Подсказка "какой ингредиент обычно добавляют для этого стиля мёда", теперь
-  // на реальных категориях/значениях ADDITIVE_TYPES, а не на выдуманных id:
-  // Traditional -> просто мёд (категория Honey), Melomel -> фрукты (Additive/Fruit),
-  // Metheglin -> специи (Additive/Spice), Session Hopped/Braggot -> хмель
-  // (это отдельная категория Hops, не Additive).
   const meadIngredientHint = useMemo((): { category: IngredientCategory; additiveType?: AdditiveType; label: string } | null => {
     if (beverageType !== 'Mead') return null;
     switch (wizardStyle) {
@@ -711,12 +687,16 @@ const Recipes: React.FC = () => {
         diastaticPowerLintner: item.diastaticPowerLintner,
         sugarContentBrix: item.sugarContentBrix,
         alphaAcidPct: item.alphaAcidPct,
+        alphaAcidPctMin: item.alphaAcidPctMin,
         alcoholTolerancePct: item.alcoholTolerancePct,
+        alcoholTolerancePctMin: item.alcoholTolerancePctMin,
         attenuationPct: item.attenuationPct,
+        attenuationPctMin: item.attenuationPctMin,
         tempMinC: item.tempMinC,
         tempMaxC: item.tempMaxC,
         nitrogenDemand: item.nitrogenDemand,
         additiveType: item.additiveType,
+        nutrientRole: item.nutrientRole,
         additionStage: item.additionStage,
         yanValuePerGramPerLiter: item.yanValuePerGramPerLiter,
         dosagePerGramYeast: item.dosagePerGramYeast,
@@ -792,17 +772,26 @@ const Recipes: React.FC = () => {
           <div className="ingredient-list" style={{ marginTop: '0.5rem' }}>
             {items.map(item => {
               const aiProposal = aiProposedIngredients.find(p => p.ingredientId === item.id);
+              
+              const formatRange = (min: number | undefined, max: number | undefined) => {
+                return min && min !== max ? `${min}-${max}` : `${max}`;
+              };
+
               return (
                 <div key={item.id} className="recipe-ingredient">
                   <div className="recipe-ingredient__main">
                     <div className="recipe-ingredient__info" style={{ display: 'flex', flexDirection: 'column' }}>
                       <span className="recipe-ingredient__name">{item.name}</span>
                       <span className="recipe-ingredient__meta" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        {item.category === 'Hops' && `${t('Alpha')}: ${item.alphaAcidPct ?? 0}%`}
+                        {item.category === 'Hops' && `${t('Alpha')}: ${formatRange(item.alphaAcidPctMin, item.alphaAcidPct)}%`}
                         {item.category === 'Fermentable' && `${t('Yield')}: ${item.yieldPpg ?? 0} PPG | ${t('Color')}: ${item.colorEbc ?? 0} EBC`}
-                        {item.category === 'Honey' && `${t('Sugar Content', 'Сахаристость')}: ${item.sugarContentBrix ?? 0} Brix | ${t('Moisture')}: ${item.moistureContentPct ?? 0}%`}
-                        {item.category === 'Yeast' && `${t('Tolerance')}: ${item.alcoholTolerancePct ?? 0}% | ${t('Attenuation')}: ${item.attenuationPct ?? 0}%`}
-                        {(item.category === 'Additive' || item.category === 'Water Profile') && [item.additiveType, item.additionStage].filter(Boolean).join(' · ')}
+                        {item.category === 'Honey' && `${t('Sugar Content')}: ${item.sugarContentBrix ?? 0} Brix | ${t('Moisture')}: ${item.moistureContentPct ?? 0}%`}
+                        {item.category === 'Yeast' && `${t('Tolerance')}: ${formatRange(item.alcoholTolerancePctMin, item.alcoholTolerancePct)}% | ${t('Attenuation')}: ${formatRange(item.attenuationPctMin, item.attenuationPct)}%`}
+                        {(item.category === 'Additive' || item.category === 'Water Profile') && [
+                          item.additiveType ? t(`constants.additive_types.${item.additiveType.toLowerCase()}`) : '',
+                          item.nutrientRole ? t(`constants.nutrient_roles.${item.nutrientRole.toLowerCase()}`) : '',
+                          item.additionStage
+                        ].filter(Boolean).join(' · ')}
                       </span>
                     </div>
                     <div className="recipe-ingredient__controls">

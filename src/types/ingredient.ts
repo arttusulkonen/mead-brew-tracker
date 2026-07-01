@@ -43,7 +43,9 @@ export interface YeastIngredient extends BaseIngredient {
   form: 'Liquid' | 'Dry';
   tempMinC: number;
   tempMaxC: number;
+  attenuationPctMin?: number; 
   alcoholTolerancePct: number;
+  alcoholTolerancePctMin?: number; 
   attenuationPct: number;
   nitrogenDemand: 'Low' | 'Medium' | 'High' | 'Very High';
 }
@@ -51,6 +53,7 @@ export interface YeastIngredient extends BaseIngredient {
 export interface HopsIngredient extends BaseIngredient {
   category: 'Hops';
   alphaAcidPct: number;
+  alphaAcidPctMin?: number;
   form: 'Pellet' | 'Whole' | 'Extract';
 }
 

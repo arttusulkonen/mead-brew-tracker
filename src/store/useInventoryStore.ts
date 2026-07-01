@@ -1,3 +1,4 @@
+// src/store/useInventoryStore.ts
 import { create } from 'zustand';
 import { supabase } from '../supabase/client';
 import type { IngredientCategory, IngredientUnion, PopulatedInventoryItem, WorkspaceInventoryItem } from '../types/ingredient';
@@ -355,7 +356,12 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         }
       }
       
-      await Promise.all(updatePromises);
+     const results = await Promise.all(updatePromises);
+      
+      for (const result of results) {
+        if (result.error) throw result.error;
+      }
+      
       await get().fetchInventory(breweryId);
       return true;
     } catch (err: any) {

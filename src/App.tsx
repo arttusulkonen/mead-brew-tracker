@@ -1,10 +1,7 @@
-import { onAuthStateChanged } from 'firebase/auth';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
-import { getUserBreweries, processPendingInvites } from './firebase/breweryService';
-import { auth } from './firebase/config';
 import Brew from './pages/Brew';
 import BrewSession from './pages/BrewSession';
 import BrewSessionSetup from './pages/BrewSessionSetup';
@@ -17,48 +14,50 @@ import Recipes from './pages/Recipes';
 import Register from './pages/Register';
 import { useAuthStore } from './store/useAuthStore';
 import { useBreweryStore } from './store/useBreweryStore';
+import { supabase } from './supabase/client';
 
 const App: React.FC = () => {
   const { user, setUser, setLoading } = useAuthStore();
-  const { setBreweries, setActiveBrewery } = useBreweryStore();
+  const { setBreweries, setActiveBrewery, fetchBreweries } = useBreweryStore();
   const { t } = useTranslation();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      try {
-        setUser(currentUser);
-        
-        if (currentUser?.uid) {
-          if (currentUser.email) {
-            await processPendingInvites(currentUser.uid, currentUser.email);
-          }
-
-          const userBreweries = await getUserBreweries(currentUser.uid);
-          setBreweries(userBreweries);
-          
-          const currentActiveId = useBreweryStore.getState().activeBreweryId;
-          const freshActiveBrewery = userBreweries.find(b => b.id === currentActiveId);
-          
-          if (freshActiveBrewery) {
-            setActiveBrewery(freshActiveBrewery);
-          } else if (userBreweries.length > 0) {
-            setActiveBrewery(userBreweries[0]);
-          } else {
-            setActiveBrewery(null);
-          }
-        } else {
-          setBreweries([]);
-          setActiveBrewery(null);
-        }
-      } catch (error) {
-        console.error(error);
-      } finally {
+    // Проверка текущей сессии при загрузке
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchBreweries(session.user.id);
+      } else {
         setLoading(false);
       }
     });
 
-    return () => unsubscribe();
-  }, [setUser, setLoading, setBreweries, setActiveBrewery]);
+    // Подписка на изменения авторизации (логин/логаут)
+   const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        const { id, email } = session.user;
+        
+        // 1. Проверяем, пригласили ли нас куда-то
+        useBreweryStore.getState().processPendingInvites(id, email || '').then(() => {
+          // 2. Грузим все пивоварни
+          fetchBreweries(id).then(() => {
+            const state = useBreweryStore.getState();
+            const currentActiveId = state.activeBreweryId;
+            const freshActiveBrewery = state.breweries.find(b => b.id === currentActiveId);
+            setActiveBrewery(freshActiveBrewery || (state.breweries.length > 0 ? state.breweries[0] : null));
+            setLoading(false);
+          });
+        });
+      } else {
+        setBreweries([]);
+        setActiveBrewery(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [setUser, setLoading, fetchBreweries, setBreweries, setActiveBrewery]);
 
   return (
     <BrowserRouter>

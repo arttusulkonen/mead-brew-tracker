@@ -10,6 +10,7 @@ const geminiApiKey = defineSecret("GOOGLE_GENAI_API_KEY");
 
 setGlobalOptions({ maxInstances: 10, region: "europe-west1" });
 
+// Схема ответа ИИ (добавлены новые фазы: Mashing, Boiling, Packaging)
 const RecipeGenerationSchema = z.object({
   ingredientQuantities: z.array(z.object({
     ingredientId: z.string(),
@@ -17,7 +18,7 @@ const RecipeGenerationSchema = z.object({
     aiNote: z.string()
   })),
   steps: z.array(z.object({
-    phase: z.enum(["Preparation", "Fermentation", "Aging"]),
+    phase: z.enum(["Preparation", "Mashing", "Boiling", "Fermentation", "Aging", "Packaging"]),
     title: z.string(),
     description: z.string(),
     durationValue: z.number(),
@@ -26,28 +27,29 @@ const RecipeGenerationSchema = z.object({
   }))
 });
 
+// Схема входящих данных от клиента (исправлен баг с null и добавлен beverageType)
 const RequestDataSchema = z.object({
+  beverageType: z.string().optional().default("Mead"),
   style: z.string(),
-  sweetness: z.string(),
-  honeyTerroir: z.string(),
+  sweetness: z.string().optional(),
+  honeyTerroir: z.string().optional(),
   targetAbv: z.number().positive(),
   batchSizeLiters: z.number().positive(),
   targetFg: z.number().positive(),
   ingredients: z.array(z.object({
     ingredientId: z.string(),
-    globalIngredientId: z.string().optional(),
+    globalIngredientId: z.string().nullable().optional(), // ИСПРАВЛЕНИЕ КРАША ЗДЕСЬ
     name: z.string(),
     category: z.string(),
-    quantity: z.number()
-  })),
-  locale: z.string()
-});
+    quantity: z.number(),
+    nutrientRole: z.string().optional(), // Для умного распознавания добавок
+    additiveType: z.string().optional()
+  }).passthrough()),
+  locale: z.string().optional()
+}).passthrough();
 
 const LANGUAGE_MAPPING: Record<string, string> = {
   ru: "Russian (Русский язык)",
-  fi: "Finnish (Suomi)",
-  ko: "Korean (한국어)",
-  et: "Estonian (Eesti)",
   en: "English"
 };
 
@@ -60,6 +62,7 @@ export const generateRecipeAI = onCall(
 
     const parsedData = RequestDataSchema.safeParse(request.data);
     if (!parsedData.success) {
+      console.error("Zod Validation Error:", parsedData.error);
       throw new HttpsError("invalid-argument", "Invalid payload format provided by the client.");
     }
 
@@ -69,7 +72,7 @@ export const generateRecipeAI = onCall(
       plugins: [googleAI({ apiKey: geminiApiKey.value() })],
     });
 
-    const { style, sweetness, honeyTerroir, targetAbv, batchSizeLiters, targetFg, ingredients, locale } = parsedData.data;
+    const { beverageType, style, sweetness, honeyTerroir, targetAbv, batchSizeLiters, targetFg, ingredients, locale } = parsedData.data;
     const cleanLocale = (locale || "en").split("-")[0].toLowerCase();
     const targetLanguage = LANGUAGE_MAPPING[cleanLocale] || "English";
 
@@ -79,9 +82,10 @@ export const generateRecipeAI = onCall(
         ${knowledgeBase}
 
         # CURRENT USER REQUEST
-        - Style ID: ${style}
-        - Sweetness ID: ${sweetness}
-        - Honey Terroir ID: ${honeyTerroir}
+        - Beverage Type: ${beverageType}
+        - Style / Category ID: ${style}
+        - Sweetness / FG Tier: ${sweetness || 'N/A'}
+        - Honey Terroir (if Mead): ${honeyTerroir || 'N/A'}
         - Target ABV: ${targetAbv}%
         - Batch Size: ${batchSizeLiters} Liters
         - Target Final Gravity (FG): ${targetFg}
@@ -90,9 +94,10 @@ export const generateRecipeAI = onCall(
         ${JSON.stringify(ingredients, null, 2)}
 
         TASK:
-        1. Evaluate the provided ingredients. Do NOT calculate honey grams. Calculate precise dosages for yeast nutrients, hops, and additives.
-        2. Generate detailed technological steps strictly following constraints.
-        3. CRITICAL: You MUST generate all text fields ("title", "description" inside steps array AND "aiNote" inside ingredientQuantities array) strictly in ${targetLanguage}. Do not leave any structural explanations or notes in English if the target language is different.
+        1. Evaluate the provided ingredients based on their categories and 'nutrientRole' (Rehydration vs Fermentation).
+        2. Calculate precise dosages for yeast nutrients, hops, and additives based on the Batch Size and Target ABV. Do NOT recalculate the base fermentable weights.
+        3. Generate detailed technological steps strictly following the constraints for the specific Beverage Type.
+        4. CRITICAL: You MUST generate all text fields ("title", "description" inside steps array AND "aiNote" inside ingredientQuantities array) strictly in ${targetLanguage}. Do not leave any structural explanations or notes in English if the target language is different.
       `;
 
       const aiResponse = await ai.generate({
@@ -105,10 +110,8 @@ export const generateRecipeAI = onCall(
       return { status: "success", data: aiResponse.output };
 
     } catch (error) {
-      console.error(error);
+      console.error("AI Generation Error:", error);
       throw new HttpsError("internal", "AI Generation failed.");
     }
   }
 );
-
-export { aggregateRecipeStats, splitBatch, startBrewSession } from "./brew_functions";

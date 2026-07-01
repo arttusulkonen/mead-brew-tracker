@@ -1,17 +1,15 @@
-import { signOut } from 'firebase/auth';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import '../assets/scss/pages/_profile.scss';
-import { createSharedBrewery, deleteBrewery, inviteToBrewery } from '../firebase/breweryService';
-import { auth } from '../firebase/config';
 import { useAuthStore } from '../store/useAuthStore';
 import { useBreweryStore } from '../store/useBreweryStore';
+import { supabase } from '../supabase/client';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { breweries, activeBrewery, setActiveBrewery, setBreweries } = useBreweryStore();
+  const { breweries, activeBrewery, setActiveBrewery, setBreweries, createBrewery, deleteBrewery, inviteToBrewery } = useBreweryStore();
 
   const [newBreweryName, setNewBreweryName] = useState<string>('');
   const [inviteEmails, setInviteEmails] = useState<string>('');
@@ -20,11 +18,10 @@ const Profile: React.FC = () => {
 
   const { t } = useTranslation();
 
-
   const handleLogout = async () => {
     try {
-      await signOut(auth);
-      navigate('/register');
+      await supabase.auth.signOut();
+      navigate('/login');
     } catch (err: any) {
       console.error(err);
     }
@@ -33,12 +30,12 @@ const Profile: React.FC = () => {
   const handleCreateBrewery = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = newBreweryName.trim();
-    if (!trimmedName || !user?.uid) return;
+    if (!trimmedName || !user?.id) return;
 
     setIsLoading(true);
     setError(null);
     try {
-      const newBrewery = await createSharedBrewery(user.uid, trimmedName, inviteEmails);
+      const newBrewery = await createBrewery(user.id, trimmedName, false, inviteEmails);
       if (newBrewery) {
         setBreweries([...breweries, newBrewery]);
         setActiveBrewery(newBrewery);
@@ -117,7 +114,7 @@ const Profile: React.FC = () => {
                 </button>
               )}
               
-              {!brewery.isPersonal && user?.uid === brewery.ownerId && (
+              {!brewery.isPersonal && user?.id === brewery.ownerId && (
                 <>
                   <button className="btn-invite" onClick={() => handleInviteToExisting(brewery.id)}>
                     {t('Invite')}

@@ -1,2 +1,4 @@
-$font-family-base: -apple-system, blinkmacsystemfont, "Segoe UI", roboto, helvetica, arial, sans-serif;
-$font-family-heading: "Helvetica Neue", helvetica, arial, sans-serif;
+// src/assets/scss/settings/_font-family.scss
+$font-family-base: "Inter", -apple-system, blinkmacsystemfont, "Segoe UI", roboto, helvetica, arial, sans-serif;
+$font-family-heading: "Inter", -apple-system, blinkmacsystemfont, "Segoe UI", roboto, helvetica, arial, sans-serif;
+$font-family-mono: ui-monospace, sfmono-regular, "SF Mono", menlo, consolas, "Liberation Mono", monospace;

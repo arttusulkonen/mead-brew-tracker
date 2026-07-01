@@ -1,3 +1,4 @@
+// /StyleSearchModal.tsx:
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaSearch, FaTimes } from 'react-icons/fa';
@@ -56,10 +57,10 @@ export const StyleSearchModal: React.FC<StyleSearchModalProps> = ({ isOpen, onCl
                   <span className="search-modal__item-category">{s.category}</span>
                 </div>
                 <div className="search-modal__meta-grid search-modal__meta-grid--tight">
-                  <div className="search-modal__meta-item"><span>{t('OG')}</span><strong>{s.ogMin || '-'} - {s.ogMax || '-'}</strong></div>
-                  <div className="search-modal__meta-item"><span>{t('FG')}</span><strong>{s.fgMin || '-'} - {s.fgMax || '-'}</strong></div>
-                  <div className="search-modal__meta-item"><span>{t('ABV')}</span><strong>{s.abvMin || '-'}% - {s.abvMax || '-'}%</strong></div>
-                  <div className="search-modal__meta-item"><span>{t('IBU')}</span><strong>{s.ibuMin || '-'} - {s.ibuMax || '-'}</strong></div>
+                  <div className="search-modal__meta-item"><span>{t('OG')}</span><strong>{s.ogMin ?? '-'} - {s.ogMax ?? '-'}</strong></div>
+                  <div className="search-modal__meta-item"><span>{t('FG')}</span><strong>{s.fgMin ?? '-'} - {s.fgMax ?? '-'}</strong></div>
+                  <div className="search-modal__meta-item"><span>{t('ABV')}</span><strong>{s.abvMin ?? '-'}% - {s.abvMax ?? '-'}%</strong></div>
+                  <div className="search-modal__meta-item"><span>{t('IBU')}</span><strong>{s.ibuMin ?? '-'} - {s.ibuMax ?? '-'}</strong></div>
                 </div>
               </li>
             ))}

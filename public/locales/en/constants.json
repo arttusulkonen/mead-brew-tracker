@@ -4,6 +4,7 @@
   "constants.categories.hops": "Hops",
   "constants.categories.water_profile": "Water Profile",
   "constants.categories.additive": "Additive",
+  "constants.categories.honey": "Honey",
 
   "constants.fermentable_types.grain": "Grain",
   "constants.fermentable_types.extract": "Extract",

@@ -16,13 +16,6 @@ const RecipeDetails: React.FC = () => {
     return () => clearCurrentRecipe();
   }, [id, fetchRecipeById, clearCurrentRecipe]);
 
-  // Раньше тут был отдельный fetch каталога ингредиентов из Supabase, и nFactor
-  // для TOSNA считался по template.nitrogenDemand, найденному в этом каталоге.
-  // Но raw-строки Supabase отдают snake_case (nitrogen_demand), а не camelCase,
-  // поэтому совпадение никогда не находилось и nFactor всегда был дефолтным (0.90).
-  // Теперь каждый ингредиент в рецепте хранит собственный snapshot характеристик
-  // (см. Recipes.tsx), включая nitrogenDemand для дрожжей — читаем его прямо
-  // оттуда, без лишнего похода в базу.
   const selectedRecipeTosna = useMemo(() => {
     if (!currentRecipe || currentRecipe.beverageType !== 'Mead') return null;
 
@@ -36,7 +29,9 @@ const RecipeDetails: React.FC = () => {
         yeastAddedGrams += item.quantity || 0;
         if (item.nitrogenDemand) yeastNitrogenDemand = item.nitrogenDemand;
       } else if (item.category === 'Additive') {
-        if ((item.dosagePer10Liters || item.dosagePerGramYeast) && !customNutrientName) {
+        if (item.additiveType === 'Nutrient' && item.nutrientRole === 'Fermentation' && !customNutrientName) {
+          customNutrientName = item.name;
+        } else if ((item.dosagePer10Liters || item.dosagePerGramYeast) && !customNutrientName) {
           customNutrientName = item.name;
         }
       }
@@ -61,9 +56,6 @@ const RecipeDetails: React.FC = () => {
     navigate('/recipes', { state: { editRecipe: currentRecipe } });
   };
 
-  /**
-   * Handles the deletion of the current recipe.
-   */
   const handleDelete = async () => {
     if (!currentRecipe || !currentRecipe.id) return;
     if (window.confirm(t('Are you sure you want to delete this recipe?'))) {
@@ -118,6 +110,11 @@ const RecipeDetails: React.FC = () => {
                     <div className="recipe-details__ingredient-info">
                       <span className="recipe-details__badge">{t(`constants.categories.${ing.category.toLowerCase().replace(' ', '_')}`, ing.category)}</span>
                       <strong className="recipe-details__ingredient-name">{ing.name}</strong>
+                      {item.nutrientRole && (
+                        <span className="recipe-details__badge recipe-details__badge--outline">
+                          {t(`constants.nutrient_roles.${item.nutrientRole.toLowerCase()}`)}
+                        </span>
+                      )}
                       {item.additionStage && (
                         <span className="recipe-details__badge recipe-details__badge--outline">{item.additionStage}</span>
                       )}
@@ -140,7 +137,7 @@ const RecipeDetails: React.FC = () => {
                   </div>
                   <p className="recipe-details__step-desc">{step.description}</p>
                   <div className="recipe-details__step-meta">
-                    <span className="recipe-details__step-duration">{step.durationValue} {t(step.durationUnit, step.durationUnit)}</span>
+                    <span className="recipe-details__step-duration">{step.durationValue} {t(`constants.units.${step.durationUnit.toLowerCase()}`, step.durationUnit)}</span>
                     {step.targetTempC && <span className="recipe-details__step-temp">{step.targetTempC} °C</span>}
                   </div>
                 </li>

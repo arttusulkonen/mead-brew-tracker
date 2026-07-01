@@ -42,11 +42,13 @@ export const validateStyleBounds = (
   const defaultResult = { isOgValid: true, isFgValid: true, isAbvValid: true, isIbuValid: true, isColorValid: true, isValidOverall: true };
   if (!style) return defaultResult;
 
-  const isOgValid = !style.ogMin || !style.ogMax || (og >= style.ogMin && og <= style.ogMax);
-  const isFgValid = !style.fgMin || !style.fgMax || (fg >= style.fgMin && fg <= style.fgMax);
-  const isAbvValid = !style.abvMin || !style.abvMax || (abv >= style.abvMin && abv <= style.abvMax);
-  const isIbuValid = !style.ibuMin || !style.ibuMax || (ibu >= style.ibuMin && ibu <= style.ibuMax);
-  const isColorValid = !style.ebcMin || !style.ebcMax || (ebc >= style.ebcMin && ebc <= style.ebcMax);
+  // Используем строгое сравнение == null (которое отлавливает и null, и undefined),
+  // чтобы легитимный 0 (например, IBU 0) не отбрасывался.
+  const isOgValid = style.ogMin == null || style.ogMax == null || (og >= style.ogMin && og <= style.ogMax);
+  const isFgValid = style.fgMin == null || style.fgMax == null || (fg >= style.fgMin && fg <= style.fgMax);
+  const isAbvValid = style.abvMin == null || style.abvMax == null || (abv >= style.abvMin && abv <= style.abvMax);
+  const isIbuValid = style.ibuMin == null || style.ibuMax == null || (ibu >= style.ibuMin && ibu <= style.ibuMax);
+  const isColorValid = style.ebcMin == null || style.ebcMax == null || (ebc >= style.ebcMin && ebc <= style.ebcMax);
 
   const isValidOverall = isOgValid && isFgValid && isAbvValid && isIbuValid && isColorValid;
 

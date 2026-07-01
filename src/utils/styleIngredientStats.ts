@@ -6,20 +6,17 @@ export interface StyleIngredientStatsResult {
   yeastIds: Set<string>;
 }
 
-const EMPTY_RESULT: StyleIngredientStatsResult = { hopsIds: new Set(), yeastIds: new Set() };
-
 /**
  * Тянет анонимную статистику популярности ингредиентов для конкретного стиля
- * из таблицы style_ingredient_stats (см. миграцию
- * 20260630_style_ingredient_stats.sql). Таблица не содержит ни рецептов, ни
- * id пивоварен - только агрегированные счётчики "ингредиент X использован со
- * стилем Y N раз", поэтому её безопасно читать с фронтенда без авторизации.
+ * из таблицы style_ingredient_stats. Таблица не содержит ни рецептов, ни
+ * id пивоварен - только агрегированные счётчики.
  */
 export const fetchStyleIngredientStats = async (
   styleName: string,
   beverageType: string
 ): Promise<StyleIngredientStatsResult> => {
-  if (!styleName) return EMPTY_RESULT;
+  // Возвращаем свежие инстансы Set, чтобы избежать мутации глобального состояния
+  if (!styleName) return { hopsIds: new Set(), yeastIds: new Set() };
 
   try {
     const { data, error } = await supabase
@@ -31,7 +28,7 @@ export const fetchStyleIngredientStats = async (
       .order('usage_count', { ascending: false })
       .limit(20);
 
-    if (error || !data) return EMPTY_RESULT;
+    if (error || !data) return { hopsIds: new Set(), yeastIds: new Set() };
 
     const hopsIds = new Set<string>();
     const yeastIds = new Set<string>();
@@ -43,6 +40,6 @@ export const fetchStyleIngredientStats = async (
 
     return { hopsIds, yeastIds };
   } catch {
-    return EMPTY_RESULT;
+    return { hopsIds: new Set(), yeastIds: new Set() };
   }
 };
