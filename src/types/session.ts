@@ -1,6 +1,7 @@
+// src/types/session.ts
 import type { BeverageType, RecipeIngredientReference, RecipeStep } from './recipe';
 
-export type BrewSessionStage = 'planned' | 'mashing' | 'boiling' | 'fermenting' | 'aging' | 'completed';
+export type BrewSessionStage = 'planned' | 'mashing' | 'boiling' | 'fermenting' | 'aging' | 'completed' | 'split';
 
 export interface BrewLog {
   id: string;
@@ -40,6 +41,7 @@ export interface BrewSession {
   targetOg: number;
   actualOg?: number | null;
   targetFg: number;  
+  actualFg?: number | null;
   pitchTimestamp?: string | null;
   tosnaSchedule?: TosnaSchedule | null;
   

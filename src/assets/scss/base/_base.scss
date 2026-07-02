@@ -1,25 +1,45 @@
+// src/assets/scss/base/_base.scss
 @use '../settings/font-family' as *;
 @use '../settings/variables' as *;
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   padding: 0;
   margin: 0;
 }
 
+html {
+  font-size: 16px;
+  text-size-adjust: 100%;
+}
+
 body {
+  overscroll-behavior-y: none;
   font-family: $font-family-base;
-  color: $color-text-main;
-  background-color: $color-bg;
+  color: var(--text-primary);
+  background-color: var(--bg-main);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizelegibility; 
 }
 
 #root {
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   min-height: 100vh;
-  background-color: $color-surface;
-  box-shadow: 0 0 20px rgb(0 0 0 / 5%);
+  overflow-x: hidden;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
 }
 
 .global-loader {
@@ -29,12 +49,12 @@ body {
   min-height: 100vh;
 
   .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid $color-border;
-    border-top-color: $color-primary;
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--border-color);
+    border-top-color: var(--color-primary);
     border-radius: 50%;
-    animation: spin 1s linear infinite;
+    animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
 }
 

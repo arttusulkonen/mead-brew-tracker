@@ -1,22 +1,50 @@
+// src/assets/scss/mixins/_typography.scss
 @use '../settings/font-family' as *;
-@use '../settings/font-size' as *;
 @use '../settings/variables' as *;
 
 @mixin heading-1 {
   font-family: $font-family-heading;
-  font-size: $font-size-xl;
+  font-size: 1.75rem;
   font-weight: 700;
-  color: $color-text-main;
+  line-height: 1.2;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+@mixin heading-2 {
+  font-family: $font-family-heading;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+@mixin heading-3 {
+  font-family: $font-family-heading;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary);
 }
 
 @mixin text-base {
   font-family: $font-family-base;
-  font-size: $font-size-base;
-  color: $color-text-main;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text-primary);
 }
 
 @mixin text-small {
   font-family: $font-family-base;
-  font-size: $font-size-sm;
-  color: $color-text-muted;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+@mixin text-mono {
+  font-family: $font-family-mono;
+  font-size: 0.9em;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
 }

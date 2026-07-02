@@ -178,6 +178,12 @@
     background-color: rgb(0 123 255 / 2%);
     border: 1px dashed var(--color-primary);
   }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-lg;
+  }
 }
 
 .form-field {
@@ -608,5 +614,34 @@
   &:hover {
     background-color: rgb(0 123 255 / 20%);
     border-color: rgb(0 123 255 / 30%);
+  }
+}
+
+.ingredient-group {
+  padding-bottom: $spacing-md;
+  border-bottom: 1px solid var(--border-color);
+
+  &:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: $spacing-sm;
+
+    h3 {
+      margin: 0;
+      font-size: 1rem;
+      color: var(--text-primary);
+    }
+  }
+
+  &__empty {
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--text-disabled);
   }
 }

@@ -1,3 +1,4 @@
+// src/store/useRecipeStore.ts
 import { create } from 'zustand';
 import { supabase } from '../supabase/client';
 import type { Recipe } from '../types/recipe';
@@ -12,7 +13,28 @@ export interface RecipeState {
   clearCurrentRecipe: () => void;
   deleteRecipe: (recipeId: string) => Promise<void>;
   saveRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Recipe | null>;
+  updateRecipe: (recipeId: string, recipe: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Recipe | null>;
 }
+
+const mapRowToRecipe = (data: any): Recipe => ({
+  id: data.id,
+  breweryId: data.brewery_id,
+  name: data.name,
+  beverageType: data.beverage_type,
+  targetStyle: data.target_style,
+  expectedBatchSizeLiters: data.expected_batch_size_liters,
+  targetOriginalGravity: data.target_original_gravity,
+  targetFinalGravity: data.target_final_gravity,
+  targetAbv: data.target_abv,
+  targetIbu: data.target_ibu,
+  targetColorEbc: data.target_color_ebc,
+  ingredients: data.ingredients || [],
+  steps: data.steps || [],
+  targetCurves: data.target_curves,
+  createdAt: data.created_at,
+  updatedAt: data.updated_at,
+  createdBy: data.created_by,
+});
 
 export const useRecipeStore = create<RecipeState>((set, get) => ({
   recipes: [],
@@ -40,25 +62,7 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
 
       if (error) throw error;
       
-      const formattedRecipes = (data ?? []).map(item => ({
-        id: item.id,
-        breweryId: item.brewery_id,
-        name: item.name,
-        beverageType: item.beverage_type,
-        targetStyle: item.target_style,
-        expectedBatchSizeLiters: item.expected_batch_size_liters,
-        targetOriginalGravity: item.target_original_gravity,
-        targetFinalGravity: item.target_final_gravity,
-        targetAbv: item.target_abv,
-        targetIbu: item.target_ibu,
-        targetColorEbc: item.target_color_ebc,
-        ingredients: item.ingredients || [],
-        steps: item.steps || [],
-        targetCurves: item.target_curves,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-        createdBy: item.created_by,
-      })) as Recipe[];
+      const formattedRecipes = (data ?? []).map(mapRowToRecipe);
       
       set({ recipes: formattedRecipes, isLoading: false });
     } catch (error: any) {
@@ -67,7 +71,9 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
   },
 
   /**
-   * Saves a new recipe or updates an existing one.
+   * Saves a NEW recipe. For editing an existing recipe, use updateRecipe
+   * instead - calling saveRecipe again would insert a duplicate row rather
+   * than updating the original (Supabase .insert() always creates a new row).
    * @param recipeData The recipe object excluding auto-generated fields.
    * @returns The saved recipe object.
    */
@@ -101,28 +107,59 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       
       if (!data) return null;
       
-      return {
-        id: data.id,
-        breweryId: data.brewery_id,
-        name: data.name,
-        beverageType: data.beverage_type,
-        targetStyle: data.target_style,
-        expectedBatchSizeLiters: data.expected_batch_size_liters,
-        targetOriginalGravity: data.target_original_gravity,
-        targetFinalGravity: data.target_final_gravity,
-        targetAbv: data.target_abv,
-        targetIbu: data.target_ibu,
-        targetColorEbc: data.target_color_ebc,
-        ingredients: data.ingredients || [],
-        steps: data.steps || [],
-        targetCurves: data.target_curves,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        createdBy: data.created_by,
-      } as Recipe;
+      return mapRowToRecipe(data);
       
     } catch (error: any) {
       set({ error: error?.message || 'Failed to save recipe', isLoading: false });
+      throw error;
+    }
+  },
+
+  /**
+   * Updates an EXISTING recipe in place (UPDATE, not INSERT). Use this when
+   * editingRecipeId is set in Recipes.tsx, otherwise the old saveRecipe()
+   * path silently creates a duplicate row for every edit.
+   * @param recipeId The id of the recipe row to update.
+   * @param recipeData The full recipe object to persist.
+   */
+  updateRecipe: async (recipeId, recipeData) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('recipes')
+        .update({
+          brewery_id: recipeData.breweryId,
+          name: recipeData.name,
+          beverage_type: recipeData.beverageType,
+          target_style: recipeData.targetStyle,
+          expected_batch_size_liters: recipeData.expectedBatchSizeLiters,
+          target_original_gravity: recipeData.targetOriginalGravity,
+          target_final_gravity: recipeData.targetFinalGravity,
+          target_abv: recipeData.targetAbv,
+          target_ibu: recipeData.targetIbu,
+          target_color_ebc: recipeData.targetColorEbc,
+          ingredients: recipeData.ingredients,
+          steps: recipeData.steps,
+          target_curves: recipeData.targetCurves
+        })
+        .eq('id', recipeId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await get().fetchRecipes(recipeData.breweryId);
+
+      if (!data) return null;
+
+      const formatted = mapRowToRecipe(data);
+      set(state => ({
+        currentRecipe: state.currentRecipe?.id === recipeId ? formatted : state.currentRecipe
+      }));
+
+      return formatted;
+    } catch (error: any) {
+      set({ error: error?.message || 'Failed to update recipe', isLoading: false });
       throw error;
     }
   },
@@ -144,26 +181,7 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       if (error) throw error;
       
       if (data) {
-        const formattedRecipe: Recipe = {
-          id: data.id,
-          breweryId: data.brewery_id,
-          name: data.name,
-          beverageType: data.beverage_type,
-          targetStyle: data.target_style,
-          expectedBatchSizeLiters: data.expected_batch_size_liters,
-          targetOriginalGravity: data.target_original_gravity,
-          targetFinalGravity: data.target_final_gravity,
-          targetAbv: data.target_abv,
-          targetIbu: data.target_ibu,
-          targetColorEbc: data.target_color_ebc,
-          ingredients: data.ingredients || [],
-          steps: data.steps || [],
-          targetCurves: data.target_curves,
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-          createdBy: data.created_by,
-        };
-        set({ currentRecipe: formattedRecipe, isLoading: false });
+        set({ currentRecipe: mapRowToRecipe(data), isLoading: false });
       }
     } catch (error: any) {
       set({ error: error?.message || 'Recipe not found', isLoading: false, currentRecipe: null });

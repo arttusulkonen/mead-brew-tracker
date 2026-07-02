@@ -27,3 +27,6 @@ dist-ssr
 serviceAccountKey.json
 .firebase
 
+data/DefaultContent002-BJCP_2021_Styles.json
+data/DefaultContent003-Ingredients-Hops-Yeasts.json
+data/DefaultContent004-MoreYeasts.json

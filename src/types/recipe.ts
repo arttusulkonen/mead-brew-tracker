@@ -1,15 +1,58 @@
-import type { IngredientCategory } from './ingredient';
+// src/types/recipe.ts
+import type { AdditiveType, IngredientCategory } from './ingredient';
 
 export type BeverageType = 'Beer' | 'Mead' | 'Cider' | 'Other';
 export type MeadStyleTarget = 'Session (4-6%)' | 'Standard (7-10%)' | 'Wine/Sack (11%+)' | 'Custom';
 
 export interface RecipeIngredientReference {
   id: string;
-  globalIngredientId: string;
+  globalIngredientId: string | null;
   name: string;
   category: IngredientCategory;
   quantity: number;
   note: string;
+
+  // --- Универсальные поля ---
+  form?: string;
+  origin?: string;
+  producer?: string;
+  description?: string;
+
+  // --- Fermentable ---
+  yieldPpg?: number;
+  colorEbc?: number;
+  moistureContentPct?: number;
+  diastaticPowerLintner?: number;
+
+  // --- Honey ---
+  sugarContentBrix?: number;
+
+  // --- Hops ---
+  alphaAcidPct?: number;
+  boilTimeMinutes?: number;
+
+  // --- Yeast ---
+  alcoholTolerancePct?: number;
+  attenuationPct?: number;
+  tempMinC?: number;
+  tempMaxC?: number;
+  nitrogenDemand?: 'Low' | 'Medium' | 'High' | 'Very High';
+
+  // --- Additive ---
+  additiveType?: AdditiveType;
+  nutrientRole?: string; // Критически важно для TOSNA (Rehydration / Fermentation)
+  additionStage?: string; 
+  yanValuePerGramPerLiter?: number;
+  dosagePerGramYeast?: number;
+  dosagePer10Liters?: number;
+
+  // --- Water Profile (ppm) ---
+  calciumPpm?: number;
+  magnesiumPpm?: number;
+  sodiumPpm?: number;
+  sulfatePpm?: number;
+  chloridePpm?: number;
+  bicarbonatePpm?: number;
 }
 
 export type StepPhase = 'Preparation' | 'Mashing' | 'Boiling' | 'Fermentation' | 'Aging' | 'Packaging';

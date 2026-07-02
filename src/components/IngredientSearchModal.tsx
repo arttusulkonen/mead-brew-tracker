@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+// src/components/IngredientSearchModal.tsx
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaSearch, FaTimes } from 'react-icons/fa';
 import type { BaseIngredient, FermentableIngredient, HopsIngredient, YeastIngredient } from '../types/ingredient';
@@ -8,14 +9,23 @@ interface IngredientSearchModalProps {
   onClose: () => void;
   onSelect: (ingredientId: string) => void;
   catalog: BaseIngredient[];
+  initialCategory?: string;
+  initialSearchQuery?: string;
 }
 
-export const IngredientSearchModal: React.FC<IngredientSearchModalProps> = ({ isOpen, onClose, onSelect, catalog }) => {
+export const IngredientSearchModal: React.FC<IngredientSearchModalProps> = ({ isOpen, onClose, onSelect, catalog, initialCategory = 'All', initialSearchQuery = '' }) => {
   const { t } = useTranslation();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  const [activeCategory, setActiveCategory] = useState<string>(initialCategory);
 
   const categories = ['All', 'Fermentable', 'Hops', 'Yeast', 'Additive', 'Water Profile'];
+
+  useEffect(() => {
+    if (isOpen) {
+      setSearchQuery(initialSearchQuery);
+      setActiveCategory(initialCategory);
+    }
+  }, [isOpen, initialCategory, initialSearchQuery]);
 
   const filteredCatalog = useMemo(() => {
     return catalog.filter(ing => {
@@ -44,7 +54,7 @@ export const IngredientSearchModal: React.FC<IngredientSearchModalProps> = ({ is
       return (
         <div className="search-modal__meta-grid">
           <div className="search-modal__meta-item"><span>{t('Tolerance')}</span><strong>{yeast.alcoholTolerancePct || 0}%</strong></div>
-          <div className="search-modal__meta-item"><span>{t('Temp')}</span><strong>{yeast.tempMinC}-{yeast.tempMaxC}°C</strong></div>
+          <div className="search-modal__meta-item"><span>{t('Temp')}</span><strong>{yeast.tempMinC || 0}-{yeast.tempMaxC || 0}°C</strong></div>
           <div className="search-modal__meta-item"><span>{t('Form')}</span><strong>{t(`constants.yeast_forms.${yeast.form?.toLowerCase() || 'dry'}`, yeast.form || 'Dry')}</strong></div>
           {yeast.producer && <div className="search-modal__meta-item"><span>{t('Producer')}</span><strong>{yeast.producer}</strong></div>}
         </div>
@@ -54,8 +64,8 @@ export const IngredientSearchModal: React.FC<IngredientSearchModalProps> = ({ is
       const ferm = ing as FermentableIngredient;
       return (
         <div className="search-modal__meta-grid">
-          <div className="search-modal__meta-item"><span>{t('Yield (PPG)')}</span><strong>{ferm.yieldPpg || 0}</strong></div>
-          <div className="search-modal__meta-item"><span>{t('Color (EBC)')}</span><strong>{ferm.colorEbc || 0}</strong></div>
+          <div className="search-modal__meta-item"><span>{t('Yield (PPG)')}</span><strong>{ferm.yieldPpg || 36}</strong></div>
+          <div className="search-modal__meta-item"><span>{t('Color (EBC)')}</span><strong>{ferm.colorEbc || 5}</strong></div>
           <div className="search-modal__meta-item"><span>{t('Type')}</span><strong>{t(`constants.fermentable_types.${ferm.type?.toLowerCase() || 'grain'}`, ferm.type || 'Grain')}</strong></div>
         </div>
       );
@@ -107,7 +117,7 @@ export const IngredientSearchModal: React.FC<IngredientSearchModalProps> = ({ is
                   <strong className="search-modal__item-title">{ing.name}</strong>
                 </div>
                 {renderDetails(ing)}
-                {ing.notes && <p className="search-modal__item-desc">{ing.notes.substring(0, 100)}{ing.notes.length > 100 ? '...' : ''}</p>}
+                {ing.notes && <p className="search-modal__item-desc">{ing.notes.substring(0, 120)}{ing.notes.length > 120 ? '...' : ''}</p>}
               </li>
             ))}
             {filteredCatalog.length === 0 && (

@@ -1,10 +1,7 @@
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { auth, db } from '../firebase/config';
-import i18n from '../i18n';
+import { supabase } from '../supabase/client';
 
 const Login: React.FC = () => {
   const { t } = useTranslation();
@@ -12,27 +9,22 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db) return;
+    setIsLoading(true);
     
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      if (user) {
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists() && userDoc.data().language) {
-          await i18n.changeLanguage(userDoc.data().language);
-        }
-      }
-
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) throw signInError;
+      
       navigate('/home');
     } catch (err: any) {
-      console.error(err);
+      console.error('Login error:', err);
       setError(t('Invalid email or password'));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -43,7 +35,7 @@ const Login: React.FC = () => {
         {error && <p className="error">{error}</p>}
         <input type="email" placeholder={t('Email')} value={email} onChange={(e) => setEmail(e.target.value)} required />
         <input type="password" placeholder={t('Password')} value={password} onChange={(e) => setPassword(e.target.value)} required />
-        <button type="submit">{t('Login')}</button>
+        <button type="submit" disabled={isLoading}>{isLoading ? t('Loading...') : t('Login')}</button>
         <p className="auth-footer">
           {t('No account?')} <Link to="/register">{t('Register here')}</Link>
         </p>

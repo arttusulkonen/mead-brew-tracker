@@ -1,3 +1,4 @@
+//src/types/ingredient.ts
 export const INGREDIENT_CATEGORIES = ['Fermentable', 'Honey', 'Yeast', 'Hops', 'Water Profile', 'Additive'] as const;
 export type IngredientCategory = typeof INGREDIENT_CATEGORIES[number];
 
@@ -13,6 +14,10 @@ export interface BaseIngredient {
   category: IngredientCategory;
   notes?: string;
   origin?: string;
+  // В реальных данных из Supabase это поле есть (например, "Omega Yeast" для
+  // дрожжей), но в типе его не было — добавлено, чтобы соответствовать тому,
+  // что на самом деле приходит из базы.
+  producer?: string;
   updatedAt: string;
   createdBy?: string;
 }
@@ -38,7 +43,9 @@ export interface YeastIngredient extends BaseIngredient {
   form: 'Liquid' | 'Dry';
   tempMinC: number;
   tempMaxC: number;
+  attenuationPctMin?: number; 
   alcoholTolerancePct: number;
+  alcoholTolerancePctMin?: number; 
   attenuationPct: number;
   nitrogenDemand: 'Low' | 'Medium' | 'High' | 'Very High';
 }
@@ -46,6 +53,7 @@ export interface YeastIngredient extends BaseIngredient {
 export interface HopsIngredient extends BaseIngredient {
   category: 'Hops';
   alphaAcidPct: number;
+  alphaAcidPctMin?: number;
   form: 'Pellet' | 'Whole' | 'Extract';
 }
 

@@ -379,7 +379,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
               <div className="timeline-item__content">
                 <div className="timeline-item__header">
                   <div className="timeline-item__title-group">
-                    <span className="timeline-item__phase">{t(`constants.step_phases.${step.phase.toLowerCase()}`, step.phase)}</span>
+                    <span className="timeline-item__phase">{String(t(`constants.step_phases.${step.phase.toLowerCase()}`, step.phase))}</span>
                     <strong className="timeline-item__title">{step.title}</strong>
                   </div>
                   <div className="timeline-item__target">

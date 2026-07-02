@@ -1,16 +1,14 @@
+// src/components/layout/Navigation.tsx
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaBook, FaChartLine, FaFlask, FaGlobe, FaHome, FaUser } from 'react-icons/fa';
 import { NavLink } from 'react-router-dom';
 import langsConfig from '../../../languages.json';
-import { useAuthStore } from '../../store/useAuthStore';
 
 const Navigation: React.FC = () => {
   const { t, i18n } = useTranslation();
   const currentLanguage = (i18n.resolvedLanguage || i18n.language || 'en').split('-')[0];
   const langCodes = Object.keys(langsConfig.uiLabels);
-
-  const { setLanguage } = useAuthStore();
   
   const toggleLanguage = () => {
     const currentIndex = langCodes.indexOf(currentLanguage);
@@ -55,7 +53,7 @@ const Navigation: React.FC = () => {
           value={currentLanguage}
           onChange={(e) => {
             const lang = e.target.value;
-            setLanguage(lang);
+            i18n.changeLanguage(lang); 
           }}
           className="language-select"
           aria-label={t('Select Language')}

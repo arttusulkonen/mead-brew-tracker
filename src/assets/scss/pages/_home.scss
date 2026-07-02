@@ -1,41 +1,39 @@
-@use 'sass:color';
 @use '../settings/variables' as *;
 @use '../mixins/typography' as *;
-@use '../settings/font-size' as *;
 
 .home {
-  max-width: 1200px;
-  padding: 20px;
+  max-width: $breakpoint-xl;
+  padding: 0 $spacing-md;
   margin: 0 auto;
 
   &__header {
-    margin-bottom: 32px;
+    margin-bottom: $spacing-xl;
   }
 
   &__title {
-    margin: 0 0 8px;
-    font-size: 2.2rem;
-    color: $color-text-main;
+    @include heading-1;
+
+    margin-bottom: $spacing-xs;
   }
 
   &__subtitle {
-    margin: 0;
-    font-size: 1rem;
-    color: $color-text-muted;
+    @include text-base;
+
+    color: var(--text-secondary);
   }
 
   &__workspace {
     font-weight: 600;
-    color: $color-primary;
+    color: var(--color-primary);
   }
 
   &__grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: $spacing-xl;
     align-items: flex-start;
 
-    @media (width >= 992px) {
+    @media (min-width: $breakpoint-lg) {
       grid-template-columns: repeat(2, 1fr);
     }
   }
@@ -44,161 +42,171 @@
 .home-card {
   display: flex;
   flex-direction: column;
-  background-color: $color-surface;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-md;
-  box-shadow: $box-shadow-base;
+  overflow: hidden; // Чтобы углы обрезали контент красиво
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: $border-radius-lg; // Мягкие углы
+  box-shadow: $box-shadow-sm;
 
   &__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 20px;
-    border-bottom: 1px solid $color-border;
+    padding: $spacing-lg;
+    background-color: var(--bg-surface);
+    border-bottom: 1px solid var(--border-color);
   }
 
   &__title {
+    @include heading-2;
+
     margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: $color-text-main;
   }
 
   &__link {
+    @include text-small;
+
     display: flex;
-    gap: 6px;
+    gap: $spacing-xs;
     align-items: center;
-    font-size: 0.9rem;
     font-weight: 600;
-    color: $color-primary;
+    color: var(--color-primary);
     text-decoration: none;
     transition: color 0.2s;
 
     &:hover {
-      color: color.adjust($color-primary, $lightness: -10%);
+      color: var(--color-primary-dark);
     }
   }
 
   &__list {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 20px;
+    gap: $spacing-md;
+    padding: $spacing-lg;
   }
 
   &__loading,
   &__empty {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: $spacing-md;
     align-items: center;
-    padding: 40px 20px;
-    color: $color-text-muted;
+    padding: $spacing-xxl $spacing-lg;
     text-align: center;
 
     p {
+      @include text-base;
+
       margin: 0;
+      color: var(--text-secondary);
     }
   }
 }
 
+// Активная варка (Session Card)
 .brew-item {
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: $spacing-md;
   cursor: pointer;
-  background-color: #f8fafc;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-sm;
+  background-color: var(--bg-surface-alt);
+  border: 1px solid var(--border-color);
+  border-radius: $border-radius-md;
   transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 
   &:hover,
   &:focus {
-    border-color: $color-primary;
+    border-color: var(--color-primary);
     outline: none;
-    box-shadow: $box-shadow-hover;
+    box-shadow: $box-shadow-base;
     transform: translateY(-2px);
   }
 
   &--active {
-    border-color: rgb(59 130 246 / 40%);
-    box-shadow: 0 4px 12px rgb(59 130 246 / 10%);
+    background-color: var(--bg-surface);
+    border-color: rgba($color-primary, 0.4);
+    box-shadow: 0 4px 12px rgba($color-primary, 0.1);
   }
 
   &__header {
     display: flex;
-    gap: 12px;
+    gap: $spacing-sm;
     align-items: flex-start;
     justify-content: space-between;
-    margin-bottom: 8px;
+    margin-bottom: $spacing-sm;
   }
 
   &__title {
+    @include heading-3;
+
     margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: $color-text-main;
   }
 
+  // Стили бейджей через CSS переменные для гибкости
   &__badge {
+    @include text-small;
+
     padding: 4px 8px;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     white-space: nowrap;
-    border-radius: 4px;
+    border-radius: $border-radius-sm;
 
     &[data-status="planned"] {
-      color: #475569;
-      background-color: #f1f5f9;
+      color: var(--text-secondary);
+      background-color: var(--border-color);
     }
 
     &[data-status="fermenting"] {
-      color: #1d4ed8;
-      background-color: #eff6ff;
+      color: var(--color-primary);
+      background-color: rgba($color-primary, 0.1);
     }
 
     &[data-status="aging"] {
-      color: #7e22ce;
+      color: #7e22ce; // Хардкод акцент для Aging, можно вынести в vars
       background-color: #faf5ff;
     }
 
     &[data-status="completed"] {
-      color: #15803d;
-      background-color: #f0fdf4;
+      color: var(--color-success);
+      background-color: rgba($color-success, 0.1);
     }
   }
 
   &__details {
+    @include text-small;
+
     display: flex;
-    gap: 8px;
-    font-size: 0.9rem;
-    color: $color-text-muted;
+    gap: $spacing-sm;
   }
 
   &__active-step {
-    padding: 12px;
-    margin-top: 16px;
-    background-color: rgb(59 130 246 / 5%);
-    border: 1px solid rgb(59 130 246 / 20%);
-    border-radius: 6px;
+    padding: $spacing-md;
+    margin-top: $spacing-md;
+    background-color: rgba($color-primary, 0.05);
+    border: 1px solid rgba($color-primary, 0.2);
+    border-radius: $border-radius-sm;
   }
 
   &__step-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 6px;
+    margin-bottom: $spacing-xs;
   }
 
   &__step-indicator {
+    @include text-small;
+
     display: flex;
-    gap: 6px;
+    gap: $spacing-xs;
     align-items: center;
-    font-size: 0.8rem;
     font-weight: 600;
-    color: #3b82f6;
+    color: var(--color-primary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -208,68 +216,63 @@
   }
 
   &__step-timer {
-    font-size: 0.9rem;
-    font-weight: bold;
-    font-variant-numeric: tabular-nums;
-    color: #1d4ed8;
+    @include text-mono; // Использование моноширинного шрифта для цифр
+
+    font-weight: 600;
+    color: var(--color-primary-dark);
   }
 
   &__step-name {
-    font-size: 0.95rem;
-    color: #1e293b;
+    @include text-small;
+
+    color: var(--text-primary);
   }
 }
 
+// Карточка рецепта
 .recipe-item {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px;
+  gap: $spacing-xs;
+  padding: $spacing-md;
   text-decoration: none;
-  background-color: #fff;
-  border: 1px solid $color-border;
-  border-radius: $border-radius-sm;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: $border-radius-md;
   transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 
   &:hover {
-    background-color: #f8fafc;
-    border-color: $color-primary;
+    background-color: var(--bg-surface-alt);
+    border-color: var(--color-primary);
   }
 
   &__title {
+    @include heading-3;
+
     margin: 0;
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: $color-text-main;
   }
 
   &__meta {
+    @include text-small;
+
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 0.9rem;
   }
 
   &__style {
-    color: $color-text-muted;
+    color: var(--text-secondary);
   }
 
   &__abv {
-    font-weight: bold;
-    color: $color-primary;
+    font-weight: 600;
+    color: var(--color-primary);
   }
 }
 
 @keyframes dashboard-pulse {
-  0% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.4;
-  }
-
-  100% {
-    opacity: 1;
-  }
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
 }

@@ -1,61 +1,46 @@
+// src/pages/RecipeDetails.tsx
 import { calculateOneThirdSugarBreak, calculateTosna } from '@mead-tracker/math';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useRecipeStore } from '../store/useRecipeStore';
-import { supabase } from '../supabase/client';
-import type { BaseIngredient, YeastIngredient } from '../types/ingredient';
 
 const RecipeDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentRecipe, fetchRecipeById, clearCurrentRecipe, isLoading, deleteRecipe } = useRecipeStore();
-  const [globalCatalog, setGlobalCatalog] = useState<BaseIngredient[]>([]);
 
   useEffect(() => {
     fetchRecipeById(id);
     return () => clearCurrentRecipe();
   }, [id, fetchRecipeById, clearCurrentRecipe]);
 
-  useEffect(() => {
-    const fetchCatalog = async () => {
-      try {
-        const { data, error } = await supabase.from('ingredients').select('*');
-        if (error) throw error;
-        setGlobalCatalog(data as BaseIngredient[]);
-      } catch {
-        setGlobalCatalog([]);
-      }
-    };
-    fetchCatalog();
-  }, []);
-
   const selectedRecipeTosna = useMemo(() => {
-    if (!currentRecipe || globalCatalog.length === 0 || currentRecipe.beverageType !== 'Mead') return null;
-    
-    let selectedYeastTemplate = null;
+    if (!currentRecipe || currentRecipe.beverageType !== 'Mead') return null;
+
     let yeastAddedGrams = 0;
+    let yeastNitrogenDemand: 'Low' | 'Medium' | 'High' | 'Very High' | undefined;
     let customNutrientName = '';
 
-    currentRecipe.ingredients.forEach(item => {
-      const template = globalCatalog.find(t => t.id === item.globalIngredientId);
+    currentRecipe.ingredients.forEach(ing => {
+      const item = ing as any;
       if (item.category === 'Yeast') {
-        yeastAddedGrams += item.quantity;
-        selectedYeastTemplate = template;
-      } else if (item.category === 'Additive' && template) {
-        const additive = template as any;
-        if (additive.dosagePer10Liters && !customNutrientName) {
+        yeastAddedGrams += item.quantity || 0;
+        if (item.nitrogenDemand) yeastNitrogenDemand = item.nitrogenDemand;
+      } else if (item.category === 'Additive') {
+        if (item.additiveType === 'Nutrient' && item.nutrientRole === 'Fermentation' && !customNutrientName) {
+          customNutrientName = item.name;
+        } else if ((item.dosagePer10Liters || item.dosagePerGramYeast) && !customNutrientName) {
           customNutrientName = item.name;
         }
       }
     });
 
-    if (selectedYeastTemplate && currentRecipe.targetOriginalGravity > 1.000) {
-      const yeast = selectedYeastTemplate as unknown as YeastIngredient;
+    if (yeastAddedGrams > 0 && currentRecipe.targetOriginalGravity > 1.000) {
       let nFactor = 0.90;
-      if (yeast.nitrogenDemand === 'Low') nFactor = 0.75;
-      else if (yeast.nitrogenDemand === 'High' || yeast.nitrogenDemand === 'Very High') nFactor = 1.25;
+      if (yeastNitrogenDemand === 'Low') nFactor = 0.75;
+      else if (yeastNitrogenDemand === 'High' || yeastNitrogenDemand === 'Very High') nFactor = 1.25;
 
       return {
         ...calculateTosna(currentRecipe.expectedBatchSizeLiters, currentRecipe.targetOriginalGravity, nFactor),
@@ -64,16 +49,13 @@ const RecipeDetails: React.FC = () => {
       };
     }
     return null;
-  }, [currentRecipe, globalCatalog]);
+  }, [currentRecipe]);
 
   const handleEdit = () => {
     if (!currentRecipe) return;
     navigate('/recipes', { state: { editRecipe: currentRecipe } });
   };
 
-  /**
-   * Handles the deletion of the current recipe.
-   */
   const handleDelete = async () => {
     if (!currentRecipe || !currentRecipe.id) return;
     if (window.confirm(t('Are you sure you want to delete this recipe?'))) {
@@ -121,15 +103,26 @@ const RecipeDetails: React.FC = () => {
           <section className="recipe-details__section">
             <h2 className="recipe-details__section-title">{t('Ingredients')}</h2>
             <ul className="recipe-details__ingredient-list">
-              {currentRecipe.ingredients.map(ing => (
-                <li key={ing.id} className="recipe-details__ingredient-item">
-                  <div className="recipe-details__ingredient-info">
-                    <span className="recipe-details__badge">{t(`constants.categories.${ing.category.toLowerCase().replace(' ', '_')}`, ing.category)}</span>
-                    <strong className="recipe-details__ingredient-name">{ing.name}</strong>
-                  </div>
-                  <span className="recipe-details__ingredient-quantity">{ing.quantity} {t('g')}</span>
-                </li>
-              ))}
+              {currentRecipe.ingredients.map(ing => {
+                const item = ing as any;
+                return (
+                  <li key={ing.id} className="recipe-details__ingredient-item">
+                    <div className="recipe-details__ingredient-info">
+                      <span className="recipe-details__badge">{t(`constants.categories.${ing.category.toLowerCase().replace(' ', '_')}`, ing.category)}</span>
+                      <strong className="recipe-details__ingredient-name">{ing.name}</strong>
+                      {item.nutrientRole && (
+                        <span className="recipe-details__badge recipe-details__badge--outline">
+                          {t(`constants.nutrient_roles.${item.nutrientRole.toLowerCase()}`)}
+                        </span>
+                      )}
+                      {item.additionStage && (
+                        <span className="recipe-details__badge recipe-details__badge--outline">{item.additionStage}</span>
+                      )}
+                    </div>
+                    <span className="recipe-details__ingredient-quantity">{ing.quantity} {t('g')}</span>
+                  </li>
+                );
+              })}
             </ul>
           </section>
 
@@ -144,7 +137,7 @@ const RecipeDetails: React.FC = () => {
                   </div>
                   <p className="recipe-details__step-desc">{step.description}</p>
                   <div className="recipe-details__step-meta">
-                    <span className="recipe-details__step-duration">{step.durationValue} {t(step.durationUnit, step.durationUnit)}</span>
+                    <span className="recipe-details__step-duration">{step.durationValue} {t(`constants.units.${step.durationUnit.toLowerCase()}`, step.durationUnit)}</span>
                     {step.targetTempC && <span className="recipe-details__step-temp">{step.targetTempC} °C</span>}
                   </div>
                 </li>
