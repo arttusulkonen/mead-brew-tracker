@@ -1,10 +1,11 @@
+// src/pages/Inventory.tsx
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaPen, FaPlus, FaTimes, FaTrash } from 'react-icons/fa';
 import { EditedIngredientData, IngredientEditorModal } from '../components/IngredientEditorModal';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useInventoryStore } from '../store/useInventoryStore';
-import type { PopulatedInventoryItem, UnitType } from '../types/ingredient';
+import type { IngredientUnion, PopulatedInventoryItem, UnitType } from '../types/ingredient';
 import { UNIT_TYPES } from '../types/ingredient';
 
 const Inventory: React.FC = () => {
@@ -47,7 +48,7 @@ const Inventory: React.FC = () => {
     const original = globalIngredients.find(i => i.id === targetId);
 
     if (!targetId || (original && original.name !== data.name)) {
-      const baseData: any = {
+      const baseData: Record<string, unknown> = {
         name: data.name,
         category: data.category,
         origin: data.origin,
@@ -95,7 +96,7 @@ const Inventory: React.FC = () => {
         baseData.bicarbonatePpm = data.bicarbonatePpm || 0;
       }
 
-      const newIng = await addCustomIngredient(baseData);
+      const newIng = await addCustomIngredient(baseData as unknown as Omit<IngredientUnion, 'id' | 'updatedAt'>);
       if (newIng?.id) targetId = newIng.id;
     }
 
@@ -138,7 +139,7 @@ const Inventory: React.FC = () => {
     }
   };
 
-  const renderIngredientMeta = (ing: any) => {
+  const renderIngredientMeta = (ing: IngredientUnion) => {
     if (!ing) return null;
 
     const formatRange = (min: number | undefined, max: number | undefined) => {
@@ -155,13 +156,13 @@ const Inventory: React.FC = () => {
       case 'Hops':
         return `${t('Alpha')}: ${formatRange(ing.alphaAcidPctMin, ing.alphaAcidPct)}% | ${t(`constants.hops_forms.${ing.form?.toLowerCase() || 'pellet'}`)}`;
       case 'Additive': {
-        // Оборачиваем в блок, чтобы переменная была локальной для этого case
-        const roleStr = ing.additiveType === 'Nutrient' && ing.nutrientRole
-          ? ` | ${t(`constants.nutrient_roles.${ing.nutrientRole.toLowerCase()}`, ing.nutrientRole)}`
+        const roleStr = ing.additiveType === 'Nutrient' && (ing as any).nutrientRole
+          ? ` | ${t(`constants.nutrient_roles.${(ing as any).nutrientRole.toLowerCase()}`, (ing as any).nutrientRole)}`
           : '';
+        const stageStr = (ing as any).additionStage ? ` (${(ing as any).additionStage})` : '';
         return ing.dosagePer10Liters 
-          ? `${ing.dosagePer10Liters}g/10L${roleStr}` 
-          : `${t(`constants.additive_types.${ing.additiveType?.toLowerCase().replace(' ', '_')}`)}${roleStr}`;
+          ? `${ing.dosagePer10Liters}g/10L${roleStr}${stageStr}` 
+          : `${t(`constants.additive_types.${ing.additiveType?.toLowerCase().replace(' ', '_')}`)}${roleStr}${stageStr}`;
       }
       default:
         return null;

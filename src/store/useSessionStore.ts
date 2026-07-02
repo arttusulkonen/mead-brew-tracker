@@ -1,10 +1,10 @@
-// src/store/useSessionStore.ts
 import { calculateOneThirdSugarBreak } from '@mead-tracker/math';
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { create } from 'zustand';
 import { db } from '../firebase/config';
-import type { BrewLog, BrewSession, BrewSessionStage } from '../types/session';
+import type { RecipeStep } from '../types/recipe';
+import type { BrewLog, BrewSession, BrewSessionStage, TosnaAddition } from '../types/session';
 
 interface SessionState {
   sessions: BrewSession[];
@@ -14,11 +14,11 @@ interface SessionState {
   fetchSessions: (breweryId: string | null | undefined) => Promise<void>;
   fetchSessionById: (breweryId: string | null | undefined, sessionId: string | null | undefined) => Promise<void>;
   clearCurrentSession: () => void;
-  startSession: (payload: Record<string, any>) => Promise<string | null>;
-  updateSteps: (breweryId: string | null | undefined, sessionId: string | null | undefined, newSteps: any[]) => Promise<void>;
+  startSession: (payload: Record<string, unknown>) => Promise<string | null>;
+  updateSteps: (breweryId: string | null | undefined, sessionId: string | null | undefined, newSteps: RecipeStep[]) => Promise<void>;
   addLogToSession: (breweryId: string | null | undefined, sessionId: string | null | undefined, newLog: BrewLog) => Promise<void>;
-  updateTosnaSchedule: (breweryId: string | null | undefined, sessionId: string | null | undefined, updatedAdditions: any[]) => Promise<void>;
-  splitBrewSession: (payload: Record<string, any>) => Promise<void>;
+  updateTosnaSchedule: (breweryId: string | null | undefined, sessionId: string | null | undefined, updatedAdditions: TosnaAddition[]) => Promise<void>;
+  splitBrewSession: (payload: Record<string, unknown>) => Promise<void>;
   updateSessionStatus: (breweryId: string | null | undefined, sessionId: string | null | undefined, newStatus: BrewSessionStage, actualOg?: number) => Promise<void>;
 }
 
@@ -43,7 +43,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       fetchedSessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
       set({ sessions: fetchedSessions });
-    } catch (err) {
+    } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Unknown error' });
     } finally {
       set({ isLoading: false });
@@ -75,7 +75,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       } else {
         set({ currentSession: null, error: 'Session not found' });
       }
-    } catch (err) {
+    } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Unknown error' });
     } finally {
       set({ isLoading: false });
@@ -90,7 +90,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const functions = getFunctions();
-      const startBrewSessionFn = httpsCallable<Record<string, any>, { status: string, sessionId: string }>(functions, 'startBrewSession');
+      const startBrewSessionFn = httpsCallable<Record<string, unknown>, { status: string, sessionId: string }>(functions, 'startBrewSession');
       
       const response = await startBrewSessionFn(payload);
       
@@ -101,7 +101,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       
       set({ isLoading: false });
       return null;
-    } catch (err) {
+    } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to start session', isLoading: false });
       throw err;
     }
@@ -121,7 +121,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         sessionSteps: newSteps, 
         updatedAt: new Date().toISOString() 
       });
-    } catch (err) {
+    } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to update steps' });
     }
   },
@@ -130,7 +130,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (!db || !breweryId || !sessionId) return;
     
     const { currentSession } = get();
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       status: newStatus,
       updatedAt: new Date().toISOString()
     };
@@ -146,13 +146,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
 
     if (currentSession) {
-      set({ currentSession: { ...currentSession, ...updateData } });
+      set({ currentSession: { ...currentSession, ...updateData } as BrewSession });
     }
 
     try {
       const sessionRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
       await updateDoc(sessionRef, updateData);
-    } catch (err) {
+    } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to update status' });
     }
   },
@@ -188,7 +188,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       await setDoc(logRef, newLog);
 
       const sessionRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
-      const updatePayload: Record<string, any> = {
+      const updatePayload: Record<string, unknown> = {
         updatedAt: new Date().toISOString()
       };
 
@@ -197,7 +197,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       }
 
       await updateDoc(sessionRef, updatePayload);
-    } catch (err) {
+    } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to add log' });
     }
   },
@@ -221,7 +221,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         'tosnaSchedule.additions': updatedAdditions,
         updatedAt: new Date().toISOString()
       });
-    } catch (err) {
+    } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to update TOSNA' });
     }
   },
@@ -230,11 +230,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const functions = getFunctions();
-      const splitBatchFn = httpsCallable<Record<string, any>, { status: string }>(functions, 'splitBatch');
+      const splitBatchFn = httpsCallable<Record<string, unknown>, { status: string }>(functions, 'splitBatch');
       
       await splitBatchFn(payload);
-    } catch (err) {
-      set({ error: err instanceof Error ? err.message : 'Failed to split session' });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to split session';
+      set({ error: errorMessage });
       throw err;
     } finally {
       set({ isLoading: false });

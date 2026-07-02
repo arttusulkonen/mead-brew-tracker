@@ -1,15 +1,17 @@
 // src/types/recipe.ts
-import type { AdditiveType, IngredientCategory } from './ingredient';
+import type { AdditiveType, IngredientCategory, UnitType, UUID } from './ingredient';
 
 export type BeverageType = 'Beer' | 'Mead' | 'Cider' | 'Other';
 export type MeadStyleTarget = 'Session (4-6%)' | 'Standard (7-10%)' | 'Wine/Sack (11%+)' | 'Custom';
 
 export interface RecipeIngredientReference {
-  id: string;
-  globalIngredientId: string | null;
+  id: UUID;
+  globalIngredientId: UUID | null;
+  inventoryItemId?: UUID;
   name: string;
   category: IngredientCategory;
   quantity: number;
+  unit: UnitType;
   note: string;
 
   // --- Универсальные поля ---
@@ -59,7 +61,7 @@ export type StepPhase = 'Preparation' | 'Mashing' | 'Boiling' | 'Fermentation' |
 export type TimeUnit = 'minutes' | 'days';
 
 export interface RecipeStep {
-  id: string;
+  id: UUID;
   stepNumber: number;
   phase: StepPhase;
   title: string;
@@ -88,8 +90,8 @@ export interface IdealTargetCurves {
 }
 
 export interface Recipe {
-  id: string;
-  breweryId: string;
+  id: UUID;
+  breweryId: UUID;
   name: string;
   beverageType: BeverageType;
   targetStyle: string;
@@ -104,5 +106,5 @@ export interface Recipe {
   targetCurves?: IdealTargetCurves;
   createdAt: string;
   updatedAt: string;
-  createdBy: string;
+  createdBy: UUID;
 }

@@ -24,15 +24,14 @@ const RecipeDetails: React.FC = () => {
     let customNutrientName = '';
 
     currentRecipe.ingredients.forEach(ing => {
-      const item = ing as any;
-      if (item.category === 'Yeast') {
-        yeastAddedGrams += item.quantity || 0;
-        if (item.nitrogenDemand) yeastNitrogenDemand = item.nitrogenDemand;
-      } else if (item.category === 'Additive') {
-        if (item.additiveType === 'Nutrient' && item.nutrientRole === 'Fermentation' && !customNutrientName) {
-          customNutrientName = item.name;
-        } else if ((item.dosagePer10Liters || item.dosagePerGramYeast) && !customNutrientName) {
-          customNutrientName = item.name;
+      if (ing.category === 'Yeast') {
+        yeastAddedGrams += ing.quantity || 0;
+        if (ing.nitrogenDemand) yeastNitrogenDemand = ing.nitrogenDemand;
+      } else if (ing.category === 'Additive') {
+        if (ing.additiveType === 'Nutrient' && ing.nutrientRole === 'Fermentation' && !customNutrientName) {
+          customNutrientName = ing.name;
+        } else if ((ing.dosagePer10Liters || ing.dosagePerGramYeast) && !customNutrientName) {
+          customNutrientName = ing.name;
         }
       }
     });
@@ -104,19 +103,18 @@ const RecipeDetails: React.FC = () => {
             <h2 className="recipe-details__section-title">{t('Ingredients')}</h2>
             <ul className="recipe-details__ingredient-list">
               {currentRecipe.ingredients.map(ing => {
-                const item = ing as any;
                 return (
                   <li key={ing.id} className="recipe-details__ingredient-item">
                     <div className="recipe-details__ingredient-info">
                       <span className="recipe-details__badge">{t(`constants.categories.${ing.category.toLowerCase().replace(' ', '_')}`, ing.category)}</span>
                       <strong className="recipe-details__ingredient-name">{ing.name}</strong>
-                      {item.nutrientRole && (
+                      {ing.nutrientRole && (
                         <span className="recipe-details__badge recipe-details__badge--outline">
-                          {t(`constants.nutrient_roles.${item.nutrientRole.toLowerCase()}`)}
+                          {t(`constants.nutrient_roles.${ing.nutrientRole.toLowerCase()}`)}
                         </span>
                       )}
-                      {item.additionStage && (
-                        <span className="recipe-details__badge recipe-details__badge--outline">{item.additionStage}</span>
+                      {ing.additionStage && (
+                        <span className="recipe-details__badge recipe-details__badge--outline">{ing.additionStage}</span>
                       )}
                     </div>
                     <span className="recipe-details__ingredient-quantity">{ing.quantity} {t('g')}</span>
