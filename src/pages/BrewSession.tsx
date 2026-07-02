@@ -50,15 +50,22 @@ const BrewSession: React.FC = () => {
   const canMidAdd = ['fermenting', 'aging'].includes(currentSession.status) && !currentSession.isSplit;
 
   const handleMidSessionAdd = async () => {
-    if (!currentSession?.id || !activeBreweryId || !midAddIngredientId) return;
+    if (!currentSession?.id || !activeBreweryId || !midAddIngredientId || midAddQty <= 0) return;
+    
     const invItem = inventory.find(i => i.ingredientId === midAddIngredientId);
     if (!invItem) return;
     
     setIsMidAdding(true);
     try {
-      await consumeIngredients(activeBreweryId, [{ globalIngredientId: midAddIngredientId, quantity: midAddQty }]);
+      const success = await consumeIngredients(activeBreweryId, [{ globalIngredientId: midAddIngredientId, quantity: midAddQty }]);
+      
+      if (!success) {
+        throw new Error('Failed to consume ingredients from inventory');
+      }
+
       const now = new Date();
-      const dayNumber = Math.max(1, Math.floor((now.getTime() - new Date(currentSession.startDate).getTime()) / 86400000) + 1);
+      const startDate = new Date(currentSession.startDate);
+      const dayNumber = Math.max(1, Math.floor((now.getTime() - startDate.getTime()) / 86400000) + 1);
       
       await addLogToSession(activeBreweryId, currentSession.id, {
         id: crypto.randomUUID(),
@@ -131,7 +138,9 @@ const BrewSession: React.FC = () => {
             <select value={midAddIngredientId} onChange={e => setMidAddIngredientId(e.target.value)} style={{ width: '100%', padding: '12px', marginBottom: '16px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
               <option value="" disabled>{t('Select ingredient...')}</option>
               {inventory.filter(i => i.quantityOnHand > 0).map(i => (
-                <option key={i.ingredientId} value={i.ingredientId}>{i.ingredient.name} ({i.quantityOnHand}g avail)</option>
+                <option key={i.ingredientId} value={i.ingredientId}>
+                  {i.ingredient.name} ({i.quantityOnHand} {t(`constants.units.${i.unit.toLowerCase()}`)} avail)
+                </option>
               ))}
             </select>
             <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>

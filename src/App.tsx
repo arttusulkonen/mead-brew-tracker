@@ -17,7 +17,7 @@ import { useBreweryStore } from './store/useBreweryStore';
 import { supabase } from './supabase/client';
 
 const App: React.FC = () => {
-  const { user, setUser, setLoading } = useAuthStore();
+  const { user, setUser, setIsLoading } = useAuthStore();
   const { setBreweries, setActiveBrewery, fetchBreweries } = useBreweryStore();
   const { t } = useTranslation();
 
@@ -28,7 +28,7 @@ const App: React.FC = () => {
       if (session?.user) {
         fetchBreweries(session.user.id);
       } else {
-        setLoading(false);
+        setIsLoading(false);
       }
     });
 
@@ -46,18 +46,18 @@ const App: React.FC = () => {
             const currentActiveId = state.activeBreweryId;
             const freshActiveBrewery = state.breweries.find(b => b.id === currentActiveId);
             setActiveBrewery(freshActiveBrewery || (state.breweries.length > 0 ? state.breweries[0] : null));
-            setLoading(false);
+            setIsLoading(false);
           });
         });
       } else {
         setBreweries([]);
         setActiveBrewery(null);
-        setLoading(false);
+        setIsLoading(false);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [setUser, setLoading, fetchBreweries, setBreweries, setActiveBrewery]);
+  }, [setUser, setIsLoading, fetchBreweries, setBreweries, setActiveBrewery]);
 
   return (
     <BrowserRouter>

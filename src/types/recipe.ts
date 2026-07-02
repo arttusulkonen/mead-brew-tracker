@@ -4,17 +4,6 @@ import type { AdditiveType, IngredientCategory } from './ingredient';
 export type BeverageType = 'Beer' | 'Mead' | 'Cider' | 'Other';
 export type MeadStyleTarget = 'Session (4-6%)' | 'Standard (7-10%)' | 'Wine/Sack (11%+)' | 'Custom';
 
-// Раньше это была чистая ссылка на каталог (id/globalIngredientId/name/category/
-// quantity/note). Но конструктор рецептов теперь даёт редактировать характеристики
-// ингредиента "на месте" (Альфа-кислотность, Yield/Color, толерантность дрожжей,
-// тип и этап внесения добавки и т.д.) и даже добавлять полностью кастомные
-// ингредиенты, никогда не существовавшие в каталоге. Поэтому:
-// 1) globalIngredientId стал nullable — у кастомного ингредиента его просто нет;
-// 2) добавлены опциональные snapshot-поля — они сохраняются ПРЯМО в рецепте на
-//    момент добавления, поэтому последующие правки глобального каталога или
-//    отсутствие сети при просмотре рецепта не меняют то, что реально замешано
-//    в конкретном рецепте.
-// Все поля опциональны и зависят от category конкретной строки.
 export interface RecipeIngredientReference {
   id: string;
   globalIngredientId: string | null;
@@ -23,7 +12,7 @@ export interface RecipeIngredientReference {
   quantity: number;
   note: string;
 
-  // --- Универсальные поля каталога ---
+  // --- Универсальные поля ---
   form?: string;
   origin?: string;
   producer?: string;
@@ -51,7 +40,8 @@ export interface RecipeIngredientReference {
 
   // --- Additive ---
   additiveType?: AdditiveType;
-  additionStage?: string; // Boil/Whirlpool, Secondary, Aging, Bottling... (решение конкретного рецепта, не свойство самого вещества)
+  nutrientRole?: string; // Критически важно для TOSNA (Rehydration / Fermentation)
+  additionStage?: string; 
   yanValuePerGramPerLiter?: number;
   dosagePerGramYeast?: number;
   dosagePer10Liters?: number;

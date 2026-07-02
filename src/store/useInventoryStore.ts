@@ -345,10 +345,14 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
                 decrementQty = ing.quantity;
             }
 
+            if (invItem.quantityOnHand < decrementQty) {
+              throw new Error(`Insufficient stock for ${invItem.ingredient?.name || 'ingredient'}`);
+            }
+
             updatePromises.push(
               supabase
                 .from('inventory')
-                .update({ quantity_on_hand: Math.max(0, invItem.quantityOnHand - decrementQty) })
+                .update({ quantity_on_hand: invItem.quantityOnHand - decrementQty })
                 .eq('id', invItem.id)
                 .eq('brewery_id', breweryId)
             );

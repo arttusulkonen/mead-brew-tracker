@@ -1,3 +1,4 @@
+// src/store/useBreweryStore.ts
 import { create } from 'zustand';
 import { supabase } from '../supabase/client';
 
@@ -15,6 +16,7 @@ interface BreweryState {
   activeBrewery: Brewery | null;
   activeBreweryId: string | null;
   isLoading: boolean;
+  error: string | null; // <--- ДОБАВЛЕНО
   fetchBreweries: (userId: string) => Promise<void>;
   createBrewery: (userId: string, name: string, isPersonal?: boolean, inviteEmails?: string) => Promise<Brewery | null>;
   deleteBrewery: (breweryId: string) => Promise<boolean>;
@@ -29,33 +31,42 @@ export const useBreweryStore = create<BreweryState>((set, get) => ({
   activeBrewery: null,
   activeBreweryId: null,
   isLoading: false,
+  error: null,
 
-  fetchBreweries: async () => {
-    set({ isLoading: true });
+  setActiveBrewery: (brewery) => set({ 
+    activeBrewery: brewery, 
+    activeBreweryId: brewery?.id || null 
+  }),
+
+  setBreweries: (breweries) => set({ breweries }),
+
+  fetchBreweries: async (userId: string) => {
+    set({ isLoading: true, error: null });
     try {
       const { data, error } = await supabase
         .from('breweries')
-        .select('*'); // RLS сама отфильтрует нужные пивоварни
+        .select('*')
+        .or(`owner_id.eq.${userId},members.cs.{${userId}}`);
 
       if (error) throw error;
 
-      if (data) {
-        const formattedBreweries: Brewery[] = data.map((b: any) => ({
-          id: b.id,
-          name: b.name,
-          ownerId: b.owner_id,
-          isPersonal: b.is_personal,
-          members: b.members || [],
-          invitedEmails: b.invited_emails || [],
-        }));
-        
-        set({ 
-          breweries: formattedBreweries, 
-          activeBrewery: formattedBreweries.length > 0 ? formattedBreweries[0] : null 
-        });
-      }
-    } catch (error) {
-      console.error('Failed to fetch breweries:', error);
+      const formattedBreweries = (data || []).map((b: any) => ({
+        id: b.id,
+        name: b.name,
+        ownerId: b.owner_id,
+        members: b.members || [],
+        invitedEmails: b.invited_emails || [],
+        isPersonal: b.is_personal,
+        createdAt: b.created_at,
+      }));
+
+      set({ 
+        breweries: formattedBreweries, 
+        activeBrewery: formattedBreweries.length > 0 ? formattedBreweries[0] : null,
+        activeBreweryId: formattedBreweries.length > 0 ? formattedBreweries[0].id : null
+      });
+    } catch (err: any) {
+      set({ error: err.message }); 
     } finally {
       set({ isLoading: false });
     }
@@ -160,7 +171,4 @@ export const useBreweryStore = create<BreweryState>((set, get) => ({
       console.error('Failed to process invites:', error);
     }
   },
-
-  setActiveBrewery: (brewery) => set({ activeBrewery: brewery }),
-  setBreweries: (breweries) => set({ breweries }),
 }));
