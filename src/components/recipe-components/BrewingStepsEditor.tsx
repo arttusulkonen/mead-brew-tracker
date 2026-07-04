@@ -54,14 +54,14 @@ export const BrewingStepsEditor: React.FC<BrewingStepsEditorProps> = ({
                 <div className="step-item__header">
                   <div className="step-item__header-left">
                     <span className="step-item__number">{step.stepNumber}</span>
-                    <span className="recipe-ingredient__badge" style={{backgroundColor: '#3b82f6'}}>
+                    <span className="btn-badge" style={{backgroundColor: '#3b82f6'}}>
                       {t(`constants.step_phases.${step.phase.toLowerCase()}`, step.phase)}
                     </span>
                   </div>
                   <div className='step-item__buttons'>
                     <button
                       type="button"
-                      className="step-item__btn-icon"
+                      className="btn-text"
                       onClick={() => setAiProposedSteps(prev => prev.map(s => s.id === step.id ? { ...s, isExpanded: !s.isExpanded } : s))}
                     >
                       {step.isExpanded ? <FaChevronUp /> : <FaChevronDown />}
@@ -109,14 +109,14 @@ export const BrewingStepsEditor: React.FC<BrewingStepsEditorProps> = ({
                   <div className='step-item__buttons'>
                     <button
                       type="button"
-                      className="step-item__btn-icon"
+                      className="btn-text"
                       onClick={() => onUpdateStep(step.id, { isExpanded: !step.isExpanded })}
                     >
                       {step.isExpanded ? <FaChevronUp /> : <FaChevronDown />}
                     </button>
                     <button
                       type="button"
-                      className="step-item__btn-icon step-item__btn-icon--danger"
+                      className="btn-danger"
                       onClick={() => onRemoveStep(step.id)}
                       disabled={isSaving}
                     >
@@ -185,7 +185,7 @@ export const BrewingStepsEditor: React.FC<BrewingStepsEditorProps> = ({
               </div>
             ))}
             <div style={{marginTop: '1rem'}}>
-              <button type="button" className="recipe-lab__btn-secondary recipe-lab__btn-secondary--full" onClick={() => onAddStep('Preparation')} disabled={isSaving}>
+              <button type="button" className="btn-secondary btn-secondary--full" onClick={() => onAddStep('Preparation')} disabled={isSaving}>
                 <FaPlus /> {t('Add Manual Step')}
               </button>
             </div>

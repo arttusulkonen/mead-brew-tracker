@@ -49,7 +49,7 @@ export const IngredientGroup: React.FC<IngredientGroupProps> = ({
         <h3 style={{ margin: 0, fontSize: '1.1rem' }}>
           {title}{items.length > 0 && <span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}> ({items.length})</span>}
         </h3>
-        <button type="button" className="recipe-lab__btn-secondary" style={{ padding: '4px 12px', fontSize: '0.85rem' }} onClick={() => onOpenModal(category)}>
+        <button type="button" className="btn-secondary" style={{ padding: '4px 12px', fontSize: '0.85rem' }} onClick={() => onOpenModal(category)}>
           <FaPlus /> {t('Add')}
         </button>
       </div>
@@ -81,7 +81,7 @@ export const IngredientGroup: React.FC<IngredientGroupProps> = ({
                   <div className="recipe-ingredient__controls">
                     <button
                       type="button"
-                      className="recipe-ingredient__btn-note"
+                      className="btn-text"
                       onClick={() => onUpdateIngredient(item.id, { showNote: !item.showNote })}
                       disabled={isSaving}
                     >
@@ -115,7 +115,7 @@ export const IngredientGroup: React.FC<IngredientGroupProps> = ({
                     <span className="recipe-ingredient__unit">{t('g')}</span>
                     <button
                       type="button"
-                      className="recipe-ingredient__btn-delete"
+                      className="btn-danger"
                       onClick={() => onRemoveIngredient(item.id)}
                       disabled={isSaving}
                       aria-label={t('Remove')}

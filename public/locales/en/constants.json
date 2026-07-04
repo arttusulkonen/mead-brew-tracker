@@ -15,6 +15,10 @@
   "constants.yeast_forms.liquid": "Liquid",
   "constants.yeast_forms.dry": "Dry",
 
+  "constants.nutrient_roles.rehydration": "Rehydration",
+  "constants.nutrient_roles.fermentation": "Fermentation",
+  "constants.nutrient_roles.other": "Other",
+
   "constants.nitrogen_demand.low": "Low",
   "constants.nitrogen_demand.medium": "Medium",
   "constants.nitrogen_demand.high": "High",

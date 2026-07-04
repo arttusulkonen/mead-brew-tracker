@@ -92,7 +92,7 @@ export const MeadWizardSection: React.FC<MeadWizardSectionProps> = ({
 
         <button
           type="button"
-          className="recipe-lab__btn-secondary recipe-lab__btn-secondary--full"
+          className="btn-secondary btn-secondary--full"
           onClick={onGenerate}
           disabled={isGenerating}
           style={{ marginTop: '1rem' }}

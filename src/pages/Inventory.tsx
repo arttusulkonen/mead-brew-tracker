@@ -201,7 +201,7 @@ const Inventory: React.FC = () => {
           <div className="editor-modal" onMouseDown={e => e.stopPropagation()}>
             <div className="editor-modal__header">
               <h2>{t('Edit Stock')}</h2>
-              <button type="button" className="editor-modal__close-btn" onClick={() => setEditingStockItem(null)} style={{ padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+              <button type="button" className="btn-secondary" onClick={() => setEditingStockItem(null)} style={{ padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
                 <FaTimes />
               </button>
             </div>
@@ -236,8 +236,8 @@ const Inventory: React.FC = () => {
             </div>
 
             <div className="editor-modal__footer">
-              <button type="button" className="editor-modal__close-btn" onClick={() => setEditingStockItem(null)} style={{ padding: '8px 16px', border: '1px solid var(--border-color)', borderRadius: '6px', background: 'transparent' }}>{t('Cancel')}</button>
-              <button type="button" style={{ padding: '8px 16px', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold' }} onClick={handleSaveEdit} disabled={isUpdating || editStockQty === ''}>
+              <button type="button" className="btn-secondary" onClick={() => setEditingStockItem(null)}>{t('Cancel')}</button>
+              <button type="button" className="btn-primary" onClick={handleSaveEdit} disabled={isUpdating || editStockQty === ''}>
                 {isUpdating ? t('Saving...') : t('Save')}
               </button>
             </div>

@@ -1,0 +1,293 @@
+@use '../settings/variables' as *;
+@use '../settings/font-size' as *;
+@use '../mixins/buttons' as *;
+
+.recipe-details {
+  width: 100%;
+  max-width: 1400px;
+  padding: $spacing-xl;
+  margin: 0 auto;
+
+  // --- Состояния загрузки и пустого экрана ---
+  &__loading {
+    padding: $spacing-xxl;
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+
+  &--empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 50vh;
+    text-align: center;
+  }
+
+  &__empty-title {
+    margin-bottom: $spacing-lg;
+    font-size: 2rem;
+    color: var(--text-primary);
+  }
+
+  // --- Шапка рецепта ---
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-lg;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding-bottom: $spacing-lg;
+    margin-bottom: $spacing-xl;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  &__title-block {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 2.5rem;
+    color: var(--text-primary);
+  }
+
+  &__subtitle {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+    align-items: center;
+  }
+
+  // --- Кнопки (специфичные для шапки) ---
+  &__btn-primary {
+    @include button-primary;
+
+    padding: $spacing-sm $spacing-lg;
+  }
+
+  &__btn-secondary {
+    padding: $spacing-sm $spacing-md;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: $border-radius-sm;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background-color: var(--bg-surface-alt);
+      border-color: var(--text-secondary);
+    }
+  }
+
+  &__btn-danger {
+    padding: $spacing-sm $spacing-md;
+    font-weight: 600;
+    color: var(--color-error);
+    cursor: pointer;
+    background-color: rgb(217 48 37 / 5%);
+    border: 1px solid rgb(217 48 37 / 20%);
+    border-radius: $border-radius-sm;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background-color: rgb(217 48 37 / 10%);
+    }
+  }
+
+  // --- Основная сетка (Layout) ---
+  &__layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: $spacing-xl;
+    align-items: start;
+
+    @media (min-width: $breakpoint-lg) {
+      // 2 колонки на больших экранах, как в builder-layout
+      grid-template-columns: 2fr 1fr;
+    }
+  }
+
+  &__main {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xl;
+  }
+
+  &__sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-lg;
+  }
+
+  // --- Секции (Ингредиенты, Шаги) ---
+  &__section {
+    padding: $spacing-xl;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: $border-radius-md;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
+  }
+
+  &__section-title {
+    margin: 0 0 $spacing-lg;
+    font-size: 1.5rem;
+    color: var(--text-primary);
+  }
+
+  // --- Список ингредиентов ---
+  &__ingredient-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+
+  &__ingredient-item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-md;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-md;
+    background-color: var(--bg-surface-alt);
+    border: 1px solid var(--border-color);
+    border-radius: $border-radius-md;
+  }
+
+  &__ingredient-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-md;
+    align-items: center;
+  }
+
+  &__ingredient-name {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+  }
+
+  &__ingredient-quantity {
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+
+  // --- Бейджи ---
+  &__badge {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: var(--color-primary);
+    background-color: rgb(0 123 255 / 10%);
+    border-radius: $border-radius-sm;
+
+    &--outline {
+      color: var(--text-secondary);
+      background-color: transparent;
+      border: 1px solid var(--border-color);
+    }
+  }
+
+  // --- Список шагов ---
+  &__step-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    counter-reset: step-counter; // Добавляем нумерацию шагов
+  }
+
+  &__step-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    padding: $spacing-md;
+    padding-left: calc(#{$spacing-xl} + 10px); // Отступ под цифру
+    background-color: var(--bg-surface-alt);
+    border: 1px solid var(--border-color);
+    border-radius: $border-radius-md;
+
+    &::before {
+      position: absolute;
+      top: $spacing-md;
+      left: $spacing-md;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: white;
+      content: counter(step-counter);
+      counter-increment: step-counter;
+      background-color: #64748b; // Позаимствовал цвет из recipe-lab
+      border-radius: 50%;
+    }
+  }
+
+  &__step-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__step-title {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+  }
+
+  &__step-desc {
+    margin: 0;
+    line-height: 1.5;
+    color: var(--text-secondary);
+  }
+
+  &__step-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-md;
+    margin-top: $spacing-xs;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  &__step-duration {
+    color: var(--text-primary);
+  }
+
+  &__step-temp {
+    display: flex;
+    gap: $spacing-md;
+    align-items: center;
+    color: var(--color-error); // Температура часто выделяется
+    
+    &::before {
+      display: block;
+      width: 4px;
+      height: 4px;
+      content: '';
+      background-color: var(--border-color);
+      border-radius: 50%;
+    }
+  }
+}

@@ -1,3 +1,4 @@
+//src/store/useSessionStore.ts
 import { calculateOneThirdSugarBreak } from '@mead-tracker/math';
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';

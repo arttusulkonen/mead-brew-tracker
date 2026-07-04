@@ -10,7 +10,7 @@ const geminiApiKey = defineSecret("GOOGLE_GENAI_API_KEY");
 
 setGlobalOptions({ maxInstances: 10, region: "europe-west1" });
 
-// Схема ответа ИИ (добавлены новые фазы: Mashing, Boiling, Packaging)
+// Схема ответа ИИ (включает все фазы пивоварения и сидроделия)
 const RecipeGenerationSchema = z.object({
   ingredientQuantities: z.array(z.object({
     ingredientId: z.string(),
@@ -27,7 +27,7 @@ const RecipeGenerationSchema = z.object({
   }))
 });
 
-// Схема входящих данных от клиента (исправлен баг с null и добавлен beverageType)
+// Схема входящих данных от клиента
 const RequestDataSchema = z.object({
   beverageType: z.string().optional().default("Mead"),
   style: z.string(),
@@ -38,11 +38,11 @@ const RequestDataSchema = z.object({
   targetFg: z.number().positive(),
   ingredients: z.array(z.object({
     ingredientId: z.string(),
-    globalIngredientId: z.string().nullable().optional(), // ИСПРАВЛЕНИЕ КРАША ЗДЕСЬ
+    globalIngredientId: z.string().nullable().optional(),
     name: z.string(),
     category: z.string(),
     quantity: z.number(),
-    nutrientRole: z.string().optional(), // Для умного распознавания добавок
+    nutrientRole: z.string().optional(),
     additiveType: z.string().optional()
   }).passthrough()),
   locale: z.string().optional()
@@ -50,7 +50,8 @@ const RequestDataSchema = z.object({
 
 const LANGUAGE_MAPPING: Record<string, string> = {
   ru: "Russian (Русский язык)",
-  en: "English"
+  en: "English",
+  fi: "Finnish (Suomi)"
 };
 
 export const generateRecipeAI = onCall(
@@ -97,7 +98,8 @@ export const generateRecipeAI = onCall(
         1. Evaluate the provided ingredients based on their categories and 'nutrientRole' (Rehydration vs Fermentation).
         2. Calculate precise dosages for yeast nutrients, hops, and additives based on the Batch Size and Target ABV. Do NOT recalculate the base fermentable weights.
         3. Generate detailed technological steps strictly following the constraints for the specific Beverage Type.
-        4. CRITICAL: You MUST generate all text fields ("title", "description" inside steps array AND "aiNote" inside ingredientQuantities array) strictly in ${targetLanguage}. Do not leave any structural explanations or notes in English if the target language is different.
+        4. CRITICAL TRANSLATION: You MUST generate "title", "description" (inside steps) and "aiNote" (inside ingredientQuantities) strictly in ${targetLanguage}. 
+        5. CRITICAL STRUCTURAL RULE: The "phase" field MUST remain strictly in English ("Preparation", "Mashing", "Boiling", "Fermentation", "Aging", "Packaging") regardless of the target language.
       `;
 
       const aiResponse = await ai.generate({

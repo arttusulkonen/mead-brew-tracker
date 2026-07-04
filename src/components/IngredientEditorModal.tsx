@@ -329,7 +329,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
       <div className="editor-modal" onMouseDown={e => e.stopPropagation()}>
         <div className="editor-modal__header">
           <h2>{mode === 'inventory' ? t('Add to Inventory', 'Добавить на склад') : t('Add Ingredient', 'Добавить ингредиент')}</h2>
-          <button type="button" className="editor-modal__close-btn" onClick={onClose} aria-label={t('Close')}>
+          <button type="button" className="btn-secondary" onClick={onClose} aria-label={t('Close')}>
             <FaTimes />
           </button>
         </div>
@@ -839,8 +839,8 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
           )}
 
           <div className="editor-modal__footer">
-            <button type="button" className="editor-modal__close-btn" onClick={onClose} style={{ padding: '8px 16px', border: '1px solid var(--border-color)', borderRadius: '6px', background: 'transparent' }}>{t('Cancel')}</button>
-            <button type="submit" style={{ padding: '8px 16px', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold' }} disabled={isPersistingToStock}>
+            <button type="button" className="btn-secondary" onClick={onClose} style={{ padding: '8px 16px', border: '1px solid var(--border-color)', borderRadius: '6px', background: 'transparent' }}>{t('Cancel')}</button>
+            <button type="submit" className="btn-primary" disabled={isPersistingToStock}>
               {isPersistingToStock
                 ? t('Saving...')
                 : mode === 'inventory'

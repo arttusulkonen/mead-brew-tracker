@@ -2,7 +2,7 @@
 import type { TosnaRequirements } from '@mead-tracker/math';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaExclamationTriangle } from 'react-icons/fa';
+import { FaExclamationTriangle, FaInfoCircle } from 'react-icons/fa';
 import type { BeverageType } from '../../types/recipe';
 import type { BjcpStyle, StyleValidationResult } from '../../utils/bjcpMatchEngine';
 import type { RecipeIngredientEntry } from './types';
@@ -38,6 +38,7 @@ interface RecipeStatsSidebarProps {
   recipeName: string;
   recipeIngredientsLength: number;
   editingRecipeId: string | null;
+  recipeIngredients: RecipeIngredientEntry[]; // <-- ДОБАВЛЕНО: передаем текущие ингредиенты
 }
 
 export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
@@ -53,7 +54,8 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
   isSaving,
   recipeName,
   recipeIngredientsLength,
-  editingRecipeId
+  editingRecipeId,
+  recipeIngredients
 }) => {
   const { t } = useTranslation();
 
@@ -109,24 +111,37 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
         <div className="stat-panel">
           <h3 className="stat-panel__title">{t('Smart Additive Calculator')}</h3>
           <ul className="stat-panel__list stat-panel__list--stacked">
-            {recipeDetails.dynamicAdditives.map((add) => (
-              <li className="stat-panel__item stat-panel__item--row" key={add.id}>
-                <div className="stat-panel__info" style={{display: 'flex', flexDirection: 'column'}}>
-                  <span className="stat-panel__label">{add.name}</span>
-                  <span className="stat-panel__subtext">{add.rule}</span>
-                </div>
-                <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
-                  <strong className="stat-panel__value" style={{color: 'var(--color-primary)'}}>{add.totalGrams.toFixed(1)} g</strong>
-                  <button
-                    type="button"
-                    className="stat-panel__btn-apply"
-                    onClick={() => updateIngredient(add.id, { quantity: parseFloat(add.totalGrams.toFixed(1)) })}
-                  >
-                    {t('Apply')}
-                  </button>
-                </div>
-              </li>
-            ))}
+            {recipeDetails.dynamicAdditives.map((add) => {
+              const isRehydration = add.rule.includes('Rehydration');
+              const targetGrams = parseFloat(add.totalGrams.toFixed(1));
+              const currentIng = recipeIngredients.find(ing => ing.id === add.id);
+              // Проверяем, совпадает ли текущее количество с рекомендуемым (с учетом погрешности округления)
+              const isApplied = currentIng && Math.abs(currentIng.quantity - targetGrams) < 0.01;
+
+              return (
+                <li className="stat-panel__item stat-panel__item--row" key={add.id}>
+                  <div className="stat-panel__info" style={{display: 'flex', flexDirection: 'column'}}>
+                    <span className="stat-panel__label" style={{ fontWeight: 'bold' }}>{add.name}</span>
+                    <span className="stat-panel__subtext" style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isRehydration ? '#10b981' : 'var(--text-secondary)' }}>
+                      {isRehydration ? <FaInfoCircle /> : null}
+                      {isRehydration ? t('constants.nutrient_roles.rehydration', 'Before pitching yeast (Rehydration)') : t('constants.nutrient_roles.fermentation', 'During active fermentation (Feeding)')}
+                    </span>
+                  </div>
+                  <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+                    <strong className="stat-panel__value" style={{color: 'var(--color-primary)'}}>{targetGrams} g</strong>
+                    <button
+                      type="button"
+                      className="stat-panel__btn-apply"
+                      onClick={() => updateIngredient(add.id, { quantity: targetGrams })}
+                      disabled={isApplied}
+                      style={isApplied ? { backgroundColor: 'var(--bg-secondary)', color: 'var(--text-disabled)', cursor: 'default', border: '1px solid var(--border-color)', opacity: 0.7 } : {}}
+                    >
+                      {isApplied ? t('Applied', 'Applied') : t('Apply')}
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

@@ -1,4 +1,3 @@
-// src/pages/RecipeDetails.tsx
 import { calculateOneThirdSugarBreak, calculateTosna } from '@mead-tracker/math';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,14 +23,15 @@ const RecipeDetails: React.FC = () => {
     let customNutrientName = '';
 
     currentRecipe.ingredients.forEach(ing => {
-      if (ing.category === 'Yeast') {
-        yeastAddedGrams += ing.quantity || 0;
-        if (ing.nitrogenDemand) yeastNitrogenDemand = ing.nitrogenDemand;
-      } else if (ing.category === 'Additive') {
-        if (ing.additiveType === 'Nutrient' && ing.nutrientRole === 'Fermentation' && !customNutrientName) {
-          customNutrientName = ing.name;
-        } else if ((ing.dosagePer10Liters || ing.dosagePerGramYeast) && !customNutrientName) {
-          customNutrientName = ing.name;
+      const item = ing as any;
+      if (item.category === 'Yeast') {
+        yeastAddedGrams += item.quantity || 0;
+        if (item.nitrogenDemand) yeastNitrogenDemand = item.nitrogenDemand;
+      } else if (item.category === 'Additive') {
+        if (item.additiveType === 'Nutrient' && item.nutrientRole === 'Fermentation' && !customNutrientName) {
+          customNutrientName = item.name;
+        } else if ((item.dosagePer10Liters || item.dosagePerGramYeast) && !customNutrientName) {
+          customNutrientName = item.name;
         }
       }
     });
@@ -75,7 +75,7 @@ const RecipeDetails: React.FC = () => {
     return (
       <div className="recipe-details recipe-details--empty">
         <h2 className="recipe-details__empty-title">{t('Recipe not found')}</h2>
-        <button type="button" className="recipe-details__btn-secondary" onClick={() => navigate('/recipes')}>
+        <button type="button" className="btn-secondary" onClick={() => navigate('/recipes')}>
           {t('Back to list')}
         </button>
       </div>
@@ -90,9 +90,9 @@ const RecipeDetails: React.FC = () => {
           <span className="recipe-details__subtitle">{t(`constants.beverage_types.${currentRecipe.beverageType.toLowerCase()}`, currentRecipe.beverageType)} &bull; {currentRecipe.targetStyle}</span>
         </div>
         <div className="recipe-details__actions">
-          <button type="button" className="recipe-details__btn-secondary" onClick={handleEdit}>{t('Edit')}</button>
-          <button type="button" className="recipe-details__btn-danger" onClick={handleDelete}>{t('Delete')}</button>
-          <button type="button" className="recipe-details__btn-primary" onClick={() => navigate(`/brew/setup/${currentRecipe.id}`)}>{t('Start Brew')}</button>
+          <button type="button" className="btn-secondary" onClick={handleEdit}>{t('Edit')}</button>
+          <button type="button" className="btn-danger" onClick={handleDelete}>{t('Delete')}</button>
+          <button type="button" className="btn-primary" onClick={() => navigate(`/brew/setup/${currentRecipe.id}`)}>{t('Start Brew')}</button>
         </div>
       </header>
 
@@ -103,18 +103,20 @@ const RecipeDetails: React.FC = () => {
             <h2 className="recipe-details__section-title">{t('Ingredients')}</h2>
             <ul className="recipe-details__ingredient-list">
               {currentRecipe.ingredients.map(ing => {
+                const item = ing as any;
+                const roleKey = item.nutrientRole ? `constants.nutrient_roles.${item.nutrientRole.toLowerCase()}` : '';
                 return (
                   <li key={ing.id} className="recipe-details__ingredient-item">
                     <div className="recipe-details__ingredient-info">
                       <span className="recipe-details__badge">{t(`constants.categories.${ing.category.toLowerCase().replace(' ', '_')}`, ing.category)}</span>
                       <strong className="recipe-details__ingredient-name">{ing.name}</strong>
-                      {ing.nutrientRole && (
+                      {item.nutrientRole && (
                         <span className="recipe-details__badge recipe-details__badge--outline">
-                          {t(`constants.nutrient_roles.${ing.nutrientRole.toLowerCase()}`)}
+                          {t(roleKey, item.nutrientRole)}
                         </span>
                       )}
-                      {ing.additionStage && (
-                        <span className="recipe-details__badge recipe-details__badge--outline">{ing.additionStage}</span>
+                      {item.additionStage && (
+                        <span className="recipe-details__badge recipe-details__badge--outline">{item.additionStage}</span>
                       )}
                     </div>
                     <span className="recipe-details__ingredient-quantity">{ing.quantity} {t('g')}</span>

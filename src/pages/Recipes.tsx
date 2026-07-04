@@ -1,4 +1,3 @@
-// src/pages/Recipes.tsx
 import { calculateAbvCrouch, calculateIbuTinseth, calculateMcu, calculateTosna, estimateOG, estimateSrmMorey, srmToEbc } from '@mead-tracker/math';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +21,7 @@ import { RecipeStatsSidebar, type RecipeDetailsStats } from '../components/recip
 import type { AiIngredientProposal, RecipeIngredientEntry, RecipeStepEntry } from '../components/recipe-components/types';
 import { useRecipeBuilderState } from '../components/recipe-components/useRecipeBuilderState';
 import type { AdditiveType, BaseIngredient, IngredientCategory, IngredientUnion, YeastIngredient } from '../types/ingredient';
-import type { Recipe, RecipeIngredientReference, StepPhase, TimeUnit } from '../types/recipe';
+import type { Recipe, RecipeIngredientReference, RecipeStep, StepPhase, TimeUnit } from '../types/recipe';
 
 const VALID_PHASES: StepPhase[] = ['Preparation', 'Mashing', 'Boiling', 'Fermentation', 'Aging', 'Packaging'];
 const VALID_UNITS: TimeUnit[] = ['minutes', 'days'];
@@ -46,7 +45,7 @@ const Recipes: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { activeBrewery } = useBreweryStore();
   const { recipes, saveRecipe, updateRecipe, isLoading: isRecipesLoading } = useRecipeStore();
-  
+
   const state = useRecipeBuilderState();
   const [aiProposedIngredients, setAiProposedIngredients] = useState<AiIngredientProposal[]>([]);
   const [aiProposedSteps, setAiProposedSteps] = useState<RecipeStepEntry[]>([]);
@@ -58,26 +57,31 @@ const Recipes: React.FC = () => {
 
   const recipeDetails: RecipeDetailsStats = useMemo(() => {
     let totalFermentableGrams = 0;
-    let averageYield = 0;
+    let averageBrixEquivalent = 0;
     let totalMcu = 0;
     let totalIbu = 0;
     let yeastAddedGrams = 0;
     let yeastNitrogenDemand: string = 'Medium';
-    let totalWeightedYield = 0;
+    let totalWeightedBrix = 0;
     let customNutrientName = '';
     const dynamicAdditives: Array<{ id: string; name: string; totalGrams: number; rule: string }> = [];
 
     state.recipeIngredients.forEach(item => {
       if (item.category === 'Fermentable' || item.category === 'Honey') {
-        const yieldVal = item.yieldPpg || 36;
-        const colorVal = item.colorEbc || 5;
+        let brixVal = 80;
+        if (item.category === 'Honey' && item.sugarContentBrix) {
+          brixVal = item.sugarContentBrix;
+        } else if (item.yieldPpg) {
+          brixVal = item.yieldPpg / 0.46;
+        }
+
         const qty = item.quantity || 0;
 
         totalFermentableGrams += qty;
-        totalWeightedYield += (yieldVal * qty);
+        totalWeightedBrix += (brixVal * qty);
 
         if (item.category === 'Fermentable' && state.beverageType === 'Beer' && state.batchSizeLiters > 0) {
-          totalMcu += calculateMcu(qty / 1000, colorVal, state.batchSizeLiters);
+          totalMcu += calculateMcu(qty / 1000, item.colorEbc || 5, state.batchSizeLiters);
         }
       } else if (item.category === 'Yeast') {
         yeastAddedGrams += item.quantity || 0;
@@ -86,10 +90,10 @@ const Recipes: React.FC = () => {
     });
 
     if (totalFermentableGrams > 0) {
-      averageYield = totalWeightedYield / totalFermentableGrams;
+      averageBrixEquivalent = totalWeightedBrix / totalFermentableGrams;
     }
 
-    const estimatedOg = estimateOG(state.batchSizeLiters, totalFermentableGrams, averageYield);
+    const estimatedOg = estimateOG(state.batchSizeLiters, totalFermentableGrams, averageBrixEquivalent);
     const estimatedAbv = calculateAbvCrouch(estimatedOg, state.targetFg);
     const estimatedEbc = state.beverageType === 'Beer' ? srmToEbc(estimateSrmMorey(totalMcu)) : 0;
 
@@ -188,19 +192,25 @@ const Recipes: React.FC = () => {
     let minGrams = 100, maxGrams = 25000, bestGrams = 1000, iterations = 0;
     while (minGrams <= maxGrams && iterations < 50) {
       const midGrams = Math.floor((minGrams + maxGrams) / 2);
-      let totalGramsForCalc = 0, totalWeightedYield = 0;
+      let totalGramsForCalc = 0, totalWeightedBrix = 0;
 
       state.recipeIngredients.forEach(ing => {
         if (ing.category === 'Fermentable' || ing.category === 'Honey') {
+          let brixVal = 80;
+          if (ing.category === 'Honey' && ing.sugarContentBrix) {
+            brixVal = ing.sugarContentBrix;
+          } else if (ing.yieldPpg) {
+            brixVal = ing.yieldPpg / 0.46;
+          }
+
           const qty = ing.id === targetEntry.id ? midGrams : (ing.quantity || 0);
-          const yld = ing.yieldPpg || 36;
           totalGramsForCalc += qty;
-          totalWeightedYield += (yld * qty);
+          totalWeightedBrix += (brixVal * qty);
         }
       });
 
-      const avgYield = totalGramsForCalc > 0 ? totalWeightedYield / totalGramsForCalc : 36;
-      const testOG = estimateOG(state.batchSizeLiters, totalGramsForCalc, avgYield);
+      const avgBrix = totalGramsForCalc > 0 ? totalWeightedBrix / totalGramsForCalc : 80;
+      const testOG = estimateOG(state.batchSizeLiters, totalGramsForCalc, avgBrix);
       const testABV = calculateAbvCrouch(testOG, state.targetFg);
 
       if (Math.abs(testABV - state.targetAutoAbv) < 0.05) { bestGrams = midGrams; break; }
@@ -223,14 +233,14 @@ const Recipes: React.FC = () => {
         batchSizeLiters: state.batchSizeLiters,
         targetFg: state.targetFg,
         locale: i18n.resolvedLanguage || i18n.language || 'en',
-        ingredients: state.recipeIngredients.map(i => ({ 
-          ingredientId: i.id, 
-          globalIngredientId: i.globalIngredientId, 
-          name: i.name, 
-          category: i.category, 
-          quantity: i.quantity, 
-          nutrientRole: i.nutrientRole, 
-          additiveType: i.additiveType 
+        ingredients: state.recipeIngredients.map(i => ({
+          ingredientId: i.id,
+          globalIngredientId: i.globalIngredientId,
+          name: i.name,
+          category: i.category,
+          quantity: i.quantity,
+          nutrientRole: i.nutrientRole,
+          additiveType: i.additiveType
         }))
       };
 
@@ -244,14 +254,14 @@ const Recipes: React.FC = () => {
       if (resultData?.status === 'success' && resultData?.data) {
         if (Array.isArray(resultData.data.steps)) {
           setAiProposedSteps(resultData.data.steps.map((s: AiResponseStep, idx: number) => ({
-            id: crypto.randomUUID(), 
-            stepNumber: idx + 1, 
+            id: crypto.randomUUID(),
+            stepNumber: idx + 1,
             phase: VALID_PHASES.includes(s.phase as StepPhase) ? (s.phase as StepPhase) : 'Preparation',
-            title: s.title || '', 
-            description: s.description || '', 
+            title: s.title || '',
+            description: s.description || '',
             durationValue: s.durationValue || 0,
-            durationUnit: VALID_UNITS.includes(s.durationUnit as TimeUnit) ? (s.durationUnit as TimeUnit) : 'minutes', 
-            targetTempC: typeof s.targetTempC === 'number' ? s.targetTempC : null, 
+            durationUnit: VALID_UNITS.includes(s.durationUnit as TimeUnit) ? (s.durationUnit as TimeUnit) : 'minutes',
+            targetTempC: typeof s.targetTempC === 'number' ? s.targetTempC : null,
             isExpanded: true
           })));
         }
@@ -259,16 +269,16 @@ const Recipes: React.FC = () => {
           setAiProposedIngredients(resultData.data.ingredientQuantities
             .filter((s: AiResponseIngredient) => s && s.ingredientId && typeof s.suggestedQuantityGrams === 'number')
             .map((s: AiResponseIngredient) => ({
-              ingredientId: s.ingredientId, 
-              suggestedQuantityGrams: s.suggestedQuantityGrams, 
+              ingredientId: s.ingredientId,
+              suggestedQuantityGrams: s.suggestedQuantityGrams,
               aiNote: s.aiNote || ''
             })));
         }
       }
-    } catch { 
-      setAiProposedSteps([]); 
-    } finally { 
-      setIsGenerating(false); 
+    } catch {
+      setAiProposedSteps([]);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -276,6 +286,21 @@ const Recipes: React.FC = () => {
     if (!activeBrewery?.id || !state.recipeName || state.recipeIngredients.length === 0) return;
     state.setIsSaving(true);
     try {
+      const formattedIngredients = state.recipeIngredients.map(ing => {
+        const copy = { ...ing } as Partial<RecipeIngredientEntry>;
+        delete copy.showNote;
+        delete copy.alphaAcidPctMin;
+        delete copy.alcoholTolerancePctMin;
+        delete copy.attenuationPctMin;
+        return copy as unknown as RecipeIngredientReference;
+      });
+
+      const formattedSteps = state.recipeSteps.map(step => {
+        const copy = { ...step } as Partial<RecipeStepEntry>;
+        delete copy.isExpanded;
+        return copy as unknown as RecipeStep;
+      });
+
       const recipeData: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'> = {
         breweryId: activeBrewery.id,
         name: state.recipeName,
@@ -287,19 +312,14 @@ const Recipes: React.FC = () => {
         targetAbv: recipeDetails.abv,
         targetIbu: state.beverageType === 'Beer' ? recipeDetails.ibu : undefined,
         targetColorEbc: state.beverageType === 'Beer' ? recipeDetails.ebc : undefined,
-        ingredients: state.recipeIngredients.map(({ 
-          showNote: _sn, 
-          alphaAcidPctMin: _aa, 
-          alcoholTolerancePctMin: _at, 
-          attenuationPctMin: _atp, 
-          ...rest 
-        }) => rest as RecipeIngredientReference),
-        steps: state.recipeSteps.map(({ isExpanded: _ie, ...rest }) => rest),
+        ingredients: formattedIngredients,
+        steps: formattedSteps,
         createdBy: 'user'
       };
+
       if (state.editingRecipeId) await updateRecipe(state.editingRecipeId, recipeData);
       else await saveRecipe(recipeData);
-      
+
       state.resetForm();
       state.setView('list');
     } finally { state.setIsSaving(false); }
@@ -349,13 +369,13 @@ const Recipes: React.FC = () => {
         <div className="recipe-lab__title-block">
           <h1 className="recipe-lab__title">{state.editingRecipeId ? t('Edit Recipe') : t('Recipe Builder')}</h1>
         </div>
-        <button type="button" className="recipe-lab__btn-secondary" onClick={state.handleCancel}>{t('Cancel')}</button>
+        <button type="button" className="btn-secondary" onClick={state.handleCancel}>{t('Cancel')}</button>
       </header>
 
       <div className="builder-layout">
         <main className="builder-main">
-          
-          <CoreParametersSection 
+
+          <CoreParametersSection
             beverageType={state.beverageType} setBeverageType={state.setBeverageType}
             currentSelectedStyle={currentSelectedStyle} onOpenStyleModal={() => state.setIsStyleModalOpen(true)}
             recipeName={state.recipeName} setRecipeName={state.setRecipeName}
@@ -365,7 +385,7 @@ const Recipes: React.FC = () => {
           />
 
           {state.beverageType === 'Mead' && (
-            <MeadWizardSection 
+            <MeadWizardSection
               wizardStyle={state.wizardStyle} setWizardStyle={state.setWizardStyle}
               wizardSweetness={state.wizardSweetness} setWizardSweetness={state.setWizardSweetness}
               setTargetFg={state.setTargetFg} wizardHoney={state.wizardHoney} setWizardHoney={state.setWizardHoney}
@@ -385,7 +405,7 @@ const Recipes: React.FC = () => {
                 'Fermentable': t('Fermentables (Malts, Extracts, Sugars)'), 'Honey': t('Honey'), 'Hops': t('Hops'), 'Yeast': t('Yeasts'), 'Additive': t('Additives & Water Chemistry')
               };
               return (
-                <IngredientGroup 
+                <IngredientGroup
                   key={cat} category={cat} title={titleMap[cat]} beverageType={state.beverageType}
                   recipeIngredients={state.recipeIngredients} aiProposedIngredients={aiProposedIngredients}
                   isSaving={state.isSaving} onOpenModal={state.openIngredientModal} onUpdateIngredient={state.updateIngredient}
@@ -400,7 +420,7 @@ const Recipes: React.FC = () => {
             })}
           </IngredientFormulationSection>
 
-          <BrewingStepsEditor 
+          <BrewingStepsEditor
             recipeSteps={state.recipeSteps} aiProposedSteps={aiProposedSteps} isSaving={state.isSaving}
             onAddStep={state.handleAddStep} onRemoveStep={state.handleRemoveStep} onUpdateStep={state.updateStep}
             onAcceptAllAiSteps={() => { state.setRecipeSteps(aiProposedSteps.map(s => ({ ...s, isExpanded: false }))); setAiProposedSteps([]); }}
@@ -408,11 +428,21 @@ const Recipes: React.FC = () => {
           />
         </main>
 
-        <RecipeStatsSidebar 
-          validation={validation} currentSelectedStyle={currentSelectedStyle} targetFg={state.targetFg}
-          recipeDetails={recipeDetails} beverageType={state.beverageType} isAbvMismatch={isAbvMismatch} targetStyle={state.targetStyle}
-          updateIngredient={state.updateIngredient} handleSaveRecipe={handleSaveRecipe} isSaving={state.isSaving}
-          recipeName={state.recipeName} recipeIngredientsLength={state.recipeIngredients.length} editingRecipeId={state.editingRecipeId}
+        <RecipeStatsSidebar
+          validation={validation}
+          currentSelectedStyle={currentSelectedStyle}
+          targetFg={state.targetFg}
+          recipeDetails={recipeDetails}
+          beverageType={state.beverageType}
+          isAbvMismatch={isAbvMismatch}
+          targetStyle={state.targetStyle}
+          updateIngredient={state.updateIngredient}
+          handleSaveRecipe={handleSaveRecipe}
+          isSaving={state.isSaving}
+          recipeName={state.recipeName}
+          recipeIngredientsLength={state.recipeIngredients.length}
+          editingRecipeId={state.editingRecipeId}
+          recipeIngredients={state.recipeIngredients}
         />
       </div>
     </div>

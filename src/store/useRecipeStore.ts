@@ -106,16 +106,15 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
           target_curves: recipeData.targetCurves,
           created_by: recipeData.createdBy
         }])
-        .select()
-        .single();
+        .select();
 
       if (error) throw error;
       
       await get().fetchRecipes(recipeData.breweryId);
       
-      if (!data) return null;
+      if (!data || data.length === 0) return null;
       
-      return mapRowToRecipe(data as RecipeRow);
+      return mapRowToRecipe(data[0] as RecipeRow);
       
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to save recipe';
@@ -145,18 +144,20 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
           target_curves: recipeData.targetCurves
         })
         .eq('id', recipeId)
-        .select()
-        .single();
+        .select();
 
       if (error) throw error;
 
+      if (!data || data.length === 0) {
+        throw new Error("Update blocked by database. Please check your RLS policies for the 'recipes' table.");
+      }
+
       await get().fetchRecipes(recipeData.breweryId);
 
-      if (!data) return null;
-
-      const formatted = mapRowToRecipe(data as RecipeRow);
+      const formatted = mapRowToRecipe(data[0] as RecipeRow);
       set(state => ({
-        currentRecipe: state.currentRecipe?.id === recipeId ? formatted : state.currentRecipe
+        currentRecipe: state.currentRecipe?.id === recipeId ? formatted : state.currentRecipe,
+        recipes: state.recipes.map(r => r.id === recipeId ? formatted : r)
       }));
 
       return formatted;
