@@ -4,8 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "workspaces": [
-    "packages/*",
-    "ai-backend"
+    "packages/*"
   ],
   "scripts": {
     "prepare": "npm run build:math",
@@ -13,7 +12,7 @@
     "dev": "vite",
     "build:math": "npm run build --workspace=@mead-tracker/math",
     "build": "npm run build:math && tsc -b && vite build",
-    "build:functions": "npm run build:math && npm --prefix ai-backend run build",
+    "deploy:supabase": "supabase functions deploy generate-recipe",
     "preview": "vite preview",
     "i18n:extract": "npx i18next-parser --config i18next-parser.config.cjs \"src/**/*.{ts,tsx}\"",
     "i18n:translate": "npx tsx --env-file=.env scripts/auto-translate.ts",
@@ -28,7 +27,7 @@
     "fix": "npm run lint:js:fix && npm run lint:css:fix",
     "db:clear": "npx tsx scripts/clearIngredients.ts",
     "deploy:prod": "npm run build && firebase deploy",
-    "deploy:all": "npm run fix && npm run lint:types && npm run i18n:sync && npm run deploy:prod"
+    "deploy:all": "npm run fix && npm run lint:types && npm run i18n:sync && npm run deploy:supabase && npm run deploy:prod"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.37.0",

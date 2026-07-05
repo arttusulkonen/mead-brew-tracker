@@ -1,3 +1,4 @@
+// src/pages/Brew.tsx
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaPlayCircle } from 'react-icons/fa';
@@ -26,6 +27,7 @@ const Brew: React.FC = () => {
 
   if (!activeBreweryId) return null;
 
+  // Откатили статусы для совместимости с типом BrewSessionStage
   const plannedSessions = sessions.filter(s => s.status === 'planned');
   const activeSessions = sessions.filter(s => s.status === 'fermenting' || s.status === 'aging');
   const completedSessions = sessions.filter(s => s.status === 'completed');

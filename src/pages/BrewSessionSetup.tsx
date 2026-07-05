@@ -1,3 +1,4 @@
+// src/pages/BrewSessionSetup.tsx
 import { calculateAbvCrouch, calculateOneThirdSugarBreak, calculateTosna, estimateOG } from '@mead-tracker/math';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -84,25 +85,29 @@ const BrewSessionSetup: React.FC = () => {
 
   const sessionDetails = useMemo(() => {
     let totalFermentableGrams = 0;
-    let totalWeightedYield = 0;
-    // Приводим тип к string, чтобы TS позволил сравнивать с другими вариантами
+    let totalWeightedBrix = 0;
     let nitrogenDemand: string = 'Medium';
     let hasYeast = false;
 
     sessionIngredients.forEach(item => {
-      if (item.category === 'Fermentable' || item.category === 'Honey') {
-        const yieldVal = item.yieldPpg || 36;
+      if (item.category === 'Honey') {
+        const brix = item.sugarContentBrix || 80;
         const qty = item.quantity || 0;
         totalFermentableGrams += qty;
-        totalWeightedYield += yieldVal * qty;
+        totalWeightedBrix += brix * qty;
+      } else if (item.category === 'Fermentable') {
+        const brix = item.yieldPpg ? (item.yieldPpg / 46) * 100 : 80;
+        const qty = item.quantity || 0;
+        totalFermentableGrams += qty;
+        totalWeightedBrix += brix * qty;
       } else if (item.category === 'Yeast') {
         hasYeast = true;
         if (item.nitrogenDemand) nitrogenDemand = item.nitrogenDemand;
       }
     });
 
-    const avgYield = totalFermentableGrams > 0 ? totalWeightedYield / totalFermentableGrams : 36;
-    const estimatedOg = estimateOG(actualVolume, totalFermentableGrams, avgYield);
+    const avgBrix = totalFermentableGrams > 0 ? totalWeightedBrix / totalFermentableGrams : 80;
+    const estimatedOg = estimateOG(actualVolume, totalFermentableGrams, avgBrix);
     const targetFg = currentRecipe?.targetFinalGravity || 1.000;
     const estimatedAbv = calculateAbvCrouch(estimatedOg, targetFg);
 
@@ -130,6 +135,7 @@ const BrewSessionSetup: React.FC = () => {
       const { data: authData } = await supabase.auth.getUser();
       const userId = authData?.user?.id;
       
+      // Возвращаем старые названия колонок и статус, чтобы избежать ошибки PGRST204
       const { data: sessionData, error } = await supabase
         .from('brew_sessions')
         .insert([{
@@ -137,10 +143,10 @@ const BrewSessionSetup: React.FC = () => {
           brewery_id: activeBreweryId,
           recipe_name: currentRecipe.name,
           beverage_type: currentRecipe.beverageType,
-          status: 'planned',
+          status: 'planned', 
           batch_size_liters: actualVolume,
-          target_og: currentRecipe.targetOriginalGravity,
-          target_fg: currentRecipe.targetFinalGravity,
+          target_og: sessionDetails.og,
+          target_fg: sessionDetails.fg,
           session_ingredients: sessionIngredients,
           session_steps: smartSteps,
           created_by: userId
@@ -164,7 +170,7 @@ const BrewSessionSetup: React.FC = () => {
   const boilOffAmount = Math.max(0, preBoilVolume - actualVolume).toFixed(1);
 
   return (
-    <div className="home" style={{ maxWidth: '900px' }}>
+    <div className="home">
       <header className="home__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 className="home__title">{t('Brew Day Setup')}</h1>

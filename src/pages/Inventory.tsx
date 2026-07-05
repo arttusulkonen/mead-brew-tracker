@@ -1,10 +1,11 @@
+// src/pages/Inventory.tsx
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaPen, FaPlus, FaTimes, FaTrash } from 'react-icons/fa';
 import { EditedIngredientData, IngredientEditorModal } from '../components/IngredientEditorModal';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useInventoryStore } from '../store/useInventoryStore';
-import type { PopulatedInventoryItem, UnitType } from '../types/ingredient';
+import type { IngredientUnion, PopulatedInventoryItem, UnitType } from '../types/ingredient';
 import { UNIT_TYPES } from '../types/ingredient';
 
 const Inventory: React.FC = () => {
@@ -46,8 +47,19 @@ const Inventory: React.FC = () => {
     let targetId = data.globalIngredientId;
     const original = globalIngredients.find(i => i.id === targetId);
 
-    if (!targetId || (original && original.name !== data.name)) {
-      const baseData: any = {
+    let isModified = false;
+    if (original) {
+      if (original.name !== data.name) isModified = true;
+      if (data.category === 'Additive') {
+        if (data.nutrientRole !== (original as any).nutrientRole) isModified = true;
+        if (data.yanValuePerGramPerLiter !== (original as any).yanValuePerGramPerLiter) isModified = true;
+        if (data.dosagePer10Liters !== (original as any).dosagePer10Liters) isModified = true;
+        if (data.dosagePerGramYeast !== (original as any).dosagePerGramYeast) isModified = true;
+      }
+    }
+
+    if (!targetId || isModified) {
+      const baseData: Record<string, unknown> = {
         name: data.name,
         category: data.category,
         origin: data.origin,
@@ -60,7 +72,7 @@ const Inventory: React.FC = () => {
         baseData.yieldPpg = data.yieldPpg || 0;
         baseData.colorEbc = data.colorEbc || 0;
         baseData.isMashed = data.form === 'Grain';
-        if (data.moistureContentPct) baseData.moistureContentPct = data.moistureContentPct;
+        if (data.moistureContentPct != null) baseData.moistureContentPct = data.moistureContentPct;
       } else if (data.category === 'Honey') {
         baseData.sugarContentBrix = data.sugarContentBrix ?? 80;
         baseData.moistureContentPct = data.moistureContentPct ?? 18;
@@ -83,9 +95,9 @@ const Inventory: React.FC = () => {
           baseData.nutrientRole = data.nutrientRole;
         }
         if (data.additionStage) baseData.additionStage = data.additionStage;
-        if (data.yanValuePerGramPerLiter) baseData.yanValuePerGramPerLiter = data.yanValuePerGramPerLiter;
-        if (data.dosagePerGramYeast) baseData.dosagePerGramYeast = data.dosagePerGramYeast;
-        if (data.dosagePer10Liters) baseData.dosagePer10Liters = data.dosagePer10Liters;
+        if (data.yanValuePerGramPerLiter != null) baseData.yanValuePerGramPerLiter = data.yanValuePerGramPerLiter;
+        if (data.dosagePerGramYeast != null) baseData.dosagePerGramYeast = data.dosagePerGramYeast;
+        if (data.dosagePer10Liters != null) baseData.dosagePer10Liters = data.dosagePer10Liters;
       } else if (data.category === 'Water Profile') {
         baseData.calciumPpm = data.calciumPpm || 0;
         baseData.magnesiumPpm = data.magnesiumPpm || 0;
@@ -95,7 +107,7 @@ const Inventory: React.FC = () => {
         baseData.bicarbonatePpm = data.bicarbonatePpm || 0;
       }
 
-      const newIng = await addCustomIngredient(baseData);
+      const newIng = await addCustomIngredient(baseData as unknown as Omit<IngredientUnion, 'id' | 'updatedAt'>);
       if (newIng?.id) targetId = newIng.id;
     }
 
@@ -138,7 +150,7 @@ const Inventory: React.FC = () => {
     }
   };
 
-  const renderIngredientMeta = (ing: any) => {
+  const renderIngredientMeta = (ing: IngredientUnion) => {
     if (!ing) return null;
 
     const formatRange = (min: number | undefined, max: number | undefined) => {
@@ -155,13 +167,13 @@ const Inventory: React.FC = () => {
       case 'Hops':
         return `${t('Alpha')}: ${formatRange(ing.alphaAcidPctMin, ing.alphaAcidPct)}% | ${t(`constants.hops_forms.${ing.form?.toLowerCase() || 'pellet'}`)}`;
       case 'Additive': {
-        // Оборачиваем в блок, чтобы переменная была локальной для этого case
-        const roleStr = ing.additiveType === 'Nutrient' && ing.nutrientRole
-          ? ` | ${t(`constants.nutrient_roles.${ing.nutrientRole.toLowerCase()}`, ing.nutrientRole)}`
+        const roleStr = ing.additiveType === 'Nutrient' && (ing as any).nutrientRole
+          ? ` | ${t(`constants.nutrient_roles.${(ing as any).nutrientRole.toLowerCase()}`, (ing as any).nutrientRole)}`
           : '';
+        const stageStr = (ing as any).additionStage ? ` (${(ing as any).additionStage})` : '';
         return ing.dosagePer10Liters 
-          ? `${ing.dosagePer10Liters}g/10L${roleStr}` 
-          : `${t(`constants.additive_types.${ing.additiveType?.toLowerCase().replace(' ', '_')}`)}${roleStr}`;
+          ? `${ing.dosagePer10Liters}g/10L${roleStr}${stageStr}` 
+          : `${t(`constants.additive_types.${ing.additiveType?.toLowerCase().replace(' ', '_')}`)}${roleStr}${stageStr}`;
       }
       default:
         return null;
@@ -182,6 +194,9 @@ const Inventory: React.FC = () => {
     );
   }
 
+  // console.log all inventory items for debugging in json format.
+  console.log('Inventory items:', JSON.stringify(inventory, null, 2));
+
   return (
     <div className="inventory-page">
       {isAddModalOpen && (
@@ -200,7 +215,7 @@ const Inventory: React.FC = () => {
           <div className="editor-modal" onMouseDown={e => e.stopPropagation()}>
             <div className="editor-modal__header">
               <h2>{t('Edit Stock')}</h2>
-              <button type="button" className="editor-modal__close-btn" onClick={() => setEditingStockItem(null)} style={{ padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+              <button type="button" className="btn-secondary" onClick={() => setEditingStockItem(null)} style={{ padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
                 <FaTimes />
               </button>
             </div>
@@ -235,8 +250,8 @@ const Inventory: React.FC = () => {
             </div>
 
             <div className="editor-modal__footer">
-              <button type="button" className="editor-modal__close-btn" onClick={() => setEditingStockItem(null)} style={{ padding: '8px 16px', border: '1px solid var(--border-color)', borderRadius: '6px', background: 'transparent' }}>{t('Cancel')}</button>
-              <button type="button" style={{ padding: '8px 16px', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold' }} onClick={handleSaveEdit} disabled={isUpdating || editStockQty === ''}>
+              <button type="button" className="btn-secondary" onClick={() => setEditingStockItem(null)}>{t('Cancel')}</button>
+              <button type="button" className="btn-primary" onClick={handleSaveEdit} disabled={isUpdating || editStockQty === ''}>
                 {isUpdating ? t('Saving...') : t('Save')}
               </button>
             </div>

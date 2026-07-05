@@ -45,14 +45,20 @@ export const calculateAbvCrouch = (og: number | null | undefined, fg: number | n
  * @param honeyBrix The Brix percentage of the fermentable.
  * @returns The estimated Original Gravity.
  */
-export const estimateOG = (batchVolumeLiters: number | null | undefined, honeyGrams: number | null | undefined, honeyBrix: number | null | undefined): number => {
+export const estimateOG = (
+  batchVolumeLiters: number | null | undefined, 
+  honeyGrams: number | null | undefined, 
+  honeyBrix: number | null | undefined
+): number => {
   if (typeof batchVolumeLiters !== 'number' || batchVolumeLiters <= 0) return 1.000;
   if (typeof honeyGrams !== 'number' || honeyGrams <= 0) return 1.000;
   if (typeof honeyBrix !== 'number' || honeyBrix <= 0) return 1.000;
+  
   const honeyKg = honeyGrams / 1000;
-  const pointsPerKg = honeyBrix * 3.84;
-  const totalPoints = honeyKg * pointsPerKg;
-  const calculatedOg = 1 + (totalPoints / batchVolumeLiters) / 1000;
+  const gpPerKg = (honeyBrix / 100) * 386; 
+  const totalPoints = honeyKg * gpPerKg;
+  const calculatedOg = 1.000 + (totalPoints / batchVolumeLiters) / 1000;
+  
   return Number(calculatedOg.toFixed(3));
 };
 
@@ -127,11 +133,16 @@ export const calculateYeastDependentDosage = (yeastAmountGrams: number | null | 
 /**
  * Calculates the 1/3 Sugar Break specific gravity point.
  * @param og Original Gravity.
+ * @param targetFg Expected Final Gravity.
  * @returns The Specific Gravity representing the 1/3 sugar break.
  */
-export const calculateOneThirdSugarBreak = (og: number | null | undefined): number => {
-  if (typeof og !== 'number' || og <= 1.000) return 1.000;
-  return Number((og - ((og - 1.000) / 3)).toFixed(3));
+export const calculateOneThirdSugarBreak = (
+  og: number | null | undefined, 
+  targetFg: number | null | undefined = 1.000
+): number => {
+  const safeTargetFg = (typeof targetFg === 'number' && targetFg > 0) ? targetFg : 1.000;
+  if (typeof og !== 'number' || og <= safeTargetFg) return safeTargetFg;
+  return Number((og - ((og - safeTargetFg) / 3)).toFixed(3));
 };
 
 /**

@@ -1,3 +1,4 @@
+// src/components/IngredientEditorModal.tsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaSearch, FaTimes } from 'react-icons/fa';
@@ -74,6 +75,9 @@ const SUGGESTED_STAGE_BY_ADDITIVE_TYPE: Partial<Record<AdditiveType, string>> = 
   Stabilizer: 'Bottling'
 };
 
+// Вспомогательная функция для нормализации поиска (решает проблему е/ё и регистра)
+const normalizeString = (str: string) => str.toLowerCase().replace(/ё/g, 'е');
+
 export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
   isOpen,
   onClose,
@@ -87,7 +91,14 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const { activeBrewery } = useBreweryStore();
-  const { addCustomIngredient, addInventoryItem, inventory } = useInventoryStore();
+  const { 
+    addCustomIngredient, 
+    addInventoryItem, 
+    inventory, 
+    globalIngredients, 
+    fetchGlobalIngredients, 
+    fetchInventory 
+  } = useInventoryStore();
 
   const validInitialAdditiveType = (ADDITIVE_TYPES as readonly string[]).includes(initialAdditiveType)
     ? (initialAdditiveType as AdditiveType)
@@ -123,6 +134,15 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      fetchGlobalIngredients();
+      if (activeBrewery?.id) {
+        fetchInventory(activeBrewery.id);
+      }
+    }
+  }, [isOpen, activeBrewery?.id, fetchGlobalIngredients, fetchInventory]);
+
+  useEffect(() => {
+    if (isOpen) {
       setFormData(buildDefaults(category));
       setShowSuggestions(!!initialQuery);
       setSaveToStock(false);
@@ -143,11 +163,23 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
   }, [wrapperRef]);
 
   const filteredSuggestions = useMemo(() => {
-    const categoryMatches = catalog.filter(ing => ing.category === formData.category);
+    const mergedMap = new Map<string, any>();
+    
+    (catalog || []).forEach(ing => mergedMap.set(ing.id, ing));
+    (globalIngredients || []).forEach(ing => mergedMap.set(ing.id, ing));
+    (inventory || []).forEach(inv => {
+      if (inv.ingredient) {
+        mergedMap.set(inv.ingredientId, inv.ingredient);
+      }
+    });
+
+    const allAvailableIngredients = Array.from(mergedMap.values());
+    const categoryMatches = allAvailableIngredients.filter(ing => ing.category === formData.category);
     
     let filtered = categoryMatches;
     if (formData.name) {
-      filtered = categoryMatches.filter(ing => ing.name.toLowerCase().includes(formData.name.toLowerCase()));
+      const query = normalizeString(formData.name);
+      filtered = categoryMatches.filter(ing => normalizeString(ing.name).includes(query));
     }
 
     const enhanced = filtered.map(ing => {
@@ -166,14 +198,15 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
     });
 
     return enhanced.slice(0, 100);
-  }, [catalog, formData.category, formData.name, inventory]);
+  }, [catalog, globalIngredients, inventory, formData.category, formData.name]);
 
   const handleSelectSuggestion = (ing: any) => {
     setFormData(prev => ({
       ...prev,
       globalIngredientId: ing.id,
       name: ing.name,
-      form: ing.form ?? prev.form,
+      category: ing.category ?? prev.category,
+      form: ing.type ?? ing.form ?? prev.form,
       origin: ing.origin ?? prev.origin,
       producer: ing.producer ?? prev.producer,
       description: ing.notes ?? prev.description,
@@ -220,12 +253,12 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
   const handleCategoryChange = (newCategory: IngredientCategory) => {
     setFormData(prev => ({
       ...buildDefaults(newCategory),
-      name: prev.name,
+      name: '', // ИСПРАВЛЕНИЕ: Очищаем запрос, чтобы показать все доступные ингредиенты в новой категории
       quantity: prev.quantity,
       unit: prev.unit,
       globalIngredientId: null 
     }));
-    setShowSuggestions(false);
+    setShowSuggestions(true); // ИСПРАВЛЕНИЕ: Оставляем список открытым при смене вкладки
   };
 
   const persistToInventory = async () => {
