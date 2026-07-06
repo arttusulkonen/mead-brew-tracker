@@ -1,4 +1,8 @@
-// src/utils/styleIngredientStats.ts
+/*
+ * File: src/utils/styleIngredientStats.ts
+ * Description: Utility for fetching anonymous ingredient popularity statistics from Supabase based on style.
+ */
+
 import { supabase } from '../supabase/client';
 
 export interface StyleIngredientStatsResult {
@@ -7,9 +11,15 @@ export interface StyleIngredientStatsResult {
 }
 
 /**
+ * Fetches anonymous community statistics for popular ingredients used in a specific style.
+ *
  * Тянет анонимную статистику популярности ингредиентов для конкретного стиля
  * из таблицы style_ingredient_stats. Таблица не содержит ни рецептов, ни
  * id пивоварен - только агрегированные счётчики.
+ *
+ * @param styleName The name of the BJCP style.
+ * @param beverageType The type of beverage (e.g., Beer, Mead).
+ * @returns A promise that resolves to sets of popular hops and yeast IDs.
  */
 export const fetchStyleIngredientStats = async (
   styleName: string,
@@ -33,7 +43,7 @@ export const fetchStyleIngredientStats = async (
     const hopsIds = new Set<string>();
     const yeastIds = new Set<string>();
 
-    data.forEach(row => {
+    data.forEach((row: { global_ingredient_id: string; ingredient_category: string }) => {
       if (row.ingredient_category === 'Hops') hopsIds.add(row.global_ingredient_id);
       if (row.ingredient_category === 'Yeast') yeastIds.add(row.global_ingredient_id);
     });

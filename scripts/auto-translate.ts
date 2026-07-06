@@ -42,9 +42,16 @@ async function translateMissing() {
 
     let translations = JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
+    // --- ИСПРАВЛЕННАЯ ЛОГИКА СИНХРОНИЗАЦИИ ---
     Object.keys(constants).forEach(key => {
-      if (!(key in translations)) {
-        translations[key] = locale === 'en' ? constants[key] : '';
+      if (locale === 'en') {
+        // Для английского языка ВСЕГДА берем эталонное значение из constants.json
+        translations[key] = constants[key];
+      } else {
+        // Для других языков: сбрасываем значение, если ключа нет или парсер случайно записал ключ вместо текста
+        if (!(key in translations) || translations[key] === key) {
+          translations[key] = '';
+        }
       }
     });
 

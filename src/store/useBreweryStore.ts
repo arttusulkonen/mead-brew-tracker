@@ -26,6 +26,16 @@ interface BreweryState {
   setBreweries: (breweries: Brewery[]) => void;
 }
 
+interface BreweryRow {
+  id: string;
+  name: string;
+  owner_id: string;
+  members: string[] | null;
+  invited_emails: string[] | null;
+  is_personal: boolean;
+  created_at: string;
+}
+
 export const useBreweryStore = create<BreweryState>((set, get) => ({
   breweries: [],
   activeBrewery: null,
@@ -50,7 +60,7 @@ export const useBreweryStore = create<BreweryState>((set, get) => ({
 
       if (error) throw error;
 
-      const formattedBreweries = (data || []).map((b: any) => ({
+      const formattedBreweries = ((data as BreweryRow[]) || []).map((b) => ({
         id: b.id,
         name: b.name,
         ownerId: b.owner_id,
@@ -65,8 +75,8 @@ export const useBreweryStore = create<BreweryState>((set, get) => ({
         activeBrewery: formattedBreweries.length > 0 ? formattedBreweries[0] : null,
         activeBreweryId: formattedBreweries.length > 0 ? formattedBreweries[0].id : null
       });
-    } catch (err: any) {
-      set({ error: err.message }); 
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'Unknown error occurred' }); 
     } finally {
       set({ isLoading: false });
     }
@@ -94,13 +104,14 @@ export const useBreweryStore = create<BreweryState>((set, get) => ({
       if (error) throw error;
 
       if (data) {
+        const row = data as BreweryRow;
         return {
-          id: data.id,
-          name: data.name,
-          ownerId: data.owner_id,
-          isPersonal: data.is_personal,
-          members: data.members || [],
-          invitedEmails: data.invited_emails || [],
+          id: row.id,
+          name: row.name,
+          ownerId: row.owner_id,
+          isPersonal: row.is_personal,
+          members: row.members || [],
+          invitedEmails: row.invited_emails || [],
         };
       }
       return null;
@@ -157,7 +168,7 @@ export const useBreweryStore = create<BreweryState>((set, get) => ({
       if (error) throw error;
 
       if (data && data.length > 0) {
-        for (const b of data) {
+        for (const b of data as BreweryRow[]) {
           const newMembers = [...new Set([...(b.members || []), userId])];
           const newInvites = (b.invited_emails || []).filter((e: string) => e !== userEmail.toLowerCase());
 

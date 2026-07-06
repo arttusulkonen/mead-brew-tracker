@@ -85,7 +85,6 @@ const BrewSessionSetup: React.FC = () => {
   const sessionDetails = useMemo(() => {
     let totalFermentableGrams = 0;
     let totalWeightedYield = 0;
-    // Приводим тип к string, чтобы TS позволил сравнивать с другими вариантами
     let nitrogenDemand: string = 'Medium';
     let hasYeast = false;
 

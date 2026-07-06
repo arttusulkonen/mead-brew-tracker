@@ -3,6 +3,7 @@ export const knowledgeBase = JSON.stringify([
     "referenceId": "traditional_session_noboil",
     "name": "Modern No-Boil Session Mead",
     "style": "traditional",
+    "beverageType": "Mead",
     "abvCategory": "session",
     "targetFg": 1.027,
     "boilProtocol": "No-Boil",
@@ -22,28 +23,46 @@ export const knowledgeBase = JSON.stringify([
     ]
   },
   {
-    "referenceId": "session_hopped_sweet",
-    "name": "Session Sweet Hopped Mead",
-    "style": "session_hopped",
-    "abvCategory": "session",
-    "targetFg": 1.027,
+    "referenceId": "standard_american_pale_ale",
+    "name": "Standard American Pale Ale",
+    "style": "pale_ale",
+    "beverageType": "Beer",
+    "abvCategory": "standard",
     "boilProtocol": "Boil (60m)",
     "coreRules": [
-      "Мёд вносится до кипячения",
-      "Кипячение 60 минут с Magnum",
-      "Вирпул 80°C с EKG для аромата"
+      "Затирание при 66°C для баланса тела и сбраживаемости",
+      "Кипячение 60 минут",
+      "Сухое охмеление (Dry Hopping) на этапе Aging"
     ],
     "steps": [
-      { "phase": "Preparation", "title": "Гидрохимия и Мёд", "description": "Внести минеральные соли в воду. Нагреть до 50-60°C, растворить мёд избегая пригорания." },
-      { "phase": "Boiling", "title": "Кипячение (Bittering)", "description": "Довести до кипения. Снять белковую пену. Внести горький хмель (Magnum) на 60 минут." },
-      { "phase": "Boiling", "title": "Позднее охмеление (Flavor)", "description": "За 15 минут до конца кипячения внести хмель на вкус (EKG)." },
-      { "phase": "Boiling", "title": "Вирпул (Aroma)", "description": "Отключить нагрев, охладить до 80°C. Внести хмель на аромат (EKG). Выдержать воронку 20 минут." },
-      { "phase": "Preparation", "title": "Охлаждение и Аэрация", "description": "Охладить до 18°C. Снять с бруха в ферментер. Интенсивно аэрировать 5 минут." },
-      { "phase": "Preparation", "title": "Засев дрожжей", "description": "Регидрировать дрожжи с Go-Ferm. Провести темперирование и внести в сусло." },
-      { "phase": "Fermentation", "title": "Протокол TOSNA", "description": "Температура 18-20°C. Вносить питание Fermaid O порциями по графику, предварительно дегазируя сусло." },
-      { "phase": "Fermentation", "title": "Cold Crash", "description": "При падении плотности до 1.027 охладить ферментер до 1-4°C на 48-72 часа." },
-      { "phase": "Packaging", "title": "Розлив", "description": "Снять с осадка. Разлить без добавления праймера (использовать ПЭТ-бутылку как манометр)." },
-      { "phase": "Packaging", "title": "Пастеризация", "description": "При достижении рабочего давления пастеризовать стекло в воде 65°C ровно 15 минут." }
+      { "phase": "Mashing", "title": "Затирание солода", "description": "Нагреть воду. Внести солод. Выдержать температурную паузу при 66°C для осахаривания в течение 60 минут." },
+      { "phase": "Mashing", "title": "Мэшаут и промывка", "description": "Нагреть затор до 76°C (Mash Out) на 10 минут. Промыть дробину водой 78°C до сбора нужного объема сусла." },
+      { "phase": "Boiling", "title": "Кипячение и охмеление", "description": "Довести сусло до кипения. Внести хмель на горечь (60 минут). Внести хмель на вкус/аромат за 15 и 5 минут до конца кипячения." },
+      { "phase": "Preparation", "title": "Охлаждение", "description": "Быстро охладить сусло до 18°C с помощью чиллера. Перелить в ферментер, интенсивно аэрировать." },
+      { "phase": "Preparation", "title": "Засев дрожжей", "description": "Внести пивные дрожжи. Регидратация обязательна для сухих штаммов." },
+      { "phase": "Fermentation", "title": "Активное брожение", "description": "Сбраживать при температуре 18-20°C в течение 7-10 дней до стабилизации конечной плотности (FG)." },
+      { "phase": "Aging", "title": "Сухое охмеление", "description": "Внести хмель на сухое охмеление (Dry Hop) на 3-5 дней. По желанию провести Cold Crash при 2°C для осветления." },
+      { "phase": "Packaging", "title": "Розлив и карбонизация", "description": "Разлить по бутылкам с добавлением декстрозы (праймера) для карбонизации. Выдержать 10-14 дней при комнатной температуре." }
+    ]
+  },
+  {
+    "referenceId": "modern_dry_cider",
+    "name": "Modern Dry Hard Cider",
+    "style": "cider",
+    "beverageType": "Cider",
+    "boilProtocol": "No-Boil",
+    "coreRules": [
+      "Строго запрещено кипятить сок (вызывает пектиновое помутнение)",
+      "Использование пектолитического фермента",
+      "Умеренное добавление питательных веществ"
+    ],
+    "steps": [
+      { "phase": "Preparation", "title": "Подготовка сока", "description": "Отжать яблоки или использовать готовый сок. НЕ КИПЯТИТЬ. Внести метабисульфит калия (Campden), если сок свежевыжатый, и оставить на 24 часа." },
+      { "phase": "Preparation", "title": "Внесение ферментов", "description": "Внести пектолитический фермент (Pectic Enzyme) для разрушения пектина и осветления. Выдержать 12 часов до внесения дрожжей." },
+      { "phase": "Preparation", "title": "Засев дрожжей", "description": "Регидрировать дрожжи с Go-Ferm. Внести в сок при температуре 16-18°C." },
+      { "phase": "Fermentation", "title": "Брожение", "description": "Сбраживать при температуре 16-18°C. Внести порцию подкормки (Fermaid O) на 2-й и 4-й день активного брожения. Яблочный сок беден азотом." },
+      { "phase": "Aging", "title": "Созревание", "description": "После окончания брожения снять с осадка (Racking) во вторичную емкость для осветления на 2-4 недели." },
+      { "phase": "Packaging", "title": "Розлив", "description": "Разлить в бутылки с добавлением праймера для легкой карбонизации." }
     ]
   }
 ]);
