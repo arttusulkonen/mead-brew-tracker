@@ -54,7 +54,7 @@ export const BrewingStepsEditor: React.FC<BrewingStepsEditorProps> = ({
                 <div className="step-item__header">
                   <div className="step-item__header-left">
                     <span className="step-item__number">{step.stepNumber}</span>
-                    <span className="btn-badge" style={{backgroundColor: '#3b82f6'}}>
+                    <span className="btn-badge">
                       {t(`constants.step_phases.${step.phase.toLowerCase()}`, step.phase)}
                     </span>
                   </div>

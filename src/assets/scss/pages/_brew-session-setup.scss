@@ -1,0 +1,257 @@
+@use '../settings/variables' as *;
+@use '../settings/font-size' as *; // Если используешь типографику
+@use '../mixins/buttons' as *; // Для btn-primary/btn-secondary если нужно
+
+.brew-session-setup {
+  width: 100%;
+  max-width: 1200px; // Широкий формат для дашборда настройки
+  padding: $spacing-xl;
+  margin: 0 auto;
+
+  // --- Шапка ---
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-md;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: $spacing-lg;
+    margin-bottom: $spacing-xl;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  &__title-block {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 2rem;
+    color: var(--text-primary);
+  }
+
+  &__subtitle {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+  }
+
+  // --- Сетка Layout ---
+  &__layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: $spacing-xl;
+    align-items: start;
+
+    @media (min-width: $breakpoint-lg) {
+      // Правая колонка под характеристики и кнопку Старт
+      grid-template-columns: 2fr 1fr; 
+    }
+  }
+
+  &__column {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xl;
+  }
+
+  &__icon {
+    margin-right: 8px;
+
+    &--primary {
+      color: var(--color-primary);
+    }
+  }
+
+  &__btn-start {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: $spacing-md;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  // --- Карточки ---
+  &__card {
+    overflow: hidden;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: $border-radius-md;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
+
+    &--smart {
+      background-color: rgb(16 185 129 / 5%); // Зеленый фон для умных шагов
+      border-color: rgb(16 185 129 / 20%);
+    }
+  }
+
+  &__card-header {
+    padding: $spacing-md $spacing-lg;
+    background-color: var(--bg-surface-alt);
+    border-bottom: 1px solid var(--border-color);
+
+    // Убираем рамку и фон для "Умных шагов"
+    .brew-session-setup__card--smart & {
+      padding-bottom: 0;
+      background-color: transparent;
+      border-bottom: none;
+    }
+  }
+
+  &__card-title {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+
+    &--success {
+      color: var(--color-success);
+    }
+  }
+
+  &__card-body {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-lg;
+    padding: $spacing-lg;
+  }
+
+  // --- Формы и Инпуты ---
+  &__form-group {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__label {
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  &__input {
+    padding: $spacing-sm $spacing-md;
+    font-family: inherit;
+    font-size: 1rem;
+    color: var(--text-primary);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: $border-radius-sm;
+    transition: border-color 0.2s ease;
+
+    &:focus {
+      border-color: var(--color-primary);
+      outline: none;
+    }
+
+    &:disabled {
+      color: var(--text-secondary);
+      cursor: not-allowed;
+      background-color: var(--bg-surface-alt);
+    }
+
+    &--qty {
+      width: 90px;
+      text-align: right;
+    }
+  }
+
+  &__hint {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+
+  // --- Список ингредиентов ---
+  &__ingredient {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-md;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: $spacing-md;
+    border-bottom: 1px solid var(--border-color);
+
+    &:last-child {
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+  }
+
+  &__ingredient-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__ingredient-cat {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+  }
+
+  &__ingredient-name {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  &__ingredient-controls {
+    display: flex;
+    gap: $spacing-sm;
+    align-items: center;
+  }
+
+  &__ingredient-unit {
+    font-weight: 700;
+    color: var(--text-secondary);
+  }
+
+  // --- Характеристики (Dynamic Specs) ---
+  &__spec-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__spec-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.95rem;
+
+    span {
+      color: var(--text-secondary);
+    }
+
+    strong {
+      color: var(--text-primary);
+    }
+  }
+
+  &__spec-highlight {
+    color: var(--color-primary) !important;
+  }
+
+  // --- Список умных шагов ---
+  &__smart-list {
+    padding-left: 20px;
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+
+    li {
+      margin-bottom: $spacing-xs;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+}

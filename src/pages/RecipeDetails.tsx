@@ -112,7 +112,7 @@ const RecipeDetails: React.FC = () => {
                       <strong className="recipe-details__ingredient-name">{ing.name}</strong>
                       {item.nutrientRole && (
                         <span className="recipe-details__badge recipe-details__badge--outline">
-                          {t(roleKey, item.nutrientRole)}
+                          {t(roleKey, item.nutrientRole) as string}
                         </span>
                       )}
                       {item.additionStage && (

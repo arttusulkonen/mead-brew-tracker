@@ -38,6 +38,29 @@ const BrewSession: React.FC = () => {
     return () => clearCurrentSession();
   }, [id, activeBreweryId, fetchSessionById, fetchInventory, clearCurrentSession]);
 
+  useEffect(() => {
+    let wakeLock: any = null;
+    const requestWakeLock = async () => {
+      try {
+        const steps = currentSession?.sessionSteps || [];
+        const activeStep = steps.find((s: any) => s.isActive);
+        if ('wakeLock' in navigator && activeStep) {
+          wakeLock = await navigator.wakeLock.request('screen');
+        }
+      } catch (err) {
+        console.error('Wake lock error:', err);
+      }
+    };
+
+    requestWakeLock();
+
+    return () => {
+      if (wakeLock) {
+        wakeLock.release().catch(console.error);
+      }
+    };
+  }, [currentSession]);
+
   if (isLoading) return <div className="global-loader"><div className="spinner"></div></div>;
   if (!currentSession) return <div className="home"><h2 className="home__title">{t('Session not found')}</h2></div>;
 
@@ -46,6 +69,7 @@ const BrewSession: React.FC = () => {
   const isPrepDone = steps.filter((s: any) => s.phase === 'Preparation').every((s: any) => s.isCompleted);
   const isFermDone = steps.filter((s: any) => s.phase === 'Fermentation').every((s: any) => s.isCompleted);
 
+  // Откатили статусы для совместимости
   const canSplit = !currentSession.isSplit && ['fermenting', 'aging'].includes(currentSession.status);
   const canMidAdd = ['fermenting', 'aging'].includes(currentSession.status) && !currentSession.isSplit;
 
@@ -185,7 +209,7 @@ const BrewSession: React.FC = () => {
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {canMidAdd && <button className="btn-secondary" onClick={() => setShowMidAddModal(true)}><FaPlus style={{ marginRight: '6px' }}/> {t('Add Ingredient')}</button>}
           {canSplit && <button className="btn-secondary" onClick={() => setShowSplitModal(true)}><FaCodeBranch style={{ marginRight: '6px' }}/> {t('Split')}</button>}
-          {currentSession.status === 'planned' && !currentSession.isSplit && <button className="btn-primary" onClick={() => { setActualOgInput(currentSession.targetOg?.toString() || '1.000'); setShowOgModal(true); }} disabled={!isPrepDone}><FaPlay style={{ marginRight: '6px' }}/> {t('Start')}</button>}
+          {currentSession.status === 'planned' && !currentSession.isSplit && <button className="btn-primary" onClick={() => { setActualOgInput(currentSession.targetOg?.toString() || '1.000'); setShowOgModal(true); }} disabled={!isPrepDone}><FaPlay style={{ marginRight: '6px' }}/> {t('Start Fermentation')}</button>}
           {currentSession.status === 'fermenting' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('aging')} disabled={!isFermDone}><FaCheck style={{ marginRight: '6px' }}/> {t('Move to Aging')}</button>}
           {currentSession.status === 'aging' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('completed')}><FaCheck style={{ marginRight: '6px' }}/> {t('Complete Brew')}</button>}
         </div>
