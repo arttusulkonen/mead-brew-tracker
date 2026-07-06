@@ -5,7 +5,7 @@ import { supabase } from '../../supabase/client';
 import type { AdditiveType, IngredientCategory, IngredientUnion } from '../../types/ingredient';
 import type { BeverageType, Recipe } from '../../types/recipe';
 import type { BjcpStyle } from '../../utils/bjcpMatchEngine';
-import { SWEETNESS_LEVELS } from '../../utils/meadConstants';
+import { HONEY_TERROIR, SWEETNESS_LEVELS } from '../../utils/meadConstants';
 import type { RecipeIngredientEntry, RecipeStepEntry } from './types';
 
 interface IngredientRow {
@@ -78,7 +78,7 @@ export function useRecipeBuilderState() {
 
   const [wizardStyle, setWizardStyle] = useState<string>('traditional');
   const [wizardSweetness, setWizardSweetness] = useState<string>(SWEETNESS_LEVELS[2].id);
-  const [wizardHoney, setWizardHoney] = useState<string>('');
+  const [wizardHoney, setWizardHoney] = useState<string>(HONEY_TERROIR[0].id);
 
   const [bjcpStyles, setBjcpStyles] = useState<BjcpStyle[]>([]);
   const [selectedStyleId, setSelectedStyleId] = useState<string>('');

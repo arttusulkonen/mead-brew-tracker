@@ -1,5 +1,4 @@
 // src/types/ingredient.ts
-
 export type UUID = string;
 
 export const INGREDIENT_CATEGORIES = ['Fermentable', 'Honey', 'Yeast', 'Hops', 'Water Profile', 'Additive'] as const;
@@ -16,10 +15,8 @@ export interface BaseIngredient {
   name: string;
   category: IngredientCategory;
   notes?: string;
+  description?: string;
   origin?: string;
-  // В реальных данных из Supabase это поле есть (например, "Omega Yeast" для
-  // дрожжей), но в типе его не было — добавлено, чтобы соответствовать тому,
-  // что на самом деле приходит из базы.
   producer?: string;
   updatedAt: string;
   createdBy?: UUID;
@@ -73,6 +70,8 @@ export interface WaterProfileIngredient extends BaseIngredient {
 export interface AdditiveIngredient extends BaseIngredient {
   category: 'Additive';
   additiveType: AdditiveType;
+  nutrientRole?: 'Rehydration' | 'Fermentation' | 'Other';
+  additionStage?: string;
   yanValuePerGramPerLiter?: number;
   dosagePer10Liters?: number;
   dosagePerGramYeast?: number;

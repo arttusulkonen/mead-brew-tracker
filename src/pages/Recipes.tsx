@@ -1,3 +1,4 @@
+// src/pages/Recipes.tsx
 import { calculateAbvCrouch, calculateIbuTinseth, calculateMcu, calculateTosna, estimateOG, estimateSrmMorey, srmToEbc } from '@mead-tracker/math';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -72,7 +73,8 @@ const Recipes: React.FC = () => {
         if (item.category === 'Honey' && item.sugarContentBrix) {
           brixVal = item.sugarContentBrix;
         } else if (item.yieldPpg) {
-          brixVal = item.yieldPpg / 0.46;
+          // ИСПОЛЬЗУЕМ ЧИСТЫЙ PPG ДЛЯ FERMENTABLE (estimateOG ждет PPG или Brix в зависимости от логики)
+          brixVal = item.yieldPpg; 
         }
 
         const qty = item.quantity || 0;
@@ -200,7 +202,7 @@ const Recipes: React.FC = () => {
           if (ing.category === 'Honey' && ing.sugarContentBrix) {
             brixVal = ing.sugarContentBrix;
           } else if (ing.yieldPpg) {
-            brixVal = ing.yieldPpg / 0.46;
+            brixVal = ing.yieldPpg;
           }
 
           const qty = ing.id === targetEntry.id ? midGrams : (ing.quantity || 0);
@@ -286,6 +288,10 @@ const Recipes: React.FC = () => {
     if (!activeBrewery?.id || !state.recipeName || state.recipeIngredients.length === 0) return;
     state.setIsSaving(true);
     try {
+      const { data: authData } = await supabase.auth.getUser();
+      const userId = authData?.user?.id;
+      if (!userId) throw new Error('User not authenticated');
+
       const formattedIngredients = state.recipeIngredients.map(ing => {
         const copy = { ...ing } as Partial<RecipeIngredientEntry>;
         delete copy.showNote;
@@ -314,12 +320,14 @@ const Recipes: React.FC = () => {
         targetColorEbc: state.beverageType === 'Beer' ? recipeDetails.ebc : undefined,
         ingredients: formattedIngredients,
         steps: formattedSteps,
-        createdBy: 'user'
+        createdBy: userId
       };
 
       if (state.editingRecipeId) await updateRecipe(state.editingRecipeId, recipeData);
       else await saveRecipe(recipeData);
 
+      setAiProposedIngredients([]);
+      setAiProposedSteps([]);
       state.resetForm();
       state.setView('list');
     } finally { state.setIsSaving(false); }

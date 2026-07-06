@@ -117,7 +117,7 @@ const getRelevantFamilyKeywords = (styleNameLower: string, categoryLower: string
  * @returns A concatenated lowercase string of relevant fields.
  */
 const ingredientSearchText = (ing: IngredientUnion): string =>
-  [ing.notes, (ing as any).description, ing.origin, ing.producer, ing.name]
+  [ing.notes, ing.description, ing.origin, ing.producer, ing.name]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();

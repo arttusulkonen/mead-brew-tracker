@@ -24,6 +24,7 @@ interface IngredientRow {
   name: string;
   category: IngredientCategory;
   notes?: string;
+  description?: string;
   origin?: string;
   producer?: string;
   updated_at: string;
@@ -47,7 +48,7 @@ interface IngredientRow {
   chloride_ppm?: number;
   bicarbonate_ppm?: number;
   additive_type?: AdditiveType;
-  nutrient_role?: string;
+  nutrient_role?: 'Rehydration' | 'Fermentation' | 'Other';
   addition_stage?: string;
   yan_value_per_gram_per_liter?: number;
   dosage_per_10_liters?: number;
@@ -60,6 +61,7 @@ const mapIngredientRow = (item: IngredientRow): IngredientUnion => {
     name: item.name,
     category: item.category,
     notes: item.notes,
+    description: item.description,
     origin: item.origin,
     producer: item.producer,
     updatedAt: item.updated_at,
@@ -124,9 +126,10 @@ const mapIngredientRow = (item: IngredientRow): IngredientUnion => {
         yanValuePerGramPerLiter: item.yan_value_per_gram_per_liter,
         dosagePer10Liters: item.dosage_per_10_liters,
         dosagePerGramYeast: item.dosage_per_gram_yeast,
-      } as any;
+      };
     default:
-      throw new Error(`Unknown category: ${item.category}`);
+      console.warn(`Unknown category: ${item.category}, returning base fallback.`);
+      return base as IngredientUnion;
   }
 };
 
