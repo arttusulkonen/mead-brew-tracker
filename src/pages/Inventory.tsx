@@ -194,9 +194,9 @@ const Inventory: React.FC = () => {
     );
   }
 
-  // console.log all inventory items for debugging in json format.
+if (import.meta.env.DEV) {
   console.log('Inventory items:', JSON.stringify(inventory, null, 2));
-
+}
   return (
     <div className="inventory-page">
       {isAddModalOpen && (
