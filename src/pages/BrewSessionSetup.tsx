@@ -11,7 +11,7 @@ import { supabase } from '../supabase/client';
 import type { RecipeStep } from '../types/recipe';
 import { MEAD_STYLES } from '../utils/meadConstants';
 
-const generateSmartSteps = (baseSteps: RecipeStep[], beverageType: string, ingredients: any[], tosna: any | null, estimatedOg: number, t: any): RecipeStep[] => {
+const generateSmartSteps = (baseSteps: RecipeStep[], beverageType: string, ingredients: any[], tosna: any | null, estimatedOg: number, targetFg: number, t: any): RecipeStep[] => {
   const result = [...baseSteps];
 
   if (beverageType === 'Mead' && tosna) {
@@ -22,7 +22,7 @@ const generateSmartSteps = (baseSteps: RecipeStep[], beverageType: string, ingre
       { id: crypto.randomUUID(), stepNumber: 0, phase: 'Fermentation', title: `${t('constants.actions.tosna')} 1 (24h)`, description: t('Add {{amount}}g of {{nutrient}}. Rehydrate in ~50ml of must, stir gently to degas before adding.', { amount: tosna.dosePerAdditionGrams, nutrient: nutrientName }), durationValue: 1, durationUnit: 'days', targetTempC: null },
       { id: crypto.randomUUID(), stepNumber: 0, phase: 'Fermentation', title: `${t('constants.actions.tosna')} 2 (48h)`, description: t('Add {{amount}}g of {{nutrient}}. Degas before and after addition.', { amount: tosna.dosePerAdditionGrams, nutrient: nutrientName }), durationValue: 1, durationUnit: 'days', targetTempC: null },
       { id: crypto.randomUUID(), stepNumber: 0, phase: 'Fermentation', title: `${t('constants.actions.tosna')} 3 (72h)`, description: t('Add {{amount}}g of {{nutrient}}. Continue degassing daily.', { amount: tosna.dosePerAdditionGrams, nutrient: nutrientName }), durationValue: 1, durationUnit: 'days', targetTempC: null },
-      { id: crypto.randomUUID(), stepNumber: 0, phase: 'Fermentation', title: `${t('constants.actions.tosna')} 4 (1/3 Sugar Break)`, description: t('Add {{amount}}g of {{nutrient}} when gravity reaches {{sg}}. This is the final nutrient addition.', { amount: tosna.dosePerAdditionGrams, nutrient: nutrientName, sg: calculateOneThirdSugarBreak(estimatedOg).toFixed(3) }), durationValue: 1, durationUnit: 'days', targetTempC: null }
+      { id: crypto.randomUUID(), stepNumber: 0, phase: 'Fermentation', title: `${t('constants.actions.tosna')} 4 (1/3 Sugar Break)`, description: t('Add {{amount}}g of {{nutrient}} when gravity reaches {{sg}}. This is the final nutrient addition.', { amount: tosna.dosePerAdditionGrams, nutrient: nutrientName, sg: calculateOneThirdSugarBreak(estimatedOg, targetFg).toFixed(3) }), durationValue: 1, durationUnit: 'days', targetTempC: null }
     ];
     result.push(...tosnaSteps);
   }
@@ -131,7 +131,7 @@ const BrewSessionSetup: React.FC = () => {
       const consumed = await consumeIngredients(activeBreweryId, mapped);
       if (!consumed) throw new Error('Inventory consumption failed');
 
-      const smartSteps = generateSmartSteps(currentRecipe.steps, currentRecipe.beverageType, sessionIngredients, sessionDetails.tosna, sessionDetails.og, t);
+      const smartSteps = generateSmartSteps(currentRecipe.steps, currentRecipe.beverageType, sessionIngredients, sessionDetails.tosna, sessionDetails.og, sessionDetails.fg, t);
       const { data: authData } = await supabase.auth.getUser();
       const userId = authData?.user?.id;
       

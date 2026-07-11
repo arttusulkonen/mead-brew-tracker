@@ -1,7 +1,7 @@
 // src/store/useInventoryStore.ts
 import { create } from 'zustand';
 import { supabase } from '../supabase/client';
-import type { IngredientCategory, IngredientUnion, PopulatedInventoryItem, WorkspaceInventoryItem } from '../types/ingredient';
+import type { AdditiveType, IngredientCategory, IngredientUnion, PopulatedInventoryItem, WorkspaceInventoryItem } from '../types/ingredient';
 
 export interface InventoryState {
   globalIngredients: IngredientUnion[];
@@ -15,16 +15,53 @@ export interface InventoryState {
   addCustomIngredient: (ingredientData: Omit<IngredientUnion, 'id' | 'updatedAt'>) => Promise<IngredientUnion | null>;
   updateItem: (breweryId: string | null | undefined, itemId: string, updates: Omit<Partial<WorkspaceInventoryItem>, 'id' | 'breweryId'>) => Promise<boolean>;
   removeItem: (breweryId: string | null | undefined, itemId: string) => Promise<boolean>;
-  consumeIngredients: (breweryId: string | null | undefined, ingredientsToConsume: { globalIngredientId: string, quantity: number }[]) => Promise<boolean>;
+  consumeIngredients: (breweryId: string | null | undefined, ingredientsToConsume: { globalIngredientId: string, inventoryItemId?: string, quantity: number }[]) => Promise<boolean>;
   clearInventory: () => void;
 }
 
-const mapIngredientRow = (item: any): IngredientUnion => {
+interface IngredientRow {
+  id: string;
+  name: string;
+  category: IngredientCategory;
+  notes?: string;
+  description?: string;
+  origin?: string;
+  producer?: string;
+  updated_at: string;
+  created_by?: string;
+  form?: string;
+  yield_ppg?: number;
+  color_ebc?: number;
+  moisture_content_pct?: number;
+  diastatic_power_lintner?: number;
+  sugar_content_brix?: number;
+  temp_min_c?: number;
+  temp_max_c?: number;
+  alcohol_tolerance_pct?: number;
+  attenuation_pct?: number;
+  nitrogen_demand?: 'Low' | 'Medium' | 'High' | 'Very High';
+  alpha_acid_pct?: number;
+  calcium_ppm?: number;
+  magnesium_ppm?: number;
+  sodium_ppm?: number;
+  sulfate_ppm?: number;
+  chloride_ppm?: number;
+  bicarbonate_ppm?: number;
+  additive_type?: AdditiveType;
+  nutrient_role?: 'Rehydration' | 'Fermentation' | 'Other';
+  addition_stage?: string;
+  yan_value_per_gram_per_liter?: number;
+  dosage_per_10_liters?: number;
+  dosage_per_gram_yeast?: number;
+}
+
+const mapIngredientRow = (item: IngredientRow): IngredientUnion => {
   const base = {
     id: item.id,
     name: item.name,
     category: item.category,
     notes: item.notes,
+    description: item.description,
     origin: item.origin,
     producer: item.producer,
     updatedAt: item.updated_at,
@@ -36,60 +73,63 @@ const mapIngredientRow = (item: any): IngredientUnion => {
       return {
         ...base,
         category: 'Fermentable',
-        type: item.form,
-        yieldPpg: item.yield_ppg,
-        colorEbc: item.color_ebc,
+        type: item.form as 'Grain' | 'Extract' | 'Sugar' | 'Honey' | 'Fruit',
+        yieldPpg: item.yield_ppg || 0,
+        colorEbc: item.color_ebc || 0,
         moistureContentPct: item.moisture_content_pct,
         diastaticPowerLintner: item.diastatic_power_lintner,
         isMashed: item.form === 'Grain',
-      } as any;
+      };
     case 'Honey':
       return {
         ...base,
         category: 'Honey',
-        sugarContentBrix: item.sugar_content_brix,
-        moistureContentPct: item.moisture_content_pct,
-      } as any;
+        sugarContentBrix: item.sugar_content_brix || 0,
+        moistureContentPct: item.moisture_content_pct || 0,
+      };
     case 'Yeast':
       return {
         ...base,
         category: 'Yeast',
-        form: item.form,
-        tempMinC: item.temp_min_c,
-        tempMaxC: item.temp_max_c,
-        alcoholTolerancePct: item.alcohol_tolerance_pct,
-        attenuationPct: item.attenuation_pct,
-        nitrogenDemand: item.nitrogen_demand,
-      } as any;
+        form: item.form as 'Liquid' | 'Dry',
+        tempMinC: item.temp_min_c || 0,
+        tempMaxC: item.temp_max_c || 0,
+        alcoholTolerancePct: item.alcohol_tolerance_pct || 0,
+        attenuationPct: item.attenuation_pct || 0,
+        nitrogenDemand: item.nitrogen_demand || 'Medium',
+      };
     case 'Hops':
       return {
         ...base,
         category: 'Hops',
-        form: item.form,
-        alphaAcidPct: item.alpha_acid_pct,
-      } as any;
+        form: item.form as 'Pellet' | 'Whole' | 'Extract',
+        alphaAcidPct: item.alpha_acid_pct || 0,
+      };
     case 'Water Profile':
       return {
         ...base,
         category: 'Water Profile',
-        calciumPpm: item.calcium_ppm,
-        magnesiumPpm: item.magnesium_ppm,
-        sodiumPpm: item.sodium_ppm,
-        sulfatePpm: item.sulfate_ppm,
-        chloridePpm: item.chloride_ppm,
-        bicarbonatePpm: item.bicarbonate_ppm,
-      } as any;
+        calciumPpm: item.calcium_ppm || 0,
+        magnesiumPpm: item.magnesium_ppm || 0,
+        sodiumPpm: item.sodium_ppm || 0,
+        sulfatePpm: item.sulfate_ppm || 0,
+        chloridePpm: item.chloride_ppm || 0,
+        bicarbonatePpm: item.bicarbonate_ppm || 0,
+      };
     case 'Additive':
       return {
         ...base,
         category: 'Additive',
-        additiveType: item.additive_type,
+        additiveType: item.additive_type as AdditiveType,
+        nutrientRole: item.nutrient_role,
+        additionStage: item.addition_stage,
         yanValuePerGramPerLiter: item.yan_value_per_gram_per_liter,
         dosagePer10Liters: item.dosage_per_10_liters,
         dosagePerGramYeast: item.dosage_per_gram_yeast,
-      } as any;
+      };
     default:
-      return base as any;
+      console.warn(`Unknown category: ${item.category}, returning base fallback.`);
+      return base as IngredientUnion;
   }
 };
 
@@ -109,10 +149,10 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       const { data, error } = await query;
       if (error) throw error;
 
-      const ingredients = (data ?? []).map(mapIngredientRow);
+      const ingredients = (data as IngredientRow[] ?? []).map(mapIngredientRow);
       set({ globalIngredients: ingredients });
-    } catch (err: any) {
-      set({ error: err?.message || 'Failed to fetch global ingredients' });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'Failed to fetch global ingredients' });
     } finally {
       set({ isLoading: false });
     }
@@ -140,12 +180,12 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         unit: row.unit,
         batchLotNumber: row.batch_lot_number,
         expirationDate: row.expiration_date,
-        ingredient: mapIngredientRow(row.ingredient),
+        ingredient: mapIngredientRow(row.ingredient as IngredientRow),
       }));
 
       set({ inventory: items });
-    } catch (err: any) {
-      set({ error: err?.message || 'Failed to fetch inventory' });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'Failed to fetch inventory' });
     } finally {
       set({ isLoading: false });
     }
@@ -194,8 +234,8 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
       await get().fetchInventory(breweryId);
       return true;
-    } catch (err: any) {
-      set({ error: err?.message || 'Failed to add item', isLoading: false });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'Failed to add item', isLoading: false });
       return false;
     } finally {
       set({ isLoading: false });
@@ -205,7 +245,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   addCustomIngredient: async (ingredientData) => {
     set({ isLoading: true, error: null });
     try {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         name: ingredientData.name,
         category: ingredientData.category,
         notes: ingredientData.notes,
@@ -227,6 +267,8 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       if ('tempMaxC' in ingredientData) payload.temp_max_c = ingredientData.tempMaxC;
       if ('nitrogenDemand' in ingredientData) payload.nitrogen_demand = ingredientData.nitrogenDemand;
       if ('additiveType' in ingredientData) payload.additive_type = ingredientData.additiveType;
+      if ('nutrientRole' in ingredientData) payload.nutrient_role = ingredientData.nutrientRole;
+      if ('additionStage' in ingredientData) payload.addition_stage = ingredientData.additionStage;
       if ('yanValuePerGramPerLiter' in ingredientData) payload.yan_value_per_gram_per_liter = ingredientData.yanValuePerGramPerLiter;
       if ('dosagePerGramYeast' in ingredientData) payload.dosage_per_gram_yeast = ingredientData.dosagePerGramYeast;
       if ('dosagePer10Liters' in ingredientData) payload.dosage_per_10_liters = ingredientData.dosagePer10Liters;
@@ -246,13 +288,13 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       if (error) throw error;
 
       if (data) {
-        const newIngredient = mapIngredientRow(data);
+        const newIngredient = mapIngredientRow(data as IngredientRow);
         set(state => ({ globalIngredients: [...state.globalIngredients, newIngredient] }));
         return newIngredient;
       }
       return null;
-    } catch (err: any) {
-      set({ error: err?.message || 'Failed to add custom ingredient' });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'Failed to add custom ingredient' });
       return null;
     } finally {
       set({ isLoading: false });
@@ -263,7 +305,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     if (!breweryId || !itemId) return false;
     set({ isLoading: true, error: null });
     try {
-      const payload: any = {};
+      const payload: Record<string, unknown> = {};
       if (updates.quantityOnHand !== undefined) payload.quantity_on_hand = updates.quantityOnHand;
       if (updates.unit !== undefined) payload.unit = updates.unit;
       if (updates.batchLotNumber !== undefined) payload.batch_lot_number = updates.batchLotNumber;
@@ -283,8 +325,8 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         )
       }));
       return true;
-    } catch (err: any) {
-      set({ error: err?.message || 'Failed to update inventory item' });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'Failed to update inventory item' });
       return false;
     } finally {
       set({ isLoading: false });
@@ -307,8 +349,8 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         inventory: state.inventory.filter(item => item.id !== itemId)
       }));
       return true;
-    } catch (err: any) {
-      set({ error: err?.message || 'Failed to remove inventory item' });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'Failed to remove inventory item' });
       return false;
     } finally {
       set({ isLoading: false });
@@ -324,7 +366,8 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
       for (const ing of ingredientsToConsume) {
         if (ing.quantity > 0) {
-          const invItem = currentInventory.find(i => i.ingredientId === ing.globalIngredientId);
+          const invItem = currentInventory.find(i => i.id === ing.inventoryItemId) || currentInventory.find(i => i.ingredientId === ing.globalIngredientId);
+          
           if (invItem) {
             let decrementQty = ing.quantity;
             switch (invItem.unit) {
@@ -360,7 +403,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         }
       }
       
-     const results = await Promise.all(updatePromises);
+      const results = await Promise.all(updatePromises);
       
       for (const result of results) {
         if (result.error) throw result.error;
@@ -368,8 +411,8 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       
       await get().fetchInventory(breweryId);
       return true;
-    } catch (err: any) {
-      set({ error: err?.message || 'Failed to consume ingredients', isLoading: false });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'Failed to consume ingredients', isLoading: false });
       return false;
     } finally {
       set({ isLoading: false });

@@ -1,7 +1,6 @@
-// src/store/useRecipeStore.ts
 import { create } from 'zustand';
 import { supabase } from '../supabase/client';
-import type { Recipe } from '../types/recipe';
+import type { BeverageType, IdealTargetCurves, Recipe, RecipeIngredientReference, RecipeStep } from '../types/recipe';
 
 export interface RecipeState {
   recipes: Recipe[];
@@ -16,7 +15,27 @@ export interface RecipeState {
   updateRecipe: (recipeId: string, recipe: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Recipe | null>;
 }
 
-const mapRowToRecipe = (data: any): Recipe => ({
+interface RecipeRow {
+  id: string;
+  brewery_id: string;
+  name: string;
+  beverage_type: BeverageType;
+  target_style: string;
+  expected_batch_size_liters: number;
+  target_original_gravity: number;
+  target_final_gravity: number;
+  target_abv: number;
+  target_ibu?: number;
+  target_color_ebc?: number;
+  ingredients: RecipeIngredientReference[] | null;
+  steps: RecipeStep[] | null;
+  target_curves?: IdealTargetCurves;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+}
+
+const mapRowToRecipe = (data: RecipeRow): Recipe => ({
   id: data.id,
   breweryId: data.brewery_id,
   name: data.name,
@@ -42,10 +61,6 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
   isLoading: false,
   error: null,
 
-  /**
-   * Fetches all recipes associated with a specific brewery.
-   * @param breweryId The ID of the brewery workspace.
-   */
   fetchRecipes: async (breweryId) => {
     if (!breweryId) {
       set({ recipes: [], isLoading: false, error: null });
@@ -62,21 +77,14 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
 
       if (error) throw error;
       
-      const formattedRecipes = (data ?? []).map(mapRowToRecipe);
+      const formattedRecipes = ((data as RecipeRow[]) ?? []).map(mapRowToRecipe);
       
       set({ recipes: formattedRecipes, isLoading: false });
-    } catch (error: any) {
-      set({ error: error?.message || 'Failed to fetch recipes', isLoading: false });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : 'Failed to fetch recipes', isLoading: false });
     }
   },
 
-  /**
-   * Saves a NEW recipe. For editing an existing recipe, use updateRecipe
-   * instead - calling saveRecipe again would insert a duplicate row rather
-   * than updating the original (Supabase .insert() always creates a new row).
-   * @param recipeData The recipe object excluding auto-generated fields.
-   * @returns The saved recipe object.
-   */
   saveRecipe: async (recipeData) => {
     set({ isLoading: true, error: null });
     try {
@@ -98,30 +106,23 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
           target_curves: recipeData.targetCurves,
           created_by: recipeData.createdBy
         }])
-        .select()
-        .single();
+        .select();
 
       if (error) throw error;
       
       await get().fetchRecipes(recipeData.breweryId);
       
-      if (!data) return null;
+      if (!data || data.length === 0) return null;
       
-      return mapRowToRecipe(data);
+      return mapRowToRecipe(data[0] as RecipeRow);
       
-    } catch (error: any) {
-      set({ error: error?.message || 'Failed to save recipe', isLoading: false });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save recipe';
+      set({ error: errorMessage, isLoading: false });
       throw error;
     }
   },
 
-  /**
-   * Updates an EXISTING recipe in place (UPDATE, not INSERT). Use this when
-   * editingRecipeId is set in Recipes.tsx, otherwise the old saveRecipe()
-   * path silently creates a duplicate row for every edit.
-   * @param recipeId The id of the recipe row to update.
-   * @param recipeData The full recipe object to persist.
-   */
   updateRecipe: async (recipeId, recipeData) => {
     set({ isLoading: true, error: null });
     try {
@@ -143,23 +144,26 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
           target_curves: recipeData.targetCurves
         })
         .eq('id', recipeId)
-        .select()
-        .single();
+        .select();
 
       if (error) throw error;
 
+      if (!data || data.length === 0) {
+        throw new Error("Update blocked by database. Please check your RLS policies for the 'recipes' table.");
+      }
+
       await get().fetchRecipes(recipeData.breweryId);
 
-      if (!data) return null;
-
-      const formatted = mapRowToRecipe(data);
+      const formatted = mapRowToRecipe(data[0] as RecipeRow);
       set(state => ({
-        currentRecipe: state.currentRecipe?.id === recipeId ? formatted : state.currentRecipe
+        currentRecipe: state.currentRecipe?.id === recipeId ? formatted : state.currentRecipe,
+        recipes: state.recipes.map(r => r.id === recipeId ? formatted : r)
       }));
 
       return formatted;
-    } catch (error: any) {
-      set({ error: error?.message || 'Failed to update recipe', isLoading: false });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update recipe';
+      set({ error: errorMessage, isLoading: false });
       throw error;
     }
   },
@@ -181,10 +185,10 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       if (error) throw error;
       
       if (data) {
-        set({ currentRecipe: mapRowToRecipe(data), isLoading: false });
+        set({ currentRecipe: mapRowToRecipe(data as RecipeRow), isLoading: false });
       }
-    } catch (error: any) {
-      set({ error: error?.message || 'Recipe not found', isLoading: false, currentRecipe: null });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : 'Recipe not found', isLoading: false, currentRecipe: null });
     }
   },
 
@@ -207,8 +211,9 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
         currentRecipe: state.currentRecipe?.id === recipeId ? null : state.currentRecipe,
         isLoading: false
       }));
-    } catch (error: any) {
-      set({ error: error?.message || 'Failed to delete recipe', isLoading: false });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete recipe';
+      set({ error: errorMessage, isLoading: false });
       throw error;
     }
   },

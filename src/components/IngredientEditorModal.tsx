@@ -1,7 +1,7 @@
 // src/components/IngredientEditorModal.tsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaSearch, FaTimes } from 'react-icons/fa';
+import { FaInfoCircle, FaSearch, FaTimes } from 'react-icons/fa';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useInventoryStore } from '../store/useInventoryStore';
 import type { AdditiveType, BaseIngredient, IngredientCategory, UnitType } from '../types/ingredient';
@@ -306,9 +306,9 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
           baseData.nutrientRole = formData.nutrientRole;
         }
         if (formData.additionStage) baseData.additionStage = formData.additionStage;
-        if (formData.yanValuePerGramPerLiter) baseData.yanValuePerGramPerLiter = formData.yanValuePerGramPerLiter;
-        if (formData.dosagePerGramYeast) baseData.dosagePerGramYeast = formData.dosagePerGramYeast;
-        if (formData.dosagePer10Liters) baseData.dosagePer10Liters = formData.dosagePer10Liters;
+        if (formData.yanValuePerGramPerLiter != null) baseData.yanValuePerGramPerLiter = formData.yanValuePerGramPerLiter;
+        if (formData.dosagePerGramYeast != null) baseData.dosagePerGramYeast = formData.dosagePerGramYeast;
+        if (formData.dosagePer10Liters != null) baseData.dosagePer10Liters = formData.dosagePer10Liters;
       } else if (formData.category === 'Water Profile') {
         baseData.calciumPpm = formData.calciumPpm || 0;
         baseData.magnesiumPpm = formData.magnesiumPpm || 0;
@@ -362,7 +362,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
       <div className="editor-modal" onMouseDown={e => e.stopPropagation()}>
         <div className="editor-modal__header">
           <h2>{mode === 'inventory' ? t('Add to Inventory', 'Добавить на склад') : t('Add Ingredient', 'Добавить ингредиент')}</h2>
-          <button type="button" className="editor-modal__close-btn" onClick={onClose} aria-label={t('Close')}>
+          <button type="button" className="btn-secondary" onClick={onClose} aria-label={t('Close')}>
             <FaTimes />
           </button>
         </div>
@@ -645,7 +645,10 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
             {formData.category === 'Additive' && (
               <>
                 <div className="form-field">
-                  <label className="form-field__label">{t('Additive Type')}</label>
+                  <label className="form-field__label" style={{ display: 'flex', alignItems: 'center' }}>
+                    {t('Additive Type')}
+                    <FaInfoCircle title={t('Category of the additive')} style={{ marginLeft: '6px', color: 'var(--text-secondary)' }} />
+                  </label>
                   <select
                     className="form-field__select"
                     value={formData.additiveType ?? 'Nutrient'}
@@ -668,7 +671,10 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                 
                 {formData.additiveType === 'Nutrient' && (
                   <div className="form-field">
-                    <label className="form-field__label">{t('Nutrient Role', 'Назначение нутриента')}</label>
+                    <label className="form-field__label" style={{ display: 'flex', alignItems: 'center' }}>
+                      {t('Nutrient Role', 'Назначение нутриента')}
+                      <FaInfoCircle title={t('Rehydration for yeast prep (e.g., Go-Ferm). Fermentation for active yeast feeding (e.g., Fermaid O).')} style={{ marginLeft: '6px', color: 'var(--text-secondary)' }} />
+                    </label>
                     <select
                       className="form-field__select"
                       value={formData.nutrientRole ?? 'Fermentation'}
@@ -683,7 +689,10 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
 
                 {mode === 'recipe' && (
                   <div className="form-field">
-                    <label className="form-field__label">{t('Addition Stage')}</label>
+                    <label className="form-field__label" style={{ display: 'flex', alignItems: 'center' }}>
+                      {t('Addition Stage')}
+                      <FaInfoCircle title={t('When to add: Primary, Secondary, Bottling, Rehydration...')} style={{ marginLeft: '6px', color: 'var(--text-secondary)' }} />
+                    </label>
                     <input
                       type="text"
                       className="form-field__input"
@@ -693,42 +702,60 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                     />
                   </div>
                 )}
-                <div className="form-field">
-                  <label className="form-field__label">{t('YAN Value')} (mg N / g / L)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="form-field__input"
-                    value={formData.yanValuePerGramPerLiter ?? ''}
-                    onChange={e => handleChange('yanValuePerGramPerLiter', parseFloat(e.target.value) || 0)}
-                    placeholder={t('Optional')}
-                  />
-                </div>
-                <div className="form-field">
-                  <label className="form-field__label">{t('Dosage per 1g Yeast')}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="form-field__input"
-                    value={formData.dosagePerGramYeast ?? ''}
-                    onChange={e => handleChange('dosagePerGramYeast', parseFloat(e.target.value) || 0)}
-                    placeholder={t('Optional')}
-                  />
-                </div>
-                <div className="form-field">
-                  <label className="form-field__label">{t('Dosage per 10L')}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="form-field__input"
-                    value={formData.dosagePer10Liters ?? ''}
-                    onChange={e => handleChange('dosagePer10Liters', parseFloat(e.target.value) || 0)}
-                    placeholder={t('Optional')}
-                  />
-                </div>
+
+                {formData.additiveType === 'Nutrient' && formData.nutrientRole === 'Fermentation' && (
+                  <div className="form-field">
+                    <label className="form-field__label" style={{ display: 'flex', alignItems: 'center' }}>
+                      {t('YAN Value')} (mg N / g / L)
+                      <FaInfoCircle title={t('Yeast Assimilable Nitrogen. Example: Fermaid O = 5.2')} style={{ marginLeft: '6px', color: 'var(--text-secondary)' }} />
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="form-field__input"
+                      value={formData.yanValuePerGramPerLiter ?? ''}
+                      onChange={e => handleChange('yanValuePerGramPerLiter', parseFloat(e.target.value) || 0)}
+                      placeholder={t('Optional')}
+                    />
+                  </div>
+                )}
+
+                {formData.additiveType === 'Nutrient' && formData.nutrientRole === 'Rehydration' && (
+                  <div className="form-field">
+                    <label className="form-field__label" style={{ display: 'flex', alignItems: 'center' }}>
+                      {t('Dosage per 1g Yeast')}
+                      <FaInfoCircle title={t('Grams of nutrient per 1g of dry yeast. Standard is 1.25g for Go-Ferm.')} style={{ marginLeft: '6px', color: 'var(--text-secondary)' }} />
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="form-field__input"
+                      value={formData.dosagePerGramYeast ?? ''}
+                      onChange={e => handleChange('dosagePerGramYeast', parseFloat(e.target.value) || 0)}
+                      placeholder={t('Optional')}
+                    />
+                  </div>
+                )}
+
+                {(formData.additiveType !== 'Nutrient' || formData.nutrientRole === 'Fermentation') && (
+                  <div className="form-field">
+                    <label className="form-field__label" style={{ display: 'flex', alignItems: 'center' }}>
+                      {t('Dosage per 10L')}
+                      <FaInfoCircle title={t('Recommended dosage in grams per 10 liters of volume.')} style={{ marginLeft: '6px', color: 'var(--text-secondary)' }} />
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="form-field__input"
+                      value={formData.dosagePer10Liters ?? ''}
+                      onChange={e => handleChange('dosagePer10Liters', parseFloat(e.target.value) || 0)}
+                      placeholder={t('Optional')}
+                    />
+                  </div>
+                )}
               </>
             )}
 
@@ -845,8 +872,8 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
           )}
 
           <div className="editor-modal__footer">
-            <button type="button" className="editor-modal__close-btn" onClick={onClose} style={{ padding: '8px 16px', border: '1px solid var(--border-color)', borderRadius: '6px', background: 'transparent' }}>{t('Cancel')}</button>
-            <button type="submit" style={{ padding: '8px 16px', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold' }} disabled={isPersistingToStock}>
+            <button type="button" className="btn-secondary" onClick={onClose} style={{ padding: '8px 16px', border: '1px solid var(--border-color)', borderRadius: '6px', background: 'transparent' }}>{t('Cancel')}</button>
+            <button type="submit" className="btn-primary" disabled={isPersistingToStock}>
               {isPersistingToStock
                 ? t('Saving...')
                 : mode === 'inventory'

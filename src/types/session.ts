@@ -1,10 +1,11 @@
 // src/types/session.ts
+import type { UUID } from './ingredient';
 import type { BeverageType, RecipeIngredientReference, RecipeStep } from './recipe';
 
 export type BrewSessionStage = 'planned' | 'mashing' | 'boiling' | 'fermenting' | 'aging' | 'completed' | 'split';
 
 export interface BrewLog {
-  id: string;
+  id: UUID;
   timestamp: string;
   dayNumber: number;
   sg: number | null;
@@ -12,7 +13,7 @@ export interface BrewLog {
   tempC: number | null;
   notes: string;
   actionTaken: string;
-  stepId?: string | null;
+  stepId?: UUID | null;
 }
 
 export interface TosnaAddition {
@@ -30,9 +31,9 @@ export interface TosnaSchedule {
 }
 
 export interface BrewSession {
-  id: string;
-  recipeId: string | null;
-  breweryId: string;
+  id: UUID;
+  recipeId: UUID | null;
+  breweryId: UUID;
   recipeName: string;
   beverageType?: BeverageType;
   status: BrewSessionStage;
@@ -53,10 +54,10 @@ export interface BrewSession {
   completedDate: string | null;
   createdAt: string;
   updatedAt: string;
-  createdBy: string;
+  createdBy: UUID;
 
   isSplit?: boolean;
-  parentSessionId?: string | null;
+  parentSessionId?: UUID | null;
   splitTimestamp?: string | null;
   isAggregated?: boolean;
 }

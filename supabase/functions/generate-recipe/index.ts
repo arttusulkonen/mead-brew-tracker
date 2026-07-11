@@ -1,8 +1,4 @@
-/*
- * File: supabase/functions/generate-recipe/index.ts
- * Description: Edge function to handle AI recipe generation requests, validating ingredients and invoking the Gemini API.
- */
-
+// supabase/functions/generate-recipe/index.ts
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { knowledgeBase } from "./knowledge_base.ts";
 import { systemRules } from "./mead_rules.ts";
@@ -10,6 +6,7 @@ import { systemRules } from "./mead_rules.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
 
 const LANGUAGE_MAPPING: Record<string, string> = {

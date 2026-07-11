@@ -1,4 +1,8 @@
-//src/utils/meadConstants.ts
+/*
+ * File: src/utils/meadConstants.ts
+ * Description: Static constants and configuration arrays for mead styles, sweetness levels, and brewing processes.
+ */
+
 export const MEAD_STYLES = [
   { id: 'traditional', name: 'constants.styles.traditional', boilProtocol: 'No-Boil' },
   { id: 'session_hopped', name: 'constants.styles.session_hopped', boilProtocol: 'Boil (60m)' },

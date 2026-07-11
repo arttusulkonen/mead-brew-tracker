@@ -1,4 +1,10 @@
-//src/utils/bjcpMatchEngine.ts
+/*
+ * File: src/utils/bjcpMatchEngine.ts
+ * Description: Utility for validating recipes against BJCP style guidelines and suggesting ingredients based on text matching.
+ */
+
+import type { IngredientUnion } from '../types/ingredient';
+
 export interface StyleRange {
   minimum: { value: number };
   maximum: { value: number };
@@ -31,6 +37,16 @@ export interface StyleValidationResult {
   isValidOverall: boolean;
 }
 
+/**
+ * Validates recipe metrics against given BJCP style boundaries.
+ * @param style The target BJCP style.
+ * @param og Original Gravity.
+ * @param fg Final Gravity.
+ * @param abv Alcohol By Volume.
+ * @param ibu International Bitterness Units.
+ * @param ebc Color in EBC.
+ * @returns Validation results for each metric and an overall validity flag.
+ */
 export const validateStyleBounds = (
   style: BjcpStyle | null | undefined,
   og: number,
@@ -70,9 +86,21 @@ const STYLE_FAMILY_KEYWORDS: Record<string, string[]> = {
   ale: ['ale']
 };
 
-const matchesAnyKeyword = (haystack: string, keywords: string[]) =>
+/**
+ * Checks if any keyword from the list is present in the text.
+ * @param haystack The text to search within.
+ * @param keywords The list of keywords to search for.
+ * @returns True if at least one keyword is found.
+ */
+const matchesAnyKeyword = (haystack: string, keywords: string[]): boolean =>
   keywords.some(k => haystack.includes(k));
 
+/**
+ * Retrieves relevant family keywords based on style name and category.
+ * @param styleNameLower The style name in lowercase.
+ * @param categoryLower The style category in lowercase.
+ * @returns An array of matching keywords.
+ */
 const getRelevantFamilyKeywords = (styleNameLower: string, categoryLower: string): string[] => {
   const combined = `${styleNameLower} ${categoryLower}`;
   return Object.values(STYLE_FAMILY_KEYWORDS)
@@ -83,15 +111,27 @@ const getRelevantFamilyKeywords = (styleNameLower: string, categoryLower: string
 // Раньше совпадение искалось только в ing.notes - но в реальных данных это
 // поле у части ингредиентов (например, у хмеля) пустое, хотя описание есть в
 // других полях (description, origin, producer) или даже в самом названии.
-const ingredientSearchText = (ing: any): string =>
+/**
+ * Constructs a searchable text string from an ingredient's properties.
+ * @param ing The ingredient object.
+ * @returns A concatenated lowercase string of relevant fields.
+ */
+const ingredientSearchText = (ing: IngredientUnion): string =>
   [ing.notes, ing.description, ing.origin, ing.producer, ing.name]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
 
+/**
+ * Suggests hops and yeast ingredients based on the selected BJCP style.
+ * @param style The target BJCP style.
+ * @param globalIngredients The full list of global ingredients.
+ * @param popularIngredientIds Sets of popular ingredient IDs for this style.
+ * @returns Suggested hops and yeasts.
+ */
 export const getSuggestedIngredients = (
   style: BjcpStyle | null | undefined,
-  globalIngredients: any[],
+  globalIngredients: IngredientUnion[],
   /**
    * Опционально: id ингредиентов, которые анонимная статистика сообщества
    * (таблица style_ingredient_stats) считает популярными для этого стиля.
@@ -106,7 +146,7 @@ export const getSuggestedIngredients = (
   const categoryLower = style.category.toLowerCase();
   const familyKeywords = getRelevantFamilyKeywords(styleNameLower, categoryLower);
 
-  const matchesByText = (ing: any): boolean => {
+  const matchesByText = (ing: IngredientUnion): boolean => {
     const text = ingredientSearchText(ing);
     if (!text) return false;
     if (text.includes(styleNameLower) || text.includes(categoryLower)) return true;
