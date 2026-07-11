@@ -1,3 +1,4 @@
+// src/pages/BrewSessionSetup.tsx
 import { calculateAbvCrouch, calculateOneThirdSugarBreak, calculateTosna, estimateOG } from '@mead-tracker/math';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,7 +11,7 @@ import { supabase } from '../supabase/client';
 import type { RecipeStep } from '../types/recipe';
 import { MEAD_STYLES } from '../utils/meadConstants';
 
-const generateSmartSteps = (baseSteps: RecipeStep[], beverageType: string, ingredients: any[], tosna: any | null, estimatedOg: number, t: any): RecipeStep[] => {
+const generateSmartSteps = (baseSteps: RecipeStep[], beverageType: string, ingredients: any[], tosna: any | null, estimatedOg: number, targetFg: number, t: any): RecipeStep[] => {
   const result = [...baseSteps];
 
   if (beverageType === 'Mead' && tosna) {
@@ -21,7 +22,7 @@ const generateSmartSteps = (baseSteps: RecipeStep[], beverageType: string, ingre
       { id: crypto.randomUUID(), stepNumber: 0, phase: 'Fermentation', title: `${t('constants.actions.tosna')} 1 (24h)`, description: t('Add {{amount}}g of {{nutrient}}. Rehydrate in ~50ml of must, stir gently to degas before adding.', { amount: tosna.dosePerAdditionGrams, nutrient: nutrientName }), durationValue: 1, durationUnit: 'days', targetTempC: null },
       { id: crypto.randomUUID(), stepNumber: 0, phase: 'Fermentation', title: `${t('constants.actions.tosna')} 2 (48h)`, description: t('Add {{amount}}g of {{nutrient}}. Degas before and after addition.', { amount: tosna.dosePerAdditionGrams, nutrient: nutrientName }), durationValue: 1, durationUnit: 'days', targetTempC: null },
       { id: crypto.randomUUID(), stepNumber: 0, phase: 'Fermentation', title: `${t('constants.actions.tosna')} 3 (72h)`, description: t('Add {{amount}}g of {{nutrient}}. Continue degassing daily.', { amount: tosna.dosePerAdditionGrams, nutrient: nutrientName }), durationValue: 1, durationUnit: 'days', targetTempC: null },
-      { id: crypto.randomUUID(), stepNumber: 0, phase: 'Fermentation', title: `${t('constants.actions.tosna')} 4 (1/3 Sugar Break)`, description: t('Add {{amount}}g of {{nutrient}} when gravity reaches {{sg}}. This is the final nutrient addition.', { amount: tosna.dosePerAdditionGrams, nutrient: nutrientName, sg: calculateOneThirdSugarBreak(estimatedOg).toFixed(3) }), durationValue: 1, durationUnit: 'days', targetTempC: null }
+      { id: crypto.randomUUID(), stepNumber: 0, phase: 'Fermentation', title: `${t('constants.actions.tosna')} 4 (1/3 Sugar Break)`, description: t('Add {{amount}}g of {{nutrient}} when gravity reaches {{sg}}. This is the final nutrient addition.', { amount: tosna.dosePerAdditionGrams, nutrient: nutrientName, sg: calculateOneThirdSugarBreak(estimatedOg, targetFg).toFixed(3) }), durationValue: 1, durationUnit: 'days', targetTempC: null }
     ];
     result.push(...tosnaSteps);
   }
@@ -84,24 +85,29 @@ const BrewSessionSetup: React.FC = () => {
 
   const sessionDetails = useMemo(() => {
     let totalFermentableGrams = 0;
-    let totalWeightedYield = 0;
+    let totalWeightedBrix = 0;
     let nitrogenDemand: string = 'Medium';
     let hasYeast = false;
 
     sessionIngredients.forEach(item => {
-      if (item.category === 'Fermentable' || item.category === 'Honey') {
-        const yieldVal = item.yieldPpg || 36;
+      if (item.category === 'Honey') {
+        const brix = item.sugarContentBrix || 80;
         const qty = item.quantity || 0;
         totalFermentableGrams += qty;
-        totalWeightedYield += yieldVal * qty;
+        totalWeightedBrix += brix * qty;
+      } else if (item.category === 'Fermentable') {
+        const brix = item.yieldPpg ? (item.yieldPpg / 46) * 100 : 80;
+        const qty = item.quantity || 0;
+        totalFermentableGrams += qty;
+        totalWeightedBrix += brix * qty;
       } else if (item.category === 'Yeast') {
         hasYeast = true;
         if (item.nitrogenDemand) nitrogenDemand = item.nitrogenDemand;
       }
     });
 
-    const avgYield = totalFermentableGrams > 0 ? totalWeightedYield / totalFermentableGrams : 36;
-    const estimatedOg = estimateOG(actualVolume, totalFermentableGrams, avgYield);
+    const avgBrix = totalFermentableGrams > 0 ? totalWeightedBrix / totalFermentableGrams : 80;
+    const estimatedOg = estimateOG(actualVolume, totalFermentableGrams, avgBrix);
     const targetFg = currentRecipe?.targetFinalGravity || 1.000;
     const estimatedAbv = calculateAbvCrouch(estimatedOg, targetFg);
 
@@ -125,7 +131,7 @@ const BrewSessionSetup: React.FC = () => {
       const consumed = await consumeIngredients(activeBreweryId, mapped);
       if (!consumed) throw new Error('Inventory consumption failed');
 
-      const smartSteps = generateSmartSteps(currentRecipe.steps, currentRecipe.beverageType, sessionIngredients, sessionDetails.tosna, sessionDetails.og, t);
+      const smartSteps = generateSmartSteps(currentRecipe.steps, currentRecipe.beverageType, sessionIngredients, sessionDetails.tosna, sessionDetails.og, sessionDetails.fg, t);
       const { data: authData } = await supabase.auth.getUser();
       const userId = authData?.user?.id;
       
@@ -136,10 +142,10 @@ const BrewSessionSetup: React.FC = () => {
           brewery_id: activeBreweryId,
           recipe_name: currentRecipe.name,
           beverage_type: currentRecipe.beverageType,
-          status: 'planned',
+          status: 'planned', 
           batch_size_liters: actualVolume,
-          target_og: currentRecipe.targetOriginalGravity,
-          target_fg: currentRecipe.targetFinalGravity,
+          target_og: sessionDetails.og,
+          target_fg: sessionDetails.fg,
           session_ingredients: sessionIngredients,
           session_steps: smartSteps,
           created_by: userId
@@ -163,7 +169,7 @@ const BrewSessionSetup: React.FC = () => {
   const boilOffAmount = Math.max(0, preBoilVolume - actualVolume).toFixed(1);
 
   return (
-    <div className="home" style={{ maxWidth: '900px' }}>
+    <div className="home">
       <header className="home__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 className="home__title">{t('Brew Day Setup')}</h1>

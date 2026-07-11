@@ -1,7 +1,6 @@
-// src/components/recipe-components/RecipeListView.tsx
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaPlus } from 'react-icons/fa';
+import { FaBookOpen, FaPlus } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import type { Recipe } from '../../types/recipe';
 
@@ -30,14 +29,18 @@ export const RecipeListView: React.FC<RecipeListViewProps> = ({ recipes, isLoadi
         <div className="recipe-lab__loading">{t('Loading recipes...')}</div>
       ) : recipes.length === 0 ? (
         <div className="recipe-lab__empty-state">
+          <FaBookOpen className="recipe-lab__empty-icon" />
           <p className="recipe-lab__empty-text">{t('No recipes found. Create your first recipe!')}</p>
+          <button type="button" className="recipe-lab__btn-secondary" onClick={onCreate}>
+            {t('Get Started')}
+          </button>
         </div>
       ) : (
         <ul className="recipe-list">
           {recipes.map(recipe => (
             <li
               key={recipe.id}
-              className="recipe-card recipe-card--interactive"
+              className="recipe-card"
               role="button"
               tabIndex={0}
               onClick={() => navigate(`/recipes/${recipe.id}`)}
@@ -48,22 +51,34 @@ export const RecipeListView: React.FC<RecipeListViewProps> = ({ recipes, isLoadi
                 }
               }}
             >
-              <div className="recipe-card__header">
-                <span className="recipe-card__badge">{t(`constants.beverage_types.${recipe.beverageType?.toLowerCase() || 'mead'}`, recipe.beverageType || 'Mead')}</span>
-                <h3 className="recipe-card__title">{recipe.name}</h3>
+              <div className="recipe-card__main">
+                <div className="recipe-card__header">
+                  <h3 className="recipe-card__title">{recipe.name}</h3>
+                  <span className="recipe-card__badge">
+                    {t(`constants.beverage_types.${recipe.beverageType?.toLowerCase() || 'mead'}`, recipe.beverageType || 'Mead')}
+                  </span>
+                </div>
+                <span className="recipe-card__style">{recipe.targetStyle}</span>
               </div>
-              <div className="recipe-card__meta-stack">
-                <div className="recipe-card__meta-row">
-                  <span className="recipe-card__style">{recipe.targetStyle}</span>
-                  <span className="recipe-card__abv">{recipe.targetAbv?.toFixed(1)}% ABV</span>
+
+              <div className="recipe-card__stats">
+                <div className="recipe-card__stat">
+                  <span className="recipe-card__stat-label">{t('ABV')}</span>
+                  <span className="recipe-card__stat-value recipe-card__stat-value--highlight">
+                    {recipe.targetAbv?.toFixed(1)}%
+                  </span>
                 </div>
-                <div className="recipe-card__meta-row">
-                  <span>{t('Batch Size')}</span>
-                  <span>{recipe.expectedBatchSizeLiters} {t('L')}</span>
+                <div className="recipe-card__stat">
+                  <span className="recipe-card__stat-label">{t('Size')}</span>
+                  <span className="recipe-card__stat-value">
+                    {recipe.expectedBatchSizeLiters} {t('L')}
+                  </span>
                 </div>
-                <div className="recipe-card__meta-row">
-                  <span>{t('Original Gravity')}</span>
-                  <span>{recipe.targetOriginalGravity?.toFixed(3)}</span>
+                <div className="recipe-card__stat">
+                  <span className="recipe-card__stat-label">{t('OG')}</span>
+                  <span className="recipe-card__stat-value">
+                    {recipe.targetOriginalGravity?.toFixed(3)}
+                  </span>
                 </div>
               </div>
             </li>

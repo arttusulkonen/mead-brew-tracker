@@ -157,7 +157,16 @@
   @include button-danger;
 }
 
-// Утилиты для кнопок
 .btn-full-width {
   width: 100%;
+}
+
+.btn-accept {
+  @include button-primary;
+
+  background-color: var(--color-success);
+}
+
+.btn-reject {
+  @include button-danger;
 }

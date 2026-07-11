@@ -1,4 +1,3 @@
-// src/components/recipe-components/CoreParametersSection.tsx
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BeverageType } from '../../types/recipe';
@@ -29,6 +28,21 @@ export const CoreParametersSection: React.FC<CoreParametersSectionProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const handleBeverageTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newType = e.target.value as BeverageType;
+    setBeverageType(newType);
+    
+    if (newType === 'Beer') {
+      setTargetFg(1.012);
+    } else if (newType === 'Cider') {
+      setTargetFg(1.000); 
+    }
+  };
+
+  const handleTargetStyleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setTargetStyle(e.target.value);
+  };
+
   return (
     <section className="builder-section">
       <div className="builder-section__header">
@@ -37,7 +51,11 @@ export const CoreParametersSection: React.FC<CoreParametersSectionProps> = ({
       <div className="builder-section__body">
         <div className="form-field">
           <label className="form-field__label">{t('Beverage Type')}</label>
-          <select className="form-field__select" value={beverageType} onChange={(e) => setBeverageType(e.target.value as BeverageType)}>
+          <select 
+            className="form-field__select" 
+            value={beverageType} 
+            onChange={handleBeverageTypeChange}
+          >
             <option value="Beer">{t('constants.beverage_types.beer', 'Beer')}</option>
             <option value="Mead">{t('constants.beverage_types.mead', 'Mead')}</option>
             <option value="Cider">{t('constants.beverage_types.cider', 'Cider')}</option>
@@ -71,7 +89,7 @@ export const CoreParametersSection: React.FC<CoreParametersSectionProps> = ({
               <select
                 className="form-field__select"
                 value={targetStyle}
-                onChange={(e) => setTargetStyle(e.target.value)}
+                onChange={handleTargetStyleChange}
               >
                 <option value="Session (4-6%)">{t('Session (4-6%) - Light & Drinkable')}</option>
                 <option value="Standard (7-10%)">{t('Standard (7-10%) - Traditional')}</option>

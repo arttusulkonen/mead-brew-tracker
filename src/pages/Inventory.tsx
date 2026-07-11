@@ -47,7 +47,18 @@ const Inventory: React.FC = () => {
     let targetId = data.globalIngredientId;
     const original = globalIngredients.find(i => i.id === targetId);
 
-    if (!targetId || (original && original.name !== data.name)) {
+    let isModified = false;
+    if (original) {
+      if (original.name !== data.name) isModified = true;
+      if (data.category === 'Additive') {
+        if (data.nutrientRole !== (original as any).nutrientRole) isModified = true;
+        if (data.yanValuePerGramPerLiter !== (original as any).yanValuePerGramPerLiter) isModified = true;
+        if (data.dosagePer10Liters !== (original as any).dosagePer10Liters) isModified = true;
+        if (data.dosagePerGramYeast !== (original as any).dosagePerGramYeast) isModified = true;
+      }
+    }
+
+    if (!targetId || isModified) {
       const baseData: Record<string, unknown> = {
         name: data.name,
         category: data.category,
@@ -61,7 +72,7 @@ const Inventory: React.FC = () => {
         baseData.yieldPpg = data.yieldPpg || 0;
         baseData.colorEbc = data.colorEbc || 0;
         baseData.isMashed = data.form === 'Grain';
-        if (data.moistureContentPct) baseData.moistureContentPct = data.moistureContentPct;
+        if (data.moistureContentPct != null) baseData.moistureContentPct = data.moistureContentPct;
       } else if (data.category === 'Honey') {
         baseData.sugarContentBrix = data.sugarContentBrix ?? 80;
         baseData.moistureContentPct = data.moistureContentPct ?? 18;
@@ -84,9 +95,9 @@ const Inventory: React.FC = () => {
           baseData.nutrientRole = data.nutrientRole;
         }
         if (data.additionStage) baseData.additionStage = data.additionStage;
-        if (data.yanValuePerGramPerLiter) baseData.yanValuePerGramPerLiter = data.yanValuePerGramPerLiter;
-        if (data.dosagePerGramYeast) baseData.dosagePerGramYeast = data.dosagePerGramYeast;
-        if (data.dosagePer10Liters) baseData.dosagePer10Liters = data.dosagePer10Liters;
+        if (data.yanValuePerGramPerLiter != null) baseData.yanValuePerGramPerLiter = data.yanValuePerGramPerLiter;
+        if (data.dosagePerGramYeast != null) baseData.dosagePerGramYeast = data.dosagePerGramYeast;
+        if (data.dosagePer10Liters != null) baseData.dosagePer10Liters = data.dosagePer10Liters;
       } else if (data.category === 'Water Profile') {
         baseData.calciumPpm = data.calciumPpm || 0;
         baseData.magnesiumPpm = data.magnesiumPpm || 0;
@@ -183,6 +194,9 @@ const Inventory: React.FC = () => {
     );
   }
 
+if (import.meta.env.DEV) {
+  console.log('Inventory items:', JSON.stringify(inventory, null, 2));
+}
   return (
     <div className="inventory-page">
       {isAddModalOpen && (

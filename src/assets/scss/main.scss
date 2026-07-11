@@ -7,7 +7,9 @@
 @use 'pages/auth';
 @use 'pages/recipes';
 @use 'pages/recipe-details';
+@use 'pages/recipes-list';
 @use 'pages/brew-session';
+@use 'pages/brew-session-setup';
 @use 'pages/brew';
 @use 'components/active-timer';
 @use 'components/bottom-sheet';
