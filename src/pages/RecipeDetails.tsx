@@ -200,7 +200,7 @@ const RecipeDetails: React.FC = () => {
                 </li>
               </ul>
               <div className="stat-panel__footer">
-                 <span className="stat-panel__subtext">{t('Target SG for final addition')}: {calculateOneThirdSugarBreak(currentRecipe.targetOriginalGravity).toFixed(3)}</span>
+                 <span className="stat-panel__subtext">{t('Target SG for final addition')}: {calculateOneThirdSugarBreak(currentRecipe.targetOriginalGravity, currentRecipe.targetFinalGravity).toFixed(3)}</span>
               </div>
             </div>
           )}

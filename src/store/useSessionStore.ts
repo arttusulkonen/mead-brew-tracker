@@ -1,4 +1,3 @@
-//src/store/useSessionStore.ts
 import { calculateOneThirdSugarBreak } from '@mead-tracker/math';
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -166,9 +165,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     
     let updatedTosna = currentSession?.tosnaSchedule;
     const usedOg = currentSession?.actualOg || currentSession?.targetOg;
+    const usedFg = (currentSession as any)?.actualFg || currentSession?.targetFg || 1.000;
 
     if (usedOg && newLog.sg !== null && updatedTosna && !updatedTosna.isCompressed) {
-      const sugarBreak = calculateOneThirdSugarBreak(usedOg);
+      const sugarBreak = calculateOneThirdSugarBreak(usedOg, usedFg);
       if (newLog.sg <= sugarBreak) {
         updatedTosna = { ...updatedTosna, isCompressed: true };
       }
