@@ -8,6 +8,7 @@ import { ActiveTimer } from '../components/ActiveTimer';
 import { MeasurementBottomSheet } from '../components/MeasurementBottomSheet';
 import { SplitBatchModal } from '../components/SplitBatchModal';
 import { TimelineWidget } from '../components/TimelineWidget';
+import { TosnaTracker } from '../components/TosnaTracker';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useInventoryStore } from '../store/useInventoryStore';
 import { useSessionStore } from '../store/useSessionStore';
@@ -25,7 +26,6 @@ const BrewSession: React.FC = () => {
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [actualOgInput, setActualOgInput] = useState<string>('');
 
-  // --- Mid-session ingredient addition ---
   const [showMidAddModal, setShowMidAddModal] = useState(false);
   const [midAddIngredientId, setMidAddIngredientId] = useState('');
   const [midAddQty, setMidAddQty] = useState<number>(50);
@@ -69,9 +69,36 @@ const BrewSession: React.FC = () => {
   const isPrepDone = steps.filter((s: any) => s.phase === 'Preparation').every((s: any) => s.isCompleted);
   const isFermDone = steps.filter((s: any) => s.phase === 'Fermentation').every((s: any) => s.isCompleted);
 
-  // Откатили статусы для совместимости
-  const canSplit = !currentSession.isSplit && ['fermenting', 'aging'].includes(currentSession.status);
-  const canMidAdd = ['fermenting', 'aging'].includes(currentSession.status) && !currentSession.isSplit;
+  const canSplit = !currentSession.isSplit && ['Fermentation', 'Conditioning'].includes(currentSession.status);
+  const canMidAdd = ['Fermentation', 'Conditioning'].includes(currentSession.status) && !currentSession.isSplit;
+
+  const handleTosnaAddition = async (additionId: string, nutrientAmount: number) => {
+    if (!currentSession || !activeBreweryId) return;
+
+    const startDate = new Date(currentSession.startDate);
+    const now = new Date();
+    const dayNumber = Math.max(1, Math.floor(Math.abs(now.getTime() - startDate.getTime()) / 86400000) + 1);
+
+    const additions = currentSession.tosnaSchedule?.additions.map(add => 
+      add.id === additionId ? { ...add, isCompleted: true, completedAt: now.toISOString() } : add
+    ) || [];
+
+    // Мы сразу добавляем это в логи, стор сам обновит tosnaSchedule внутри
+    const updatedTosna = { ...currentSession.tosnaSchedule!, additions };
+
+    // Подменяем объект, чтобы функция addLogToSession записала свежие данные в БД
+    currentSession.tosnaSchedule = updatedTosna;
+
+    await addLogToSession(activeBreweryId, currentSession.id, {
+      id: crypto.randomUUID(),
+      timestamp: now.toISOString(),
+      dayNumber,
+      sg: null, ph: null, tempC: null,
+      actionTaken: `TOSNA Addition: ${nutrientAmount}g Fermaid-O`,
+      notes: '',
+      stepId: null
+    });
+  };
 
   const handleMidSessionAdd = async () => {
     if (!currentSession?.id || !activeBreweryId || !midAddIngredientId || midAddQty <= 0) return;
@@ -136,10 +163,10 @@ const BrewSession: React.FC = () => {
       alert(t('Please enter a valid Original Gravity (e.g. 1.050)')); return;
     }
     setShowOgModal(false);
-    await updateSessionStatus(activeBreweryId, currentSession.id, 'fermenting', parsedOg);
+    await updateSessionStatus(activeBreweryId, currentSession.id, 'Fermentation', parsedOg);
   };
 
-  const handleCompletePhase = async (newStatus: 'aging' | 'completed') => {
+  const handleCompletePhase = async (newStatus: 'Conditioning' | 'Bottled') => {
     if (!currentSession?.id || !activeBreweryId) return;
     if (window.confirm(t('Are you sure you want to advance to the next phase?'))) {
       await updateSessionStatus(activeBreweryId, currentSession.id, newStatus);
@@ -154,7 +181,6 @@ const BrewSession: React.FC = () => {
   return (
     <div className="home" style={{ maxWidth: '1200px' }}>
       
-      {/* ---- Modal: Mid-Session Addition ---- */}
       {showMidAddModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div className="home-card" style={{ padding: '24px', width: '100%', maxWidth: '400px' }}>
@@ -180,7 +206,6 @@ const BrewSession: React.FC = () => {
         </div>
       )}
 
-      {/* ---- Modal: Original Gravity ---- */}
       {showOgModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
           <div className="home-card" style={{ padding: '24px', width: '100%', maxWidth: '400px' }}>
@@ -209,9 +234,9 @@ const BrewSession: React.FC = () => {
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {canMidAdd && <button className="btn-secondary" onClick={() => setShowMidAddModal(true)}><FaPlus style={{ marginRight: '6px' }}/> {t('Add Ingredient')}</button>}
           {canSplit && <button className="btn-secondary" onClick={() => setShowSplitModal(true)}><FaCodeBranch style={{ marginRight: '6px' }}/> {t('Split')}</button>}
-          {currentSession.status === 'planned' && !currentSession.isSplit && <button className="btn-primary" onClick={() => { setActualOgInput(currentSession.targetOg?.toString() || '1.000'); setShowOgModal(true); }} disabled={!isPrepDone}><FaPlay style={{ marginRight: '6px' }}/> {t('Start Fermentation')}</button>}
-          {currentSession.status === 'fermenting' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('aging')} disabled={!isFermDone}><FaCheck style={{ marginRight: '6px' }}/> {t('Move to Aging')}</button>}
-          {currentSession.status === 'aging' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('completed')}><FaCheck style={{ marginRight: '6px' }}/> {t('Complete Brew')}</button>}
+          {currentSession.status === 'Brew Day' && !currentSession.isSplit && <button className="btn-primary" onClick={() => { setActualOgInput(currentSession.targetOg?.toString() || '1.000'); setShowOgModal(true); }} disabled={!isPrepDone}><FaPlay style={{ marginRight: '6px' }}/> {t('Start Fermentation')}</button>}
+          {currentSession.status === 'Fermentation' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('Conditioning')} disabled={!isFermDone}><FaCheck style={{ marginRight: '6px' }}/> {t('Move to Aging')}</button>}
+          {currentSession.status === 'Conditioning' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('Bottled')}><FaCheck style={{ marginRight: '6px' }}/> {t('Complete Brew')}</button>}
         </div>
       </header>
 
@@ -236,6 +261,10 @@ const BrewSession: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {currentSession.status === 'Fermentation' && currentSession.tosnaSchedule && (
+            <TosnaTracker session={currentSession} onMarkAddition={handleTosnaAddition} />
+          )}
+
           {activeStep && (
             <div className="home-card" style={{ backgroundColor: 'var(--bg-surface-alt)' }}>
               <div className="home-card__header"><h2 className="home-card__title" style={{ color: 'var(--color-primary)' }}>▶ {t('Active Step')}</h2></div>
@@ -252,26 +281,45 @@ const BrewSession: React.FC = () => {
            <div className="home-card">
              <div className="home-card__header">
                <h2 className="home-card__title">{t('Session Logs')}</h2>
-               {currentSession.status !== 'completed' && <button className="btn-text" onClick={() => setIsBottomSheetOpen(true)}>+ {t('Add')}</button>}
+               {currentSession.status !== 'Bottled' && <button className="btn-text" onClick={() => setIsBottomSheetOpen(true)}>+ {t('Add')}</button>}
              </div>
              <div className="home-card__list">
                {currentSession.logs.length === 0 ? (
                  <p style={{ color: 'var(--text-disabled)', textAlign: 'center', margin: '20px 0' }}>{t('No logs recorded yet.')}</p>
                ) : (
-                 [...currentSession.logs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(log => (
-                   <div key={log.id} style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', marginBottom: '8px' }}>
-                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                       <strong style={{ color: 'var(--text-primary)' }}>{t('Day')} {log.dayNumber}</strong> 
-                       <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                 [...currentSession.logs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(log => {
+                   const linkedStep = steps.find(s => s.id === log.stepId);
+                   
+                   return (
+                     <div key={log.id} style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', marginBottom: '8px' }}>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                           <strong style={{ color: 'var(--text-primary)' }}>{t('Day')} {log.dayNumber}</strong> 
+                           {linkedStep && (
+                             <span style={{ fontSize: '0.75rem', backgroundColor: 'var(--bg-surface)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                               📍 {linkedStep.title}
+                             </span>
+                           )}
+                         </div>
+                         <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                       </div>
+                       
+                       <p style={{ margin: '0 0 4px 0', fontSize: '0.95rem', fontWeight: '500' }}>{log.actionTaken}</p>
+                       
+                       {log.notes && (
+                         <p style={{ margin: '0 0 12px 0', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
+                           {log.notes}
+                         </p>
+                       )}
+                       
+                       <div style={{ display: 'flex', gap: '16px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                         {log.sg !== null && <span style={{ backgroundColor: 'var(--bg-surface-alt)', padding: '2px 6px', borderRadius: '4px' }}><strong>SG:</strong> {log.sg.toFixed(3)}</span>}
+                         {log.ph !== null && <span style={{ backgroundColor: 'var(--bg-surface-alt)', padding: '2px 6px', borderRadius: '4px' }}><strong>pH:</strong> {log.ph.toFixed(2)}</span>}
+                         {log.tempC !== null && <span style={{ backgroundColor: 'var(--bg-surface-alt)', padding: '2px 6px', borderRadius: '4px' }}><strong>Temp:</strong> {log.tempC}°C</span>}
+                       </div>
                      </div>
-                     <p style={{ margin: '0 0 8px 0', fontSize: '0.95rem' }}>{log.actionTaken}</p>
-                     <div style={{ display: 'flex', gap: '16px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                       {log.sg !== null && <span style={{ backgroundColor: 'var(--bg-surface-alt)', padding: '2px 6px', borderRadius: '4px' }}><strong>SG:</strong> {log.sg.toFixed(3)}</span>}
-                       {log.ph !== null && <span style={{ backgroundColor: 'var(--bg-surface-alt)', padding: '2px 6px', borderRadius: '4px' }}><strong>pH:</strong> {log.ph.toFixed(2)}</span>}
-                       {log.tempC !== null && <span style={{ backgroundColor: 'var(--bg-surface-alt)', padding: '2px 6px', borderRadius: '4px' }}><strong>Temp:</strong> {log.tempC}°C</span>}
-                     </div>
-                   </div>
-                 ))
+                   );
+                 })
                )}
              </div>
           </div>

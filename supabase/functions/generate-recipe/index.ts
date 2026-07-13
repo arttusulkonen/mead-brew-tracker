@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       3. Calculate precise dosages for yeast nutrients, hops, and additives based on the Batch Size and Target ABV. Do NOT recalculate the base fermentable weights.
       4. Generate detailed technological steps strictly following the constraints for the specific Beverage Type.
       5. CRITICAL TRANSLATION: You MUST generate "title", "description" (inside steps), "aiNote" (inside ingredientQuantities), and "correctionReason" (inside suggestedParameters) strictly in ${targetLanguage}. 
-      6. CRITICAL STRUCTURAL RULE: The "phase" field MUST remain strictly in English ("Preparation", "Mashing", "Boiling", "Fermentation", "Aging", "Packaging") regardless of the target language.
+      6. CRITICAL STRUCTURAL RULE: The "phase" field MUST remain strictly in English ("Preparation", "Mashing", "Boiling", "Fermentation", "Conditioning", "Packaging") regardless of the target language.
     `;
 
     const apiKey = Deno.env.get("GEMINI_API_KEY");

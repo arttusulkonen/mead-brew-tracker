@@ -1,5 +1,5 @@
 // src/pages/BrewSessionSetup.tsx
-import { calculateAbvCrouch, calculateOneThirdSugarBreak, calculateTosna, estimateOG } from '@mead-tracker/math';
+import { calculateAbvCrouch, calculateTosna, estimateOG } from '@mead-tracker/math';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaPlay, FaSlidersH, FaWater } from 'react-icons/fa';
@@ -11,27 +11,23 @@ import { supabase } from '../supabase/client';
 import type { RecipeStep } from '../types/recipe';
 import { MEAD_STYLES } from '../utils/meadConstants';
 
-const generateSmartSteps = (baseSteps: RecipeStep[], beverageType: string, ingredients: any[], tosna: any | null, estimatedOg: number, targetFg: number, t: any): RecipeStep[] => {
+const generateSmartSteps = (baseSteps: RecipeStep[], beverageType: string, ingredients: any[], t: any): RecipeStep[] => {
   const result = [...baseSteps];
-
-  if (beverageType === 'Mead' && tosna) {
-    const nutrientIng = ingredients.find(i => i.category === 'Additive' && i.additiveType === 'Nutrient' && !i.name?.toLowerCase().includes('go-ferm'));
-    const nutrientName = nutrientIng?.name || 'Fermaid-O';
-
-    const tosnaSteps: RecipeStep[] = [
-      { id: crypto.randomUUID(), stepNumber: 0, phase: 'Fermentation', title: `${t('constants.actions.tosna')} 1 (24h)`, description: t('Add {{amount}}g of {{nutrient}}. Rehydrate in ~50ml of must, stir gently to degas before adding.', { amount: tosna.dosePerAdditionGrams, nutrient: nutrientName }), durationValue: 1, durationUnit: 'days', targetTempC: null },
-      { id: crypto.randomUUID(), stepNumber: 0, phase: 'Fermentation', title: `${t('constants.actions.tosna')} 2 (48h)`, description: t('Add {{amount}}g of {{nutrient}}. Degas before and after addition.', { amount: tosna.dosePerAdditionGrams, nutrient: nutrientName }), durationValue: 1, durationUnit: 'days', targetTempC: null },
-      { id: crypto.randomUUID(), stepNumber: 0, phase: 'Fermentation', title: `${t('constants.actions.tosna')} 3 (72h)`, description: t('Add {{amount}}g of {{nutrient}}. Continue degassing daily.', { amount: tosna.dosePerAdditionGrams, nutrient: nutrientName }), durationValue: 1, durationUnit: 'days', targetTempC: null },
-      { id: crypto.randomUUID(), stepNumber: 0, phase: 'Fermentation', title: `${t('constants.actions.tosna')} 4 (1/3 Sugar Break)`, description: t('Add {{amount}}g of {{nutrient}} when gravity reaches {{sg}}. This is the final nutrient addition.', { amount: tosna.dosePerAdditionGrams, nutrient: nutrientName, sg: calculateOneThirdSugarBreak(estimatedOg, targetFg).toFixed(3) }), durationValue: 1, durationUnit: 'days', targetTempC: null }
-    ];
-    result.push(...tosnaSteps);
-  }
 
   if (beverageType === 'Beer') {
     const dryHopIngs = ingredients.filter(i => i.category === 'Hops' && typeof i.additionStage === 'string' && i.additionStage.toLowerCase().includes('dry hop'));
     if (dryHopIngs.length > 0) {
       const hopList = dryHopIngs.map(h => `${h.quantity}g ${h.name}`).join(', ');
-      result.push({ id: crypto.randomUUID(), stepNumber: 0, phase: 'Fermentation', title: t('Dry Hop Addition'), description: t('Add {{hops}}. Transfer to secondary or add directly to fermenter after primary fermentation is 80% complete. Leave for 3-5 days.', { hops: hopList }), durationValue: 4, durationUnit: 'days', targetTempC: null });
+      result.push({ 
+        id: crypto.randomUUID(), 
+        stepNumber: 0, 
+        phase: 'Fermentation', 
+        title: t('Dry Hop Addition'), 
+        description: t('Add {{hops}}. Transfer to secondary or add directly to fermenter after primary fermentation is 80% complete. Leave for 3-5 days.', { hops: hopList }), 
+        durationValue: 4, 
+        durationUnit: 'days', 
+        targetTempC: null 
+      });
     }
   }
 
@@ -44,7 +40,7 @@ const BrewSessionSetup: React.FC = () => {
   const { t } = useTranslation();
   const { activeBreweryId } = useBreweryStore();
   const { currentRecipe, fetchRecipeById, isLoading } = useRecipeStore();
-  const { consumeIngredients } = useInventoryStore();
+  const { inventory, consumeIngredients, fetchInventory } = useInventoryStore(); // ДОБАВЛЕН ИНВЕНТАРЬ
   
   const [actualVolume, setActualVolume] = useState<number>(10);
   const [preBoilVolume, setPreBoilVolume] = useState<number>(10);
@@ -53,7 +49,8 @@ const BrewSessionSetup: React.FC = () => {
 
   useEffect(() => {
     fetchRecipeById(id);
-  }, [id, fetchRecipeById]);
+    if (activeBreweryId) fetchInventory(activeBreweryId); // ЗАГРУЖАЕМ СКЛАД
+  }, [id, activeBreweryId, fetchRecipeById, fetchInventory]);
 
   useEffect(() => {
     if (currentRecipe) {
@@ -112,11 +109,10 @@ const BrewSessionSetup: React.FC = () => {
     const estimatedAbv = calculateAbvCrouch(estimatedOg, targetFg);
 
     let tosnaData = null;
-    if (hasYeast && estimatedOg > 1.000) {
+    if (hasYeast && estimatedOg > 1.000 && currentRecipe?.beverageType === 'Mead') {
       let nFactor = 0.90;
       if (nitrogenDemand === 'Low') nFactor = 0.75;
       else if (nitrogenDemand === 'High' || nitrogenDemand === 'Very High') nFactor = 1.25;
-      
       tosnaData = calculateTosna(actualVolume, estimatedOg, nFactor);
     }
 
@@ -127,11 +123,34 @@ const BrewSessionSetup: React.FC = () => {
     if (!currentRecipe || !activeBreweryId) return;
     setIsStarting(true);
     try {
-      const mapped = sessionIngredients.map(i => ({ globalIngredientId: i.globalIngredientId, quantity: i.quantity }));
-      const consumed = await consumeIngredients(activeBreweryId, mapped);
-      if (!consumed) throw new Error('Inventory consumption failed');
+      // ИЩЕМ ТОЧНОЕ СОВПАДЕНИЕ В ИНВЕНТАРЕ
+      const mapped = sessionIngredients.map(i => {
+        const invMatch = inventory.find(inv => inv.ingredientId === i.globalIngredientId);
+        return {
+          globalIngredientId: i.globalIngredientId,
+          inventoryItemId: invMatch ? invMatch.id : undefined, // Указываем ID инстанса, если нашли
+          quantity: i.quantity
+        };
+      });
 
-      const smartSteps = generateSmartSteps(currentRecipe.steps, currentRecipe.beverageType, sessionIngredients, sessionDetails.tosna, sessionDetails.og, sessionDetails.fg, t);
+      const consumed = await consumeIngredients(activeBreweryId, mapped);
+      if (!consumed) throw new Error('Inventory consumption failed. Check if you have enough stock in the correct units.');
+
+      const smartSteps = generateSmartSteps(currentRecipe.steps, currentRecipe.beverageType, sessionIngredients, t);
+      
+      let tosnaSchedulePayload = null;
+      if (sessionDetails.tosna) {
+        tosnaSchedulePayload = {
+          ...sessionDetails.tosna,
+          additions: [
+            { id: crypto.randomUUID(), targetHours: 24, isCompleted: false, completedAt: null },
+            { id: crypto.randomUUID(), targetHours: 48, isCompleted: false, completedAt: null },
+            { id: crypto.randomUUID(), targetHours: 72, isCompleted: false, completedAt: null },
+            { id: crypto.randomUUID(), isOneThirdBreak: true, isCompleted: false, completedAt: null }
+          ]
+        };
+      }
+
       const { data: authData } = await supabase.auth.getUser();
       const userId = authData?.user?.id;
       
@@ -142,12 +161,14 @@ const BrewSessionSetup: React.FC = () => {
           brewery_id: activeBreweryId,
           recipe_name: currentRecipe.name,
           beverage_type: currentRecipe.beverageType,
-          status: 'planned', 
-          batch_size_liters: actualVolume,
-          target_og: sessionDetails.og,
-          target_fg: sessionDetails.fg,
+          status: 'Brew Day', 
+          actual_batch_size_liters: actualVolume, 
+          actual_original_gravity: sessionDetails.og, 
+          actual_final_gravity: sessionDetails.fg, 
+          actual_abv: sessionDetails.abv, 
           session_ingredients: sessionIngredients,
           session_steps: smartSteps,
+          tosna_schedule: tosnaSchedulePayload,
           created_by: userId
         }])
         .select('id')
@@ -164,36 +185,36 @@ const BrewSessionSetup: React.FC = () => {
   };
 
   if (isLoading) return <div className="global-loader"><div className="spinner"></div></div>;
-  if (!currentRecipe) return <div>{t('Recipe not found')}</div>;
+  if (!currentRecipe) return <div className="home-empty">{t('Recipe not found')}</div>;
 
   const boilOffAmount = Math.max(0, preBoilVolume - actualVolume).toFixed(1);
 
   return (
     <div className="home">
-      <header className="home__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
+      <header className="home__header brew-setup__header">
+        <div className="brew-setup__title-block">
           <h1 className="home__title">{t('Brew Day Setup')}</h1>
           <p className="home__subtitle">{t('Recipe')}: {currentRecipe.name}</p>
         </div>
         <button type="button" className="btn-secondary" onClick={() => navigate(`/recipes/${currentRecipe.id}`)}>{t('Cancel')}</button>
       </header>
 
-      <div className="home__grid">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div className="home__grid brew-setup__grid">
+        <div className="brew-setup__column">
           
           <div className="home-card">
             <div className="home-card__header">
-              <h2 className="home-card__title"><FaSlidersH style={{ marginRight: '8px' }}/> {t('Volume & Scaling')}</h2>
+              <h2 className="home-card__title"><FaSlidersH className="brew-setup__icon" /> {t('Volume & Scaling')}</h2>
             </div>
             <div className="home-card__list">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>{t('Target Fermenter Volume (L)')}</label>
-                <input type="number" step="0.5" value={actualVolume || ''} onChange={(e) => handleScaleVolume(parseFloat(e.target.value) || 0)} disabled={isStarting} style={{ padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)' }} />
+              <div className="setup-form-group">
+                <label className="setup-form-label">{t('Target Fermenter Volume (L)')}</label>
+                <input type="number" step="0.5" className="setup-form-input" value={actualVolume || ''} onChange={(e) => handleScaleVolume(parseFloat(e.target.value) || 0)} disabled={isStarting} />
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '0.9rem', fontWeight: 'bold' }}><FaWater style={{ color: 'var(--color-primary)' }}/> {t('Pre-boil Volume (L)')}</label>
-                <input type="number" step="0.5" value={preBoilVolume || ''} onChange={(e) => setPreBoilVolume(parseFloat(e.target.value) || 0)} disabled={isStarting} style={{ padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)' }} />
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{t('Estimated boil-off')}: {boilOffAmount} {t('L')}</span>
+              <div className="setup-form-group">
+                <label className="setup-form-label"><FaWater className="brew-setup__icon-water" /> {t('Pre-boil Volume (L)')}</label>
+                <input type="number" step="0.5" className="setup-form-input" value={preBoilVolume || ''} onChange={(e) => setPreBoilVolume(parseFloat(e.target.value) || 0)} disabled={isStarting} />
+                <span className="setup-form-hint">{t('Estimated boil-off')}: {boilOffAmount} {t('L')}</span>
               </div>
             </div>
           </div>
@@ -204,14 +225,14 @@ const BrewSessionSetup: React.FC = () => {
             </div>
             <div className="home-card__list">
               {sessionIngredients.map(ing => (
-                <div key={ing.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-secondary)', display: 'block' }}>{t(`constants.categories.${ing.category.toLowerCase().replace(' ', '_')}`)}</span>
-                    <strong>{ing.name}</strong>
+                <div key={ing.id} className="setup-ingredient-row">
+                  <div className="setup-ingredient-info">
+                    <span className="setup-ingredient-category">{t(`constants.categories.${ing.category.toLowerCase().replace(' ', '_')}`)}</span>
+                    <strong className="setup-ingredient-name">{ing.name}</strong>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <input type="number" value={ing.quantity} onChange={(e) => handleIngredientChange(ing.id, parseFloat(e.target.value) || 0)} disabled={isStarting} style={{ width: '80px', padding: '4px', textAlign: 'right', borderRadius: '4px', border: '1px solid var(--border-color)' }} />
-                    <span style={{ fontWeight: 'bold', color: 'var(--text-secondary)' }}>{t('constants.units.g')}</span>
+                  <div className="setup-ingredient-actions">
+                    <input type="number" className="setup-form-input setup-form-input--small" value={ing.quantity} onChange={(e) => handleIngredientChange(ing.id, parseFloat(e.target.value) || 0)} disabled={isStarting} />
+                    <span className="setup-ingredient-unit">{t('constants.units.g')}</span>
                   </div>
                 </div>
               ))}
@@ -219,26 +240,20 @@ const BrewSessionSetup: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
-          <button type="button" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={handleStartSession} disabled={isStarting}>
-            <FaPlay style={{ marginRight: '8px' }} /> {isStarting ? t('Starting...') : t('Start Brew Day')}
+        <div className="brew-setup__column">
+          <button type="button" className="btn-primary brew-setup__btn-start" onClick={handleStartSession} disabled={isStarting}>
+            <FaPlay className="brew-setup__icon" /> {isStarting ? t('Starting...') : t('Start Brew Day')}
           </button>
 
           {(sessionDetails.tosna || sessionIngredients.some(i => i.category === 'Hops' && i.additionStage?.toLowerCase().includes('dry hop'))) && (
-            <div className="home-card" style={{ backgroundColor: 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
-              <div className="home-card__header" style={{ backgroundColor: 'transparent', borderBottom: 'none', paddingBottom: '0' }}>
-                <h2 className="home-card__title" style={{ color: 'var(--color-success)' }}>✨ {t('Smart Steps will be added')}</h2>
+            <div className="home-card home-card--success">
+              <div className="home-card__header home-card__header--transparent">
+                <h2 className="home-card__title home-card__title--success">✨ {t('Smart Tracker Activated')}</h2>
               </div>
-              <div className="home-card__list" style={{ fontSize: '0.9rem' }}>
-                <ul style={{ paddingLeft: '20px', margin: 0, color: 'var(--text-secondary)' }}>
+              <div className="home-card__list">
+                <ul className="setup-smart-list">
                   {sessionDetails.tosna && (
-                    <>
-                      <li>{t('constants.actions.tosna')} 1 — 24h</li>
-                      <li>{t('constants.actions.tosna')} 2 — 48h</li>
-                      <li>{t('constants.actions.tosna')} 3 — 72h</li>
-                      <li>{t('constants.actions.tosna')} 4 — 1/3 Sugar Break</li>
-                    </>
+                    <li>{t('TOSNA 3.0 tracker will activate during Fermentation.')}</li>
                   )}
                   {sessionIngredients.some(i => i.category === 'Hops' && i.additionStage?.toLowerCase().includes('dry hop')) && (
                     <li>{t('Dry Hop Addition')}</li>
@@ -250,11 +265,11 @@ const BrewSessionSetup: React.FC = () => {
 
           <div className="home-card">
             <div className="home-card__header"><h2 className="home-card__title">{t('Dynamic Specifications')}</h2></div>
-            <div className="home-card__list" style={{ gap: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>{t('Target Style')}</span><strong>{t(currentRecipe.targetStyle || '')}</strong></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>{t('Estimated OG')}</span><strong>{sessionDetails.og.toFixed(3)}</strong></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>{t('Target FG')}</span><strong>{sessionDetails.fg.toFixed(3)}</strong></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>{t('Estimated ABV')}</span><strong style={{ color: 'var(--color-primary)' }}>{sessionDetails.abv.toFixed(1)}%</strong></div>
+            <div className="home-card__list brew-setup__specs">
+              <div className="setup-spec-row"><span className="setup-spec-label">{t('Target Style')}</span><strong className="setup-spec-value">{t(currentRecipe.targetStyle || '')}</strong></div>
+              <div className="setup-spec-row"><span className="setup-spec-label">{t('Estimated OG')}</span><strong className="setup-spec-value">{sessionDetails.og.toFixed(3)}</strong></div>
+              <div className="setup-spec-row"><span className="setup-spec-label">{t('Target FG')}</span><strong className="setup-spec-value">{sessionDetails.fg.toFixed(3)}</strong></div>
+              <div className="setup-spec-row"><span className="setup-spec-label">{t('Estimated ABV')}</span><strong className="setup-spec-value setup-spec-value--highlight">{sessionDetails.abv.toFixed(1)}%</strong></div>
             </div>
           </div>
         </div>

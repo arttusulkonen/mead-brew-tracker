@@ -43,6 +43,7 @@ export interface BrewSession {
   actualOg?: number | null;
   targetFg: number;  
   actualFg?: number | null;
+  actualAbv?: number | null;
   pitchTimestamp?: string | null;
   tosnaSchedule?: TosnaSchedule | null;
   

@@ -1,8 +1,7 @@
+// src/store/useSessionStore.ts
 import { calculateOneThirdSugarBreak } from '@mead-tracker/math';
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import { create } from 'zustand';
-import { db } from '../firebase/config';
+import { supabase } from '../supabase/client';
 import type { RecipeStep } from '../types/recipe';
 import type { BrewLog, BrewSession, BrewSessionStage, TosnaAddition } from '../types/session';
 
@@ -29,20 +28,33 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   error: null,
 
   fetchSessions: async (breweryId) => {
-    if (!db || !breweryId) {
-      set({ sessions: [], isLoading: false, error: null });
-      return;
-    }
-    
+    if (!breweryId) return;
     set({ isLoading: true, error: null });
     try {
-      const sessionsRef = collection(db, `breweries/${breweryId}/brew_sessions`);
-      const snapshot = await getDocs(sessionsRef);
-      const fetchedSessions = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as BrewSession));
+      const { data, error } = await supabase
+        .from('brew_sessions')
+        .select('*')
+        .eq('brewery_id', breweryId)
+        .order('created_at', { ascending: false });
       
-      fetchedSessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      
-      set({ sessions: fetchedSessions });
+      if (error) throw error;
+
+      const sessions = (data || []).map(row => ({
+        id: row.id,
+        breweryId: row.brewery_id,
+        recipeId: row.recipe_id,
+        recipeName: row.recipe_name,
+        beverageType: row.beverage_type,
+        status: row.status as BrewSessionStage,
+        batchSizeLiters: row.actual_batch_size_liters || row.batch_size_liters || 0,
+        targetOg: row.actual_original_gravity || row.target_og || 1.000,
+        targetFg: row.actual_final_gravity || row.target_fg || 1.000,
+        startDate: row.created_at,
+        sessionSteps: typeof row.session_steps === 'string' ? JSON.parse(row.session_steps) : (row.session_steps || []),
+        isSplit: row.is_split || false
+      } as BrewSession));
+
+      set({ sessions });
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Unknown error' });
     } finally {
@@ -51,115 +63,98 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   fetchSessionById: async (breweryId, sessionId) => {
-    if (!db || !breweryId || !sessionId) {
+    if (!breweryId || !sessionId) {
       set({ currentSession: null, isLoading: false, error: null });
       return;
     }
     
     set({ isLoading: true, error: null });
     try {
-      const sessionRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
-      const sessionSnap = await getDoc(sessionRef);
-      
-      if (sessionSnap.exists()) {
-        const data = sessionSnap.data();
-        let logs = data.logs || [];
-        
-        if (!data.logs) {
-          const logsRef = collection(db, `breweries/${breweryId}/brew_sessions/${sessionId}/fermentation_logs`);
-          const logsSnap = await getDocs(logsRef);
-          logs = logsSnap.docs.map(l => l.data() as BrewLog);
-        }
-        
-        set({ currentSession: { ...data, id: sessionSnap.id, logs } as BrewSession });
-      } else {
-        set({ currentSession: null, error: 'Session not found' });
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('brew_sessions')
+        .select('*')
+        .eq('id', sessionId)
+        .eq('brewery_id', breweryId)
+        .single();
+
+      if (sessionError || !sessionData) throw new Error('Session not found');
+
+      let parsedLogs: BrewLog[] = [];
+      if (sessionData.logs) {
+        parsedLogs = typeof sessionData.logs === 'string' ? JSON.parse(sessionData.logs) : sessionData.logs;
       }
+      
+      let parsedTosna = sessionData.tosna_schedule || null;
+      if (typeof parsedTosna === 'string') {
+        try { parsedTosna = JSON.parse(parsedTosna); } catch(e) {console.error('Failed to parse TOSNA schedule:', e);}
+      }
+
+      const mappedSession: BrewSession = {
+        id: sessionData.id,
+        breweryId: sessionData.brewery_id,
+        recipeId: sessionData.recipe_id,
+        recipeName: sessionData.recipe_name,
+        beverageType: sessionData.beverage_type,
+        status: sessionData.status as BrewSessionStage,
+        batchSizeLiters: sessionData.actual_batch_size_liters || sessionData.batch_size_liters || 0,
+        targetOg: sessionData.actual_original_gravity || sessionData.target_og || 1.000,
+        targetFg: sessionData.actual_final_gravity || sessionData.target_fg || 1.000,
+        actualOg: sessionData.actual_original_gravity,
+        actualFg: sessionData.actual_final_gravity,
+        actualAbv: sessionData.actual_abv,
+        sessionIngredients: typeof sessionData.session_ingredients === 'string' ? JSON.parse(sessionData.session_ingredients) : (sessionData.session_ingredients || []),
+        sessionSteps: typeof sessionData.session_steps === 'string' ? JSON.parse(sessionData.session_steps) : (sessionData.session_steps || []),
+        startDate: sessionData.created_at,
+        logs: parsedLogs,
+        tosnaSchedule: parsedTosna,
+        isSplit: sessionData.is_split || false
+      };
+
+      set({ currentSession: mappedSession });
     } catch (err: unknown) {
-      set({ error: err instanceof Error ? err.message : 'Unknown error' });
+      set({ currentSession: null, error: err instanceof Error ? err.message : 'Unknown error' });
     } finally {
       set({ isLoading: false });
     }
   },
 
-  clearCurrentSession: () => {
-    set({ currentSession: null, error: null });
-  },
+  clearCurrentSession: () => set({ currentSession: null, error: null }),
 
-  startSession: async (payload) => {
-    set({ isLoading: true, error: null });
-    try {
-      const functions = getFunctions();
-      const startBrewSessionFn = httpsCallable<Record<string, unknown>, { status: string, sessionId: string }>(functions, 'startBrewSession');
-      
-      const response = await startBrewSessionFn(payload);
-      
-      if (response.data && response.data.sessionId) {
-        set({ isLoading: false });
-        return response.data.sessionId;
-      }
-      
-      set({ isLoading: false });
-      return null;
-    } catch (err: unknown) {
-      set({ error: err instanceof Error ? err.message : 'Failed to start session', isLoading: false });
-      throw err;
-    }
-  },
+  startSession: async () => null, 
 
   updateSteps: async (breweryId, sessionId, newSteps) => {
-    if (!db || !breweryId || !sessionId) return;
-    
+    if (!breweryId || !sessionId) return;
     const { currentSession } = get();
-    if (currentSession) {
-      set({ currentSession: { ...currentSession, sessionSteps: newSteps } });
-    }
+    if (currentSession) set({ currentSession: { ...currentSession, sessionSteps: newSteps } });
 
     try {
-      const sessionRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
-      await updateDoc(sessionRef, { 
-        sessionSteps: newSteps, 
-        updatedAt: new Date().toISOString() 
-      });
+      await supabase.from('brew_sessions').update({ session_steps: newSteps }).eq('id', sessionId);
     } catch (err: unknown) {
-      set({ error: err instanceof Error ? err.message : 'Failed to update steps' });
+      console.error('Failed to update steps:', err);
     }
   },
 
   updateSessionStatus: async (breweryId, sessionId, newStatus, actualOg) => {
-    if (!db || !breweryId || !sessionId) return;
-    
+    if (!breweryId || !sessionId) return;
     const { currentSession } = get();
-    const updateData: Record<string, unknown> = {
-      status: newStatus,
-      updatedAt: new Date().toISOString()
-    };
-
-    if (actualOg !== undefined) {
-      updateData.actualOg = actualOg;
-    }
-
-    if (newStatus === 'fermenting' && currentSession?.status === 'planned') {
-      updateData.pitchTimestamp = new Date().toISOString();
-    } else if (newStatus === 'completed') {
-      updateData.completedDate = new Date().toISOString();
-    }
+    
+    const updateData: any = { status: newStatus };
+    if (actualOg !== undefined) updateData.actual_original_gravity = actualOg;
 
     if (currentSession) {
-      set({ currentSession: { ...currentSession, ...updateData } as BrewSession });
+      set({ currentSession: { ...currentSession, ...updateData, status: newStatus, actualOg: actualOg ?? currentSession.actualOg } as BrewSession });
     }
 
     try {
-      const sessionRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
-      await updateDoc(sessionRef, updateData);
+      await supabase.from('brew_sessions').update(updateData).eq('id', sessionId);
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to update status' });
     }
   },
 
   addLogToSession: async (breweryId, sessionId, newLog) => {
-    if (!db || !breweryId || !sessionId) return;
-
+    if (!breweryId || !sessionId) return;
+    
     const { currentSession } = get();
     const updatedLogs = [...(currentSession?.logs || []), newLog];
     
@@ -175,71 +170,42 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
 
     if (currentSession) {
-      set({ 
-        currentSession: { 
-          ...currentSession, 
-          logs: updatedLogs,
-          tosnaSchedule: updatedTosna
-        } 
-      });
+      set({ currentSession: { ...currentSession, logs: updatedLogs, tosnaSchedule: updatedTosna } });
     }
 
     try {
-      const logRef = doc(collection(db, `breweries/${breweryId}/brew_sessions/${sessionId}/fermentation_logs`), newLog.id);
-      await setDoc(logRef, newLog);
-
-      const sessionRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
-      const updatePayload: Record<string, unknown> = {
-        updatedAt: new Date().toISOString()
-      };
-
+      const updatePayload: any = { logs: updatedLogs };
       if (updatedTosna && currentSession?.tosnaSchedule?.isCompressed !== updatedTosna.isCompressed) {
-        updatePayload.tosnaSchedule = updatedTosna;
+        updatePayload.tosna_schedule = updatedTosna;
       }
 
-      await updateDoc(sessionRef, updatePayload);
+      const { error } = await supabase.from('brew_sessions').update(updatePayload).eq('id', sessionId);
+      if (error) throw error;
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to add log' });
     }
   },
 
   updateTosnaSchedule: async (breweryId, sessionId, updatedAdditions) => {
-    if (!db || !breweryId || !sessionId) return;
-
+    if (!breweryId || !sessionId) return;
     const { currentSession } = get();
-    if (currentSession?.tosnaSchedule) {
-      set({ 
-        currentSession: { 
-          ...currentSession, 
-          tosnaSchedule: { ...currentSession.tosnaSchedule, additions: updatedAdditions } 
-        } 
-      });
+    
+    const updatedTosna = currentSession?.tosnaSchedule 
+      ? { ...currentSession.tosnaSchedule, additions: updatedAdditions } 
+      : null;
+
+    if (currentSession && updatedTosna) {
+      set({ currentSession: { ...currentSession, tosnaSchedule: updatedTosna as any } });
     }
 
     try {
-      const sessionRef = doc(db, `breweries/${breweryId}/brew_sessions`, sessionId);
-      await updateDoc(sessionRef, { 
-        'tosnaSchedule.additions': updatedAdditions,
-        updatedAt: new Date().toISOString()
-      });
+      if (updatedTosna) {
+        await supabase.from('brew_sessions').update({ tosna_schedule: updatedTosna }).eq('id', sessionId);
+      }
     } catch (err: unknown) {
-      set({ error: err instanceof Error ? err.message : 'Failed to update TOSNA' });
+      console.error('Failed to update TOSNA:', err);
     }
   },
 
-  splitBrewSession: async (payload) => {
-    set({ isLoading: true, error: null });
-    try {
-      const functions = getFunctions();
-      const splitBatchFn = httpsCallable<Record<string, unknown>, { status: string }>(functions, 'splitBatch');
-      
-      await splitBatchFn(payload);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to split session';
-      set({ error: errorMessage });
-      throw err;
-    } finally {
-      set({ isLoading: false });
-    }
-  }
+  splitBrewSession: async () => {} 
 }));
