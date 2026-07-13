@@ -1,4 +1,3 @@
-// src/pages/Brew.tsx
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaPlayCircle } from 'react-icons/fa';
@@ -13,7 +12,6 @@ const Brew: React.FC = () => {
   const { sessions, fetchSessions, isLoading } = useSessionStore();
   const [, setTick] = useState(0);
 
-  // Глобальный таймер для обновления UI каждую секунду
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(interval);
@@ -27,10 +25,9 @@ const Brew: React.FC = () => {
 
   if (!activeBreweryId) return null;
 
-  // Откатили статусы для совместимости с типом BrewSessionStage
-  const plannedSessions = sessions.filter(s => s.status === 'planned');
-  const activeSessions = sessions.filter(s => s.status === 'fermenting' || s.status === 'aging');
-  const completedSessions = sessions.filter(s => s.status === 'completed');
+  const plannedSessions = sessions.filter(s => s.status === 'Brew Day');
+  const activeSessions = sessions.filter(s => s.status === 'Fermentation' || s.status === 'Conditioning');
+  const completedSessions = sessions.filter(s => s.status === 'Bottled' || s.status === 'Completed');
 
   const getStepDuration = (step: any) => {
     let total = step.accumulatedSeconds || 0;
@@ -67,7 +64,7 @@ const Brew: React.FC = () => {
         <div className="brew-dashboard__card-header">
           <h3 className="brew-dashboard__card-title">{session.recipeName}</h3>
           <span className="brew-dashboard__badge" data-status={session.status}>
-            {t(session.status.charAt(0).toUpperCase() + session.status.slice(1))}
+            {t(session.status)}
           </span>
         </div>
 

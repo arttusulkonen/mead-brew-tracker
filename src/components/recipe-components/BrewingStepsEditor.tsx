@@ -5,7 +5,7 @@ import { FaCheck, FaChevronDown, FaChevronUp, FaMagic, FaPlus, FaTimes, FaTrash 
 import type { StepPhase, TimeUnit } from '../../types/recipe';
 import type { RecipeStepEntry } from './types';
 
-const VALID_PHASES: StepPhase[] = ['Preparation', 'Mashing', 'Boiling', 'Fermentation', 'Aging', 'Packaging'];
+const VALID_PHASES: StepPhase[] = ['Preparation', 'Mashing', 'Boiling', 'Fermentation', 'Conditioning', 'Packaging'];
 const VALID_UNITS: TimeUnit[] = ['minutes', 'days'];
 
 interface BrewingStepsEditorProps {

@@ -18,7 +18,7 @@ const BrewSession: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { activeBreweryId } = useBreweryStore();
-  const { currentSession, fetchSessionById, clearCurrentSession, isLoading, addLogToSession, updateSessionStatus, splitBrewSession } = useSessionStore();
+  const { currentSession, fetchSessionById, clearCurrentSession, isLoading, addLogToSession, updateSessionStatus, updateTosnaSchedule, splitBrewSession } = useSessionStore();
   const { inventory, consumeIngredients, fetchInventory } = useInventoryStore();
 
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
@@ -69,33 +69,29 @@ const BrewSession: React.FC = () => {
   const isPrepDone = steps.filter((s: any) => s.phase === 'Preparation').every((s: any) => s.isCompleted);
   const isFermDone = steps.filter((s: any) => s.phase === 'Fermentation').every((s: any) => s.isCompleted);
 
-  const canSplit = !currentSession.isSplit && ['fermenting', 'aging'].includes(currentSession.status);
-  const canMidAdd = ['fermenting', 'aging'].includes(currentSession.status) && !currentSession.isSplit;
+  const canSplit = !currentSession.isSplit && ['Fermentation', 'Conditioning'].includes(currentSession.status);
+  const canMidAdd = ['Fermentation', 'Conditioning'].includes(currentSession.status) && !currentSession.isSplit;
 
-  const handleTosnaAddition = async (additionId: string, nutrientAmount: number) => {
+  const handleTosnaAddition = async (additionId: string, nutrientAmount: number, metrics: { sg: number | null, notes: string }) => {
     if (!currentSession || !activeBreweryId) return;
 
-    const startDate = new Date(currentSession.startDate);
     const now = new Date();
-    const dayNumber = Math.max(1, Math.floor(Math.abs(now.getTime() - startDate.getTime()) / 86400000) + 1);
-
     const additions = currentSession.tosnaSchedule?.additions.map(add => 
       add.id === additionId ? { ...add, isCompleted: true, completedAt: now.toISOString() } : add
     ) || [];
 
-    // Мы сразу добавляем это в логи, стор сам обновит tosnaSchedule внутри
-    const updatedTosna = { ...currentSession.tosnaSchedule!, additions };
-
-    // Подменяем объект, чтобы функция addLogToSession записала свежие данные в БД
-    currentSession.tosnaSchedule = updatedTosna;
+    await updateTosnaSchedule(activeBreweryId, currentSession.id, additions);
+    
+    const startDate = new Date(currentSession.startDate);
+    const dayNumber = Math.max(1, Math.floor(Math.abs(now.getTime() - startDate.getTime()) / 86400000) + 1);
 
     await addLogToSession(activeBreweryId, currentSession.id, {
       id: crypto.randomUUID(),
       timestamp: now.toISOString(),
       dayNumber,
-      sg: null, ph: null, tempC: null,
+      sg: metrics.sg, ph: null, tempC: null,
       actionTaken: `TOSNA Addition: ${nutrientAmount}g Fermaid-O`,
-      notes: '',
+      notes: metrics.notes,
       stepId: null
     });
   };
@@ -133,7 +129,6 @@ const BrewSession: React.FC = () => {
       setMidAddQty(50);
       setMidAddNote('');
     } catch (err) {
-      console.error('Error adding ingredient to session:', err);
       alert(t('Failed to add ingredient to session.'));
     } finally {
       setIsMidAdding(false);
@@ -173,6 +168,17 @@ const BrewSession: React.FC = () => {
     }
   };
 
+  const handleSplitBatch = async (splits: any) => {
+    if (!activeBreweryId) return;
+    try {
+      await splitBrewSession({ breweryId: activeBreweryId, parentSessionId: currentSession.id, splits });
+      setShowSplitModal(false);
+      navigate('/');
+    } catch (err) {
+      alert(t('Split Batch functionality requires Supabase RPC implementation.'));
+    }
+  };
+
   const chartData = (currentSession.logs || [])
     .filter(log => log.sg !== null)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
@@ -182,10 +188,10 @@ const BrewSession: React.FC = () => {
     <div className="home" style={{ maxWidth: '1200px' }}>
       
       {showMidAddModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="home-card" style={{ padding: '24px', width: '100%', maxWidth: '400px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '1.25rem' }}>{t('Add Ingredient to Batch')}</h3>
-            <select value={midAddIngredientId} onChange={e => setMidAddIngredientId(e.target.value)} style={{ width: '100%', padding: '12px', marginBottom: '16px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+        <div className="modal-overlay">
+          <div className="home-card modal-content">
+            <h3 className="modal-title">{t('Add Ingredient to Batch')}</h3>
+            <select className="modal-select" value={midAddIngredientId} onChange={e => setMidAddIngredientId(e.target.value)}>
               <option value="" disabled>{t('Select ingredient...')}</option>
               {inventory.filter(i => i.quantityOnHand > 0).map(i => (
                 <option key={i.ingredientId} value={i.ingredientId}>
@@ -193,12 +199,12 @@ const BrewSession: React.FC = () => {
                 </option>
               ))}
             </select>
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-              <input type="number" value={midAddQty} onChange={e => setMidAddQty(parseFloat(e.target.value) || 0)} style={{ flex: 1, padding: '12px', borderRadius: '6px', border: '1px solid var(--border-color)' }} />
-              <span style={{ alignSelf: 'center', fontWeight: 'bold' }}>g</span>
+            <div className="modal-input-group">
+              <input type="number" className="setup-form-input" value={midAddQty} onChange={e => setMidAddQty(parseFloat(e.target.value) || 0)} />
+              <span className="modal-unit">g</span>
             </div>
-            <textarea value={midAddNote} onChange={e => setMidAddNote(e.target.value)} placeholder={t('Notes (optional)')} rows={3} style={{ width: '100%', padding: '12px', marginBottom: '24px', borderRadius: '6px', border: '1px solid var(--border-color)' }} />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <textarea className="modal-textarea" value={midAddNote} onChange={e => setMidAddNote(e.target.value)} placeholder={t('Notes (optional)')} rows={3} />
+            <div className="modal-actions">
               <button className="btn-secondary" onClick={() => setShowMidAddModal(false)}>{t('Cancel')}</button>
               <button className="btn-primary" onClick={handleMidSessionAdd} disabled={isMidAdding || !midAddIngredientId}>{isMidAdding ? t('Adding...') : t('Add to Batch')}</button>
             </div>
@@ -207,12 +213,12 @@ const BrewSession: React.FC = () => {
       )}
 
       {showOgModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="home-card" style={{ padding: '24px', width: '100%', maxWidth: '400px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '1.25rem' }}>{t('Start Fermentation')}</h3>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '0.9rem' }}>{t('Please enter actual Original Gravity (OG)')}</p>
-            <input type="number" step="0.001" value={actualOgInput} onChange={e => setActualOgInput(e.target.value)} style={{ width: '100%', padding: '12px', marginBottom: '24px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '1.1rem' }} />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+        <div className="modal-overlay">
+          <div className="home-card modal-content">
+            <h3 className="modal-title">{t('Start Fermentation')}</h3>
+            <p className="modal-subtitle">{t('Please enter actual Original Gravity (OG)')}</p>
+            <input type="number" step="0.001" className="setup-form-input modal-input-large" value={actualOgInput} onChange={e => setActualOgInput(e.target.value)} />
+            <div className="modal-actions">
               <button className="btn-secondary" onClick={() => setShowOgModal(false)}>{t('Cancel')}</button>
               <button className="btn-primary" onClick={handleConfirmStartFermentation}>{t('Start')}</button>
             </div>
@@ -220,33 +226,33 @@ const BrewSession: React.FC = () => {
         </div>
       )}
 
-      {showSplitModal && <SplitBatchModal currentVolume={currentSession.batchSizeLiters} onClose={() => setShowSplitModal(false)} onSubmit={async (splits) => { await splitBrewSession({ breweryId: activeBreweryId!, parentSessionId: currentSession.id, splits }); setShowSplitModal(false); navigate('/'); }} />}
+      {showSplitModal && <SplitBatchModal currentVolume={currentSession.batchSizeLiters} onClose={() => setShowSplitModal(false)} onSubmit={handleSplitBatch} />}
       <MeasurementBottomSheet isOpen={isBottomSheetOpen} onClose={() => setIsBottomSheetOpen(false)} onSubmit={handleMeasurementSubmit} activeStepTitle={activeStep?.title} />
 
-      <header className="home__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
+      <header className="home__header brew-session__header">
+        <div className="brew-session__title-block">
           <h1 className="home__title">{currentSession.recipeName}</h1>
-          <span className="brew-item__badge" data-status={currentSession.status} style={{ display: 'inline-block', marginTop: '8px' }}>
+          <span className="brew-item__badge brew-session__badge" data-status={currentSession.status}>
             {t(currentSession.status)}
             {currentSession.isSplit && ` • ${t('constants.actions.split')}`}
           </span>
         </div>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {canMidAdd && <button className="btn-secondary" onClick={() => setShowMidAddModal(true)}><FaPlus style={{ marginRight: '6px' }}/> {t('Add Ingredient')}</button>}
-          {canSplit && <button className="btn-secondary" onClick={() => setShowSplitModal(true)}><FaCodeBranch style={{ marginRight: '6px' }}/> {t('Split')}</button>}
-          {currentSession.status === 'planned' && !currentSession.isSplit && <button className="btn-primary" onClick={() => { setActualOgInput(currentSession.targetOg?.toString() || '1.000'); setShowOgModal(true); }} disabled={!isPrepDone}><FaPlay style={{ marginRight: '6px' }}/> {t('Start Fermentation')}</button>}
-          {currentSession.status === 'fermenting' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('aging')} disabled={!isFermDone}><FaCheck style={{ marginRight: '6px' }}/> {t('Move to Aging')}</button>}
-          {currentSession.status === 'aging' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('completed')}><FaCheck style={{ marginRight: '6px' }}/> {t('Complete Brew')}</button>}
+        <div className="brew-session__actions">
+          {canMidAdd && <button className="btn-secondary" onClick={() => setShowMidAddModal(true)}><FaPlus className="brew-session__icon"/> {t('Add Ingredient')}</button>}
+          {canSplit && <button className="btn-secondary" onClick={() => setShowSplitModal(true)}><FaCodeBranch className="brew-session__icon"/> {t('Split')}</button>}
+          {currentSession.status === 'Brew Day' && !currentSession.isSplit && <button className="btn-primary" onClick={() => { setActualOgInput(currentSession.targetOg?.toString() || '1.000'); setShowOgModal(true); }} disabled={!isPrepDone}><FaPlay className="brew-session__icon"/> {t('Start Fermentation')}</button>}
+          {currentSession.status === 'Fermentation' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('Conditioning')} disabled={!isFermDone}><FaCheck className="brew-session__icon"/> {t('Move to Conditioning')}</button>}
+          {currentSession.status === 'Conditioning' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('Bottled')}><FaCheck className="brew-session__icon"/> {t('Complete Brew')}</button>}
         </div>
       </header>
 
-      <div className="home__grid">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div className="home__grid brew-session__grid">
+        <div className="brew-session__column">
           <TimelineWidget breweryId={activeBreweryId} sessionId={currentSession.id} steps={steps} startDate={currentSession.startDate} />
           
           <div className="home-card">
             <div className="home-card__header"><h2 className="home-card__title">{t('Fermentation Chart')}</h2></div>
-            <div style={{ height: '300px', padding: '16px' }}>
+            <div className="brew-session__chart-container" style={{ height: '300px', padding: '16px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
@@ -260,17 +266,18 @@ const BrewSession: React.FC = () => {
           </div>
         </div>
 
-          {currentSession.status === 'fermenting' && currentSession.tosnaSchedule && (
+        <div className="brew-session__column">
+          {currentSession.tosnaSchedule && (
             <TosnaTracker session={currentSession} onMarkAddition={handleTosnaAddition} />
           )}
 
           {activeStep && (
-            <div className="home-card" style={{ backgroundColor: 'var(--bg-surface-alt)' }}>
-              <div className="home-card__header"><h2 className="home-card__title" style={{ color: 'var(--color-primary)' }}>▶ {t('Active Step')}</h2></div>
+            <div className="home-card home-card--active-step">
+              <div className="home-card__header"><h2 className="home-card__title home-card__title--primary">▶ {t('Active Step')}</h2></div>
               <div className="home-card__list">
-                <strong style={{ fontSize: '1.1rem' }}>{activeStep.title}</strong>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.4' }}>{activeStep.description}</p>
-                <div style={{ marginTop: '12px', fontSize: '1.25rem', fontFamily: 'monospace', fontWeight: 'bold', color: 'var(--color-primary-dark)' }}>
+                <strong className="active-step__title">{activeStep.title}</strong>
+                <p className="active-step__desc">{activeStep.description}</p>
+                <div className="active-step__timer">
                   ⏱ <ActiveTimer startedAt={activeStep.startedAt} accumulatedSeconds={activeStep.accumulatedSeconds} isActive={activeStep.isActive} />
                 </div>
               </div>
@@ -280,41 +287,39 @@ const BrewSession: React.FC = () => {
            <div className="home-card">
              <div className="home-card__header">
                <h2 className="home-card__title">{t('Session Logs')}</h2>
-               {currentSession.status !== 'Bottled' && <button className="btn-text" onClick={() => setIsBottomSheetOpen(true)}>+ {t('Add')}</button>}
+               {currentSession.status !== 'Bottled' && currentSession.status !== 'Completed' && (
+                 <button className="btn-text" onClick={() => setIsBottomSheetOpen(true)}>+ {t('Add')}</button>
+               )}
              </div>
              <div className="home-card__list">
                {currentSession.logs.length === 0 ? (
-                 <p style={{ color: 'var(--text-disabled)', textAlign: 'center', margin: '20px 0' }}>{t('No logs recorded yet.')}</p>
+                 <p className="brew-session__empty-logs">{t('No logs recorded yet.')}</p>
                ) : (
                  [...currentSession.logs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(log => {
                    const linkedStep = steps.find(s => s.id === log.stepId);
                    
                    return (
-                     <div key={log.id} style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', marginBottom: '8px' }}>
-                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
-                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                           <strong style={{ color: 'var(--text-primary)' }}>{t('Day')} {log.dayNumber}</strong> 
+                     <div key={log.id} className="log-item">
+                       <div className="log-item__header">
+                         <div className="log-item__title-group">
+                           <strong className="log-item__day">{t('Day')} {log.dayNumber}</strong> 
                            {linkedStep && (
-                             <span style={{ fontSize: '0.75rem', backgroundColor: 'var(--bg-surface)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                               📍 {linkedStep.title}
-                             </span>
+                             <span className="badge badge--outline log-item__badge">📍 {linkedStep.title}</span>
                            )}
                          </div>
-                         <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{new Date(log.timestamp).toLocaleString()}</span>
+                         <span className="log-item__time">{new Date(log.timestamp).toLocaleString()}</span>
                        </div>
                        
-                       <p style={{ margin: '0 0 4px 0', fontSize: '0.95rem', fontWeight: '500' }}>{log.actionTaken}</p>
+                       <p className="log-item__action">{log.actionTaken}</p>
                        
                        {log.notes && (
-                         <p style={{ margin: '0 0 12px 0', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
-                           {log.notes}
-                         </p>
+                         <p className="log-item__notes" style={{ whiteSpace: 'pre-wrap', marginTop: '8px', fontSize: '0.9rem' }}>{log.notes}</p>
                        )}
                        
-                       <div style={{ display: 'flex', gap: '16px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                         {log.sg !== null && <span style={{ backgroundColor: 'var(--bg-surface-alt)', padding: '2px 6px', borderRadius: '4px' }}><strong>SG:</strong> {log.sg.toFixed(3)}</span>}
-                         {log.ph !== null && <span style={{ backgroundColor: 'var(--bg-surface-alt)', padding: '2px 6px', borderRadius: '4px' }}><strong>pH:</strong> {log.ph.toFixed(2)}</span>}
-                         {log.tempC !== null && <span style={{ backgroundColor: 'var(--bg-surface-alt)', padding: '2px 6px', borderRadius: '4px' }}><strong>Temp:</strong> {log.tempC}°C</span>}
+                       <div className="log-item__metrics">
+                         {log.sg !== null && <span className="log-item__metric"><strong>SG:</strong> {log.sg.toFixed(3)}</span>}
+                         {log.ph !== null && <span className="log-item__metric"><strong>pH:</strong> {log.ph.toFixed(2)}</span>}
+                         {log.tempC !== null && <span className="log-item__metric"><strong>Temp:</strong> {log.tempC}°C</span>}
                        </div>
                      </div>
                    );

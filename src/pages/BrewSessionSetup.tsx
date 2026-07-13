@@ -40,7 +40,7 @@ const BrewSessionSetup: React.FC = () => {
   const { t } = useTranslation();
   const { activeBreweryId } = useBreweryStore();
   const { currentRecipe, fetchRecipeById, isLoading } = useRecipeStore();
-  const { inventory, consumeIngredients, fetchInventory } = useInventoryStore(); // ДОБАВЛЕН ИНВЕНТАРЬ
+  const { inventory, consumeIngredients, fetchInventory } = useInventoryStore();
   
   const [actualVolume, setActualVolume] = useState<number>(10);
   const [preBoilVolume, setPreBoilVolume] = useState<number>(10);
@@ -49,7 +49,7 @@ const BrewSessionSetup: React.FC = () => {
 
   useEffect(() => {
     fetchRecipeById(id);
-    if (activeBreweryId) fetchInventory(activeBreweryId); // ЗАГРУЖАЕМ СКЛАД
+    if (activeBreweryId) fetchInventory(activeBreweryId);
   }, [id, activeBreweryId, fetchRecipeById, fetchInventory]);
 
   useEffect(() => {
@@ -97,7 +97,7 @@ const BrewSessionSetup: React.FC = () => {
         const qty = item.quantity || 0;
         totalFermentableGrams += qty;
         totalWeightedBrix += brix * qty;
-      } else if (item.category === 'Yeast') {
+      } else if (item.category === 'Yeast' || item.name.toLowerCase().includes('yeast') || item.name.toLowerCase().includes('дрожж')) {
         hasYeast = true;
         if (item.nitrogenDemand) nitrogenDemand = item.nitrogenDemand;
       }
@@ -123,18 +123,17 @@ const BrewSessionSetup: React.FC = () => {
     if (!currentRecipe || !activeBreweryId) return;
     setIsStarting(true);
     try {
-      // ИЩЕМ ТОЧНОЕ СОВПАДЕНИЕ В ИНВЕНТАРЕ
       const mapped = sessionIngredients.map(i => {
         const invMatch = inventory.find(inv => inv.ingredientId === i.globalIngredientId);
         return {
           globalIngredientId: i.globalIngredientId,
-          inventoryItemId: invMatch ? invMatch.id : undefined, // Указываем ID инстанса, если нашли
+          inventoryItemId: invMatch ? invMatch.id : undefined,
           quantity: i.quantity
         };
       });
 
       const consumed = await consumeIngredients(activeBreweryId, mapped);
-      if (!consumed) throw new Error('Inventory consumption failed. Check if you have enough stock in the correct units.');
+      if (!consumed) throw new Error('Inventory consumption failed.');
 
       const smartSteps = generateSmartSteps(currentRecipe.steps, currentRecipe.beverageType, sessionIngredients, t);
       
@@ -143,10 +142,10 @@ const BrewSessionSetup: React.FC = () => {
         tosnaSchedulePayload = {
           ...sessionDetails.tosna,
           additions: [
-            { id: crypto.randomUUID(), targetHours: 24, isCompleted: false, completedAt: null },
-            { id: crypto.randomUUID(), targetHours: 48, isCompleted: false, completedAt: null },
-            { id: crypto.randomUUID(), targetHours: 72, isCompleted: false, completedAt: null },
-            { id: crypto.randomUUID(), isOneThirdBreak: true, isCompleted: false, completedAt: null }
+            { id: crypto.randomUUID(), targetHours: 24, isOneThirdBreak: false, isCompleted: false, completedAt: null },
+            { id: crypto.randomUUID(), targetHours: 48, isOneThirdBreak: false, isCompleted: false, completedAt: null },
+            { id: crypto.randomUUID(), targetHours: 72, isOneThirdBreak: false, isCompleted: false, completedAt: null },
+            { id: crypto.randomUUID(), targetHours: null, isOneThirdBreak: true, isCompleted: false, completedAt: null }
           ]
         };
       }
@@ -162,6 +161,9 @@ const BrewSessionSetup: React.FC = () => {
           recipe_name: currentRecipe.name,
           beverage_type: currentRecipe.beverageType,
           status: 'Brew Day', 
+          batch_size_liters: actualVolume,
+          target_og: sessionDetails.og,
+          target_fg: sessionDetails.fg,
           actual_batch_size_liters: actualVolume, 
           actual_original_gravity: sessionDetails.og, 
           actual_final_gravity: sessionDetails.fg, 

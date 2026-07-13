@@ -1,8 +1,7 @@
-// src/types/session.ts
 import type { UUID } from './ingredient';
 import type { BeverageType, RecipeIngredientReference, RecipeStep } from './recipe';
 
-export type BrewSessionStage = 'planned' | 'mashing' | 'boiling' | 'fermenting' | 'aging' | 'completed' | 'split';
+export type BrewSessionStage = 'Brew Day' | 'Fermentation' | 'Conditioning' | 'Bottled' | 'Completed';
 
 export interface BrewLog {
   id: UUID;
@@ -17,15 +16,19 @@ export interface BrewLog {
 }
 
 export interface TosnaAddition {
-  id: number;
-  type: '24h' | '48h' | '72h' | '1/3 Sugar Break';
-  targetDate?: string;
+  id: string;
+  targetHours: number | null;
+  isOneThirdBreak: boolean;
   isCompleted: boolean;
-  actualDate?: string;
+  completedAt: string | null;
 }
 
 export interface TosnaSchedule {
-  targetOneThirdBreak: number;
+  totalYeastGrams: number;
+  goFermGrams: number;
+  totalFermaidOGrams: number;
+  dosePerAdditionGrams: number;
+  targetOneThirdBreak?: number;
   isCompressed: boolean;
   additions: TosnaAddition[];
 }

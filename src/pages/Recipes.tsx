@@ -24,7 +24,7 @@ import { useRecipeBuilderState } from '../components/recipe-components/useRecipe
 import type { AdditiveType, BaseIngredient, IngredientCategory, IngredientUnion, YeastIngredient } from '../types/ingredient';
 import type { Recipe, RecipeIngredientReference, RecipeStep, StepPhase, TimeUnit } from '../types/recipe';
 
-const VALID_PHASES: StepPhase[] = ['Preparation', 'Mashing', 'Boiling', 'Fermentation', 'Aging', 'Packaging'];
+const VALID_PHASES: StepPhase[] = ['Preparation', 'Mashing', 'Boiling', 'Fermentation', 'Conditioning', 'Packaging'];
 const VALID_UNITS: TimeUnit[] = ['minutes', 'days'];
 
 interface AiResponseStep {

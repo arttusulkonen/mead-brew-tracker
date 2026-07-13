@@ -1,4 +1,3 @@
-// src/store/useSessionStore.ts
 import { calculateOneThirdSugarBreak } from '@mead-tracker/math';
 import { create } from 'zustand';
 import { supabase } from '../supabase/client';
@@ -45,13 +44,18 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         recipeId: row.recipe_id,
         recipeName: row.recipe_name,
         beverageType: row.beverage_type,
-        status: (['planned', 'mashing', 'boiling', 'fermenting', 'aging', 'completed', 'split'] as const).includes(row.status) ? row.status : 'planned',
+        status: (row.status as BrewSessionStage) || 'Brew Day',
         batchSizeLiters: row.actual_batch_size_liters || row.batch_size_liters || 0,
         targetOg: row.actual_original_gravity || row.target_og || 1.000,
         targetFg: row.actual_final_gravity || row.target_fg || 1.000,
         startDate: row.created_at,
+        pitchTimestamp: row.pitch_timestamp || null,
         sessionSteps: typeof row.session_steps === 'string' ? JSON.parse(row.session_steps) : (row.session_steps || []),
-        isSplit: row.is_split || false
+        isSplit: row.is_split || false,
+        completedDate: row.completed_date || null,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        createdBy: row.created_by || ''
       } as BrewSession));
 
       set({ sessions });
@@ -79,15 +83,23 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
       if (sessionError || !sessionData) throw new Error('Session not found');
 
-      let parsedLogs: BrewLog[] = [];
-      if (sessionData.logs) {
-        parsedLogs = typeof sessionData.logs === 'string' ? JSON.parse(sessionData.logs) : sessionData.logs;
-      }
-      
-      let parsedTosna = sessionData.tosna_schedule || null;
-      if (typeof parsedTosna === 'string') {
-        try { parsedTosna = JSON.parse(parsedTosna); } catch(e) {console.error('Failed to parse TOSNA schedule:', e);}
-      }
+      const { data: logsData } = await supabase
+        .from('daily_fermentation_logs')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('logged_at', { ascending: true });
+
+      const mappedLogs: BrewLog[] = (logsData || []).map(l => ({
+        id: l.id,
+        timestamp: l.logged_at,
+        sg: l.gravity_reading,
+        ph: l.ph_reading,
+        tempC: l.liquid_temperature_c,
+        actionTaken: l.notes && l.notes.includes('\n') ? l.notes.split('\n')[0] : (l.notes || 'Measurement'),
+        notes: l.notes && l.notes.includes('\n') ? l.notes.substring(l.notes.indexOf('\n') + 1) : '',
+        stepId: null,
+        dayNumber: Math.max(1, Math.floor((new Date(l.logged_at).getTime() - new Date(sessionData.created_at).getTime()) / 86400000) + 1)
+      }));
 
       const mappedSession: BrewSession = {
         id: sessionData.id,
@@ -95,7 +107,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         recipeId: sessionData.recipe_id,
         recipeName: sessionData.recipe_name,
         beverageType: sessionData.beverage_type,
-        status: sessionData.status as BrewSessionStage,
+        status: (sessionData.status as BrewSessionStage) || 'Brew Day',
         batchSizeLiters: sessionData.actual_batch_size_liters || sessionData.batch_size_liters || 0,
         targetOg: sessionData.actual_original_gravity || sessionData.target_og || 1.000,
         targetFg: sessionData.actual_final_gravity || sessionData.target_fg || 1.000,
@@ -105,9 +117,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         sessionIngredients: typeof sessionData.session_ingredients === 'string' ? JSON.parse(sessionData.session_ingredients) : (sessionData.session_ingredients || []),
         sessionSteps: typeof sessionData.session_steps === 'string' ? JSON.parse(sessionData.session_steps) : (sessionData.session_steps || []),
         startDate: sessionData.created_at,
-        logs: parsedLogs,
-        tosnaSchedule: parsedTosna,
-        isSplit: sessionData.is_split || false
+        pitchTimestamp: sessionData.pitch_timestamp || null,
+        logs: mappedLogs,
+        tosnaSchedule: typeof sessionData.tosna_schedule === 'string' ? JSON.parse(sessionData.tosna_schedule) : (sessionData.tosna_schedule || null),
+        isSplit: sessionData.is_split || false,
+        completedDate: sessionData.completed_date || null,
+        createdAt: sessionData.created_at,
+        updatedAt: sessionData.updated_at,
+        createdBy: sessionData.created_by || ''
       };
 
       set({ currentSession: mappedSession });
@@ -130,7 +147,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     try {
       await supabase.from('brew_sessions').update({ session_steps: newSteps }).eq('id', sessionId);
     } catch (err: unknown) {
-      console.error('Failed to update steps:', err);
+      set({ error: err instanceof Error ? err.message : 'Failed to update steps' });
     }
   },
 
@@ -138,15 +155,26 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (!breweryId || !sessionId) return;
     const { currentSession } = get();
     
-    const updateData: any = { status: newStatus };
-    if (actualOg !== undefined) updateData.actual_original_gravity = actualOg;
+    const stateUpdate: Partial<BrewSession> = { status: newStatus };
+    const dbUpdate: Record<string, unknown> = { status: newStatus };
+    
+    if (actualOg !== undefined) {
+      stateUpdate.actualOg = actualOg;
+      dbUpdate.actual_original_gravity = actualOg;
+    }
+
+    if (newStatus === 'Fermentation' && currentSession?.status === 'Brew Day') {
+      const now = new Date().toISOString();
+      stateUpdate.pitchTimestamp = now;
+      dbUpdate.pitch_timestamp = now;
+    }
 
     if (currentSession) {
-      set({ currentSession: { ...currentSession, ...updateData, status: newStatus, actualOg: actualOg ?? currentSession.actualOg } as BrewSession });
+      set({ currentSession: { ...currentSession, ...stateUpdate } as BrewSession });
     }
 
     try {
-      await supabase.from('brew_sessions').update(updateData).eq('id', sessionId);
+      await supabase.from('brew_sessions').update(dbUpdate).eq('id', sessionId);
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to update status' });
     }
@@ -160,7 +188,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     
     let updatedTosna = currentSession?.tosnaSchedule;
     const usedOg = currentSession?.actualOg || currentSession?.targetOg;
-    const usedFg = (currentSession as any)?.actualFg || currentSession?.targetFg || 1.000;
+    const usedFg = currentSession?.actualFg || currentSession?.targetFg || 1.000;
 
     if (usedOg && newLog.sg !== null && updatedTosna && !updatedTosna.isCompressed) {
       const sugarBreak = calculateOneThirdSugarBreak(usedOg, usedFg);
@@ -174,13 +202,20 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
 
     try {
-      const updatePayload: any = { logs: updatedLogs };
-      if (updatedTosna && currentSession?.tosnaSchedule?.isCompressed !== updatedTosna.isCompressed) {
-        updatePayload.tosna_schedule = updatedTosna;
-      }
+      const logPayload = {
+        session_id: sessionId,
+        logged_at: newLog.timestamp,
+        gravity_reading: newLog.sg,
+        ph_reading: newLog.ph,
+        liquid_temperature_c: newLog.tempC,
+        notes: newLog.notes ? `${newLog.actionTaken}\n${newLog.notes}` : newLog.actionTaken
+      };
+      
+      await supabase.from('daily_fermentation_logs').insert([logPayload]);
 
-      const { error } = await supabase.from('brew_sessions').update(updatePayload).eq('id', sessionId);
-      if (error) throw error;
+      if (updatedTosna) {
+        await supabase.from('brew_sessions').update({ tosna_schedule: updatedTosna }).eq('id', sessionId);
+      }
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to add log' });
     }
@@ -195,7 +230,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       : null;
 
     if (currentSession && updatedTosna) {
-      set({ currentSession: { ...currentSession, tosnaSchedule: updatedTosna as any } });
+      set({ currentSession: { ...currentSession, tosnaSchedule: updatedTosna } });
     }
 
     try {
@@ -203,9 +238,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         await supabase.from('brew_sessions').update({ tosna_schedule: updatedTosna }).eq('id', sessionId);
       }
     } catch (err: unknown) {
-      console.error('Failed to update TOSNA:', err);
+      set({ error: err instanceof Error ? err.message : 'Failed to update TOSNA' });
     }
   },
 
-  splitBrewSession: async () => { throw new Error('splitBrewSession is not implemented'); }
+  splitBrewSession: async () => {
+    throw new Error('Split Batch functionality requires Supabase RPC implementation.');
+  } 
 }));
