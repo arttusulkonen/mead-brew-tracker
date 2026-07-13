@@ -45,7 +45,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         recipeId: row.recipe_id,
         recipeName: row.recipe_name,
         beverageType: row.beverage_type,
-        status: row.status as BrewSessionStage,
+        status: (['planned', 'mashing', 'boiling', 'fermenting', 'aging', 'completed', 'split'] as const).includes(row.status) ? row.status : 'planned',
         batchSizeLiters: row.actual_batch_size_liters || row.batch_size_liters || 0,
         targetOg: row.actual_original_gravity || row.target_og || 1.000,
         targetFg: row.actual_final_gravity || row.target_fg || 1.000,
@@ -207,5 +207,5 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 
-  splitBrewSession: async () => {} 
+  splitBrewSession: async () => { throw new Error('splitBrewSession is not implemented'); }
 }));

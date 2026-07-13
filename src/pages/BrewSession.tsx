@@ -69,8 +69,8 @@ const BrewSession: React.FC = () => {
   const isPrepDone = steps.filter((s: any) => s.phase === 'Preparation').every((s: any) => s.isCompleted);
   const isFermDone = steps.filter((s: any) => s.phase === 'Fermentation').every((s: any) => s.isCompleted);
 
-  const canSplit = !currentSession.isSplit && ['Fermentation', 'Conditioning'].includes(currentSession.status);
-  const canMidAdd = ['Fermentation', 'Conditioning'].includes(currentSession.status) && !currentSession.isSplit;
+  const canSplit = !currentSession.isSplit && ['fermenting', 'aging'].includes(currentSession.status);
+  const canMidAdd = ['fermenting', 'aging'].includes(currentSession.status) && !currentSession.isSplit;
 
   const handleTosnaAddition = async (additionId: string, nutrientAmount: number) => {
     if (!currentSession || !activeBreweryId) return;
@@ -234,9 +234,9 @@ const BrewSession: React.FC = () => {
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {canMidAdd && <button className="btn-secondary" onClick={() => setShowMidAddModal(true)}><FaPlus style={{ marginRight: '6px' }}/> {t('Add Ingredient')}</button>}
           {canSplit && <button className="btn-secondary" onClick={() => setShowSplitModal(true)}><FaCodeBranch style={{ marginRight: '6px' }}/> {t('Split')}</button>}
-          {currentSession.status === 'Brew Day' && !currentSession.isSplit && <button className="btn-primary" onClick={() => { setActualOgInput(currentSession.targetOg?.toString() || '1.000'); setShowOgModal(true); }} disabled={!isPrepDone}><FaPlay style={{ marginRight: '6px' }}/> {t('Start Fermentation')}</button>}
-          {currentSession.status === 'Fermentation' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('Conditioning')} disabled={!isFermDone}><FaCheck style={{ marginRight: '6px' }}/> {t('Move to Aging')}</button>}
-          {currentSession.status === 'Conditioning' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('Bottled')}><FaCheck style={{ marginRight: '6px' }}/> {t('Complete Brew')}</button>}
+          {currentSession.status === 'planned' && !currentSession.isSplit && <button className="btn-primary" onClick={() => { setActualOgInput(currentSession.targetOg?.toString() || '1.000'); setShowOgModal(true); }} disabled={!isPrepDone}><FaPlay style={{ marginRight: '6px' }}/> {t('Start Fermentation')}</button>}
+          {currentSession.status === 'fermenting' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('aging')} disabled={!isFermDone}><FaCheck style={{ marginRight: '6px' }}/> {t('Move to Aging')}</button>}
+          {currentSession.status === 'aging' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('completed')}><FaCheck style={{ marginRight: '6px' }}/> {t('Complete Brew')}</button>}
         </div>
       </header>
 
@@ -260,8 +260,7 @@ const BrewSession: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {currentSession.status === 'Fermentation' && currentSession.tosnaSchedule && (
+          {currentSession.status === 'fermenting' && currentSession.tosnaSchedule && (
             <TosnaTracker session={currentSession} onMarkAddition={handleTosnaAddition} />
           )}
 

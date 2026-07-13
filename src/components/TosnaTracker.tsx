@@ -13,8 +13,7 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
   const [currentHours, setCurrentHours] = useState<number>(0);
 
   const tosna = session.tosnaSchedule;
-  const fermentationStep = session.sessionSteps.find(s => s.phase === 'Fermentation');
-  const fermentationStart = fermentationStep?.startedAt;
+  const fermentationStart = session.pitchTimestamp || session.startDate;
 
   useEffect(() => {
     if (!fermentationStart) return;
@@ -49,9 +48,9 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
           const isOverdue = !addition.isCompleted && !addition.isOneThirdBreak && currentHours >= (addition.targetHours || 0);
           
           return (
-            <div key={addition.id} className={`tosna-widget__item ${isOverdue ? 'tosna-widget__item--overdue' : ''} ${addition.isCompleted ? 'tosna-widget__item--done' : ''}`}>
+            <div key={addition.id} className={`tosna-widget__item ${isOverdue ? 'tosna-widget__item--overdue' : ''} ${addition.isCompleted ? 'tosna-widget__item--completed' : ''}`}>
               <div className="tosna-widget__info">
-                <strong className="tosna-widget__name">
+                <strong className="tosna-widget__item-title">
                   {addition.isOneThirdBreak ? t('1/3 Sugar Break') : t('Addition {{num}} ({{hours}}h)', { num: index + 1, hours: addition.targetHours })}
                 </strong>
                 <span className="tosna-widget__desc">
