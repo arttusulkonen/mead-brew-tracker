@@ -1,3 +1,4 @@
+// src/pages/RecipeDetails.tsx
 import { calculateOneThirdSugarBreak, calculateTosna } from '@mead-tracker/math';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -200,7 +201,9 @@ const RecipeDetails: React.FC = () => {
                 </li>
               </ul>
               <div className="stat-panel__footer">
-                 <span className="stat-panel__subtext">{t('Target SG for final addition')}: {calculateOneThirdSugarBreak(currentRecipe.targetOriginalGravity, currentRecipe.targetFinalGravity).toFixed(3)}</span>
+                 <span className="stat-panel__subtext">
+                   {t('Target SG for final addition')}: <strong>{calculateOneThirdSugarBreak(currentRecipe.targetOriginalGravity, currentRecipe.targetFinalGravity).toFixed(3)}</strong>
+                 </span>
               </div>
             </div>
           )}

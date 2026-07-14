@@ -13,7 +13,7 @@ interface TimelineWidgetProps {
   startDate: string;
 }
 
-const VALID_PHASES: StepPhase[] = ['Preparation', 'Mashing', 'Boiling', 'Fermentation', 'Aging', 'Packaging'];
+const VALID_PHASES: StepPhase[] = ['Preparation', 'Mashing', 'Boiling', 'Fermentation', 'Conditioning', 'Packaging'];
 const VALID_UNITS: TimeUnit[] = ['minutes', 'days'];
 
 export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessionId, steps, startDate }) => {

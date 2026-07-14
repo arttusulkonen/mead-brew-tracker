@@ -1,4 +1,3 @@
-// src/types/recipe.ts
 import type { AdditiveType, IngredientCategory, UnitType, UUID } from './ingredient';
 
 export type BeverageType = 'Beer' | 'Mead' | 'Cider' | 'Other';
@@ -42,7 +41,7 @@ export interface RecipeIngredientReference {
 
   // --- Additive ---
   additiveType?: AdditiveType;
-  nutrientRole?: string; // Критически важно для TOSNA (Rehydration / Fermentation)
+  nutrientRole?: string;
   additionStage?: string; 
   yanValuePerGramPerLiter?: number;
   dosagePerGramYeast?: number;
@@ -57,7 +56,7 @@ export interface RecipeIngredientReference {
   bicarbonatePpm?: number;
 }
 
-export type StepPhase = 'Preparation' | 'Mashing' | 'Boiling' | 'Fermentation' | 'Aging' | 'Packaging';
+export type StepPhase = 'Preparation' | 'Mashing' | 'Boiling' | 'Fermentation' | 'Conditioning' | 'Packaging';
 export type TimeUnit = 'minutes' | 'days';
 
 export interface RecipeStep {
