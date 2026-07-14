@@ -20,6 +20,17 @@ interface SessionState {
   updateSessionStatus: (breweryId: string | null | undefined, sessionId: string | null | undefined, newStatus: BrewSessionStage, actualOg?: number) => Promise<void>;
 }
 
+const normalizeStatus = (status: string): BrewSessionStage => {
+  const map: Record<string, BrewSessionStage> = {
+    'planned': 'Brew Day',
+    'fermenting': 'Fermentation',
+    'aging': 'Conditioning',
+    'completed': 'Completed',
+    'split': 'Completed'
+  };
+  return map[status] || (status as BrewSessionStage) || 'Brew Day';
+};
+
 export const useSessionStore = create<SessionState>((set, get) => ({
   sessions: [],
   currentSession: null,
@@ -44,7 +55,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         recipeId: row.recipe_id,
         recipeName: row.recipe_name,
         beverageType: row.beverage_type,
-        status: (row.status as BrewSessionStage) || 'Brew Day',
+        status: normalizeStatus(row.status),
         batchSizeLiters: row.actual_batch_size_liters || row.batch_size_liters || 0,
         targetOg: row.actual_original_gravity || row.target_og || 1.000,
         targetFg: row.actual_final_gravity || row.target_fg || 1.000,
@@ -107,7 +118,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         recipeId: sessionData.recipe_id,
         recipeName: sessionData.recipe_name,
         beverageType: sessionData.beverage_type,
-        status: (sessionData.status as BrewSessionStage) || 'Brew Day',
+        status: normalizeStatus(sessionData.status),
         batchSizeLiters: sessionData.actual_batch_size_liters || sessionData.batch_size_liters || 0,
         targetOg: sessionData.actual_original_gravity || sessionData.target_og || 1.000,
         targetFg: sessionData.actual_final_gravity || sessionData.target_fg || 1.000,
@@ -145,7 +156,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (currentSession) set({ currentSession: { ...currentSession, sessionSteps: newSteps } });
 
     try {
-      await supabase.from('brew_sessions').update({ session_steps: newSteps }).eq('id', sessionId);
+      await supabase.from('brew_sessions').update({ session_steps: newSteps }).eq('id', sessionId).eq('brewery_id', breweryId);
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to update steps' });
     }
@@ -174,7 +185,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
 
     try {
-      await supabase.from('brew_sessions').update(dbUpdate).eq('id', sessionId);
+      await supabase.from('brew_sessions').update(dbUpdate).eq('id', sessionId).eq('brewery_id', breweryId);
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to update status' });
     }
@@ -214,7 +225,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       await supabase.from('daily_fermentation_logs').insert([logPayload]);
 
       if (updatedTosna) {
-        await supabase.from('brew_sessions').update({ tosna_schedule: updatedTosna }).eq('id', sessionId);
+        await supabase.from('brew_sessions').update({ tosna_schedule: updatedTosna }).eq('id', sessionId).eq('brewery_id', breweryId);
       }
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to add log' });
@@ -235,7 +246,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     try {
       if (updatedTosna) {
-        await supabase.from('brew_sessions').update({ tosna_schedule: updatedTosna }).eq('id', sessionId);
+        await supabase.from('brew_sessions').update({ tosna_schedule: updatedTosna }).eq('id', sessionId).eq('brewery_id', breweryId);
       }
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to update TOSNA' });

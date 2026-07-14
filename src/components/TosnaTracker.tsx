@@ -1,4 +1,3 @@
-// src/components/TosnaTracker.tsx
 import { calculateOneThirdSugarBreak } from '@mead-tracker/math';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,15 +38,18 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
 
   const handleSave = async (additionId: string) => {
     setIsSubmitting(true);
-    const parsedSg = parseFloat(inputSg);
-    await onMarkAddition(additionId, tosna.dosePerAdditionGrams, {
-      sg: isNaN(parsedSg) ? null : parsedSg,
-      notes: inputNotes
-    });
-    setActiveAdditionId(null);
-    setInputSg('');
-    setInputNotes('');
-    setIsSubmitting(false);
+    try {
+      const parsedSg = parseFloat(inputSg);
+      await onMarkAddition(additionId, tosna.dosePerAdditionGrams, {
+        sg: isNaN(parsedSg) ? null : parsedSg,
+        notes: inputNotes
+      });
+      setActiveAdditionId(null);
+      setInputSg('');
+      setInputNotes('');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

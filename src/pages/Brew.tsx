@@ -5,6 +5,17 @@ import { useNavigate } from 'react-router-dom';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useSessionStore } from '../store/useSessionStore';
 
+const getLegacyStatusKey = (status: string) => {
+  const map: Record<string, string> = {
+    'Brew Day': 'planned',
+    'Fermentation': 'fermenting',
+    'Conditioning': 'aging',
+    'Bottled': 'completed',
+    'Completed': 'completed'
+  };
+  return map[status] || 'planned';
+};
+
 const Brew: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -63,7 +74,7 @@ const Brew: React.FC = () => {
       >
         <div className="brew-dashboard__card-header">
           <h3 className="brew-dashboard__card-title">{session.recipeName}</h3>
-          <span className="brew-dashboard__badge" data-status={session.status}>
+          <span className="brew-dashboard__badge" data-status={getLegacyStatusKey(session.status)}>
             {t(session.status)}
           </span>
         </div>

@@ -1,4 +1,3 @@
-// src/pages/BrewSession.tsx
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaCheck, FaCodeBranch, FaPlay, FaPlus } from 'react-icons/fa';
@@ -12,6 +11,17 @@ import { TosnaTracker } from '../components/TosnaTracker';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useInventoryStore } from '../store/useInventoryStore';
 import { useSessionStore } from '../store/useSessionStore';
+
+const getLegacyStatusKey = (status: string) => {
+  const map: Record<string, string> = {
+    'Brew Day': 'planned',
+    'Fermentation': 'fermenting',
+    'Conditioning': 'aging',
+    'Bottled': 'completed',
+    'Completed': 'completed'
+  };
+  return map[status] || 'planned';
+};
 
 const BrewSession: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -69,7 +79,7 @@ const BrewSession: React.FC = () => {
   const isPrepDone = steps.filter((s: any) => s.phase === 'Preparation').every((s: any) => s.isCompleted);
   const isFermDone = steps.filter((s: any) => s.phase === 'Fermentation').every((s: any) => s.isCompleted);
 
-  const canSplit = !currentSession.isSplit && ['Fermentation', 'Conditioning'].includes(currentSession.status);
+  const canSplit = false; 
   const canMidAdd = ['Fermentation', 'Conditioning'].includes(currentSession.status) && !currentSession.isSplit;
 
   const handleTosnaAddition = async (additionId: string, nutrientAmount: number, metrics: { sg: number | null, notes: string }) => {
@@ -129,7 +139,8 @@ const BrewSession: React.FC = () => {
       setMidAddQty(50);
       setMidAddNote('');
     } catch (err) {
-      alert(t('Failed to add ingredient to session.'));
+      console.error('Failed to add ingredient mid-session:', err);
+      alert(t('Failed to add ingredient. Please check inventory and try again.'));
     } finally {
       setIsMidAdding(false);
     }
@@ -175,7 +186,8 @@ const BrewSession: React.FC = () => {
       setShowSplitModal(false);
       navigate('/');
     } catch (err) {
-      alert(t('Split Batch functionality requires Supabase RPC implementation.'));
+      console.error('Failed to split batch:', err);
+      alert(t('Failed to split batch. Please try again.'));
     }
   };
 
@@ -232,7 +244,7 @@ const BrewSession: React.FC = () => {
       <header className="home__header brew-session__header">
         <div className="brew-session__title-block">
           <h1 className="home__title">{currentSession.recipeName}</h1>
-          <span className="brew-item__badge brew-session__badge" data-status={currentSession.status}>
+          <span className="brew-item__badge brew-session__badge" data-status={getLegacyStatusKey(currentSession.status)}>
             {t(currentSession.status)}
             {currentSession.isSplit && ` • ${t('constants.actions.split')}`}
           </span>
@@ -317,9 +329,9 @@ const BrewSession: React.FC = () => {
                        )}
                        
                        <div className="log-item__metrics">
-                         {log.sg !== null && <span className="log-item__metric"><strong>SG:</strong> {log.sg.toFixed(3)}</span>}
-                         {log.ph !== null && <span className="log-item__metric"><strong>pH:</strong> {log.ph.toFixed(2)}</span>}
-                         {log.tempC !== null && <span className="log-item__metric"><strong>Temp:</strong> {log.tempC}°C</span>}
+                         {log.sg !== null && <span className="log-item__metric"><strong>{t('SG')}:</strong> {log.sg.toFixed(3)}</span>}
+                         {log.ph !== null && <span className="log-item__metric"><strong>{t('pH')}:</strong> {log.ph.toFixed(2)}</span>}
+                         {log.tempC !== null && <span className="log-item__metric"><strong>{t('Temp')}:</strong> {log.tempC}°C</span>}
                        </div>
                      </div>
                    );

@@ -1,4 +1,3 @@
-// src/pages/BrewSessionSetup.tsx
 import { calculateAbvCrouch, calculateTosna, estimateOG } from '@mead-tracker/math';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -97,7 +96,7 @@ const BrewSessionSetup: React.FC = () => {
         const qty = item.quantity || 0;
         totalFermentableGrams += qty;
         totalWeightedBrix += brix * qty;
-      } else if (item.category === 'Yeast' || item.name.toLowerCase().includes('yeast') || item.name.toLowerCase().includes('дрожж')) {
+      } else if (item.category === 'Yeast' || (item.name || '').toLowerCase().includes('yeast') || (item.name || '').toLowerCase().includes('дрожж')) {
         hasYeast = true;
         if (item.nitrogenDemand) nitrogenDemand = item.nitrogenDemand;
       }
@@ -142,10 +141,10 @@ const BrewSessionSetup: React.FC = () => {
         tosnaSchedulePayload = {
           ...sessionDetails.tosna,
           additions: [
-            { id: crypto.randomUUID(), targetHours: 24, isOneThirdBreak: false, isCompleted: false, completedAt: null },
-            { id: crypto.randomUUID(), targetHours: 48, isOneThirdBreak: false, isCompleted: false, completedAt: null },
-            { id: crypto.randomUUID(), targetHours: 72, isOneThirdBreak: false, isCompleted: false, completedAt: null },
-            { id: crypto.randomUUID(), targetHours: null, isOneThirdBreak: true, isCompleted: false, completedAt: null }
+            { id: crypto.randomUUID(), targetHours: 24, isCompleted: false, completedAt: null },
+            { id: crypto.randomUUID(), targetHours: 48, isCompleted: false, completedAt: null },
+            { id: crypto.randomUUID(), targetHours: 72, isCompleted: false, completedAt: null },
+            { id: crypto.randomUUID(), isOneThirdBreak: true, isCompleted: false, completedAt: null }
           ]
         };
       }
