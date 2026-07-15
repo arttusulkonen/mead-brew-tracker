@@ -200,3 +200,21 @@
     }
   }
 }
+
+/* Добавлено для SplitBatchModal */
+.bottom-sheet__allocated--error {
+  color: var(--color-error);
+}
+
+.timeline__item--split {
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  margin: 0;
+}
+
+.split-item__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

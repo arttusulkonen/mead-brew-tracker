@@ -1,3 +1,4 @@
+// src/types/session.ts
 import type { UUID } from './ingredient';
 import type { BeverageType, RecipeIngredientReference, RecipeStep } from './recipe';
 

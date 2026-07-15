@@ -115,6 +115,12 @@
     display: flex;
     flex-direction: column;
     gap: $spacing-lg;
+
+    &--spaced {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
   }
 
   .header-actions {
@@ -191,6 +197,10 @@
   &__item {
     margin-bottom: 0;
   }
+
+  &--tight {
+    gap: 4px;
+  }
 }
 
 .builder-auto-calc {
@@ -231,13 +241,30 @@
   }
 }
 
-.ingredient-list, .step-list {
+.ingredient-list {
   display: flex;
   flex-direction: column;
   gap: $spacing-md;
   padding: 0;
   margin: $spacing-lg 0 0 0;
   list-style: none;
+
+  &--spaced {
+    margin-top: 0.5rem;
+  }
+}
+
+.step-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  padding: 0;
+  margin: $spacing-lg 0 0 0;
+  list-style: none;
+
+  &__actions {
+    margin-top: 1rem;
+  }
 }
 
 .recipe-ingredient {
@@ -267,6 +294,11 @@
     align-items: baseline;
   }
 
+  &__info-col {
+    display: flex;
+    flex-direction: column;
+  }
+
   &__badge {
     padding: 2px 6px;
     font-size: 0.7rem;
@@ -283,6 +315,16 @@
   &__name {
     font-weight: 600;
     color: var(--text-primary);
+  }
+
+  &__meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+
+  &__meta-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
   }
 
   &__controls {
@@ -336,6 +378,10 @@
 
   &__note {
     padding-top: $spacing-sm;
+  }
+
+  &__ai-adjust {
+    margin-top: $spacing-xs;
   }
 
   .diff-actions {
@@ -417,6 +463,16 @@
     gap: $spacing-md;
     padding: $spacing-md;
   }
+
+  &__title {
+    font-size: 1.1rem;
+    font-weight: bold;
+  }
+
+  &__desc {
+    margin: 0;
+    color: var(--text-secondary);
+  }
 }
 
 .stat-panel {
@@ -470,15 +526,42 @@
     }
   }
 
+  &__info {
+    margin-right: $spacing-sm;
+  }
+
+  &__info-col {
+    display: flex;
+    flex-direction: column;
+  }
+
   &__label {
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--text-secondary);
+
+    &--bold {
+      font-weight: bold;
+    }
   }
 
   &__subtext {
     font-size: 0.75rem;
     color: var(--text-secondary);
+
+    &--flex {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    &--success {
+      color: #10b981;
+    }
+
+    &--muted {
+      color: var(--text-secondary);
+    }
   }
 
   &__value {
@@ -489,11 +572,21 @@
     &--highlight {
       color: var(--color-primary);
     }
+
+    &--primary {
+      color: var(--color-primary);
+    }
   }
 
   &__range-hint {
     font-size: 0.75rem;
     color: var(--color-error);
+  }
+
+  &__apply-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
   }
 
   &__btn-apply {
@@ -508,6 +601,14 @@
 
     &:hover {
       background-color: var(--color-primary-dark);
+    }
+
+    &--applied {
+      color: var(--text-disabled);
+      cursor: default;
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      opacity: 0.7;
     }
   }
 }
@@ -584,9 +685,45 @@
     }
   }
 
+  &__title {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+
+  &__count {
+    font-weight: normal;
+    color: var(--text-secondary);
+  }
+
   &__empty {
     font-size: 0.85rem;
     font-style: italic;
     color: var(--text-disabled);
   }
+
+  &__empty-text {
+    padding: 0.5rem 0;
+    font-size: 0.9rem;
+    font-style: italic;
+    color: var(--text-disabled);
+  }
+}
+
+.btn-secondary--small {
+  padding: 4px 12px;
+  font-size: 0.85rem;
+}
+
+.mt-md {
+  margin-top: 1rem;
+}
+
+.mt-lg {
+  margin-top: 1.5rem;
+}
+
+.full-width {
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }

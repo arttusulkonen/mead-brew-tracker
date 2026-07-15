@@ -30,13 +30,17 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px;
+    margin-bottom: 12px;
     background-color: #f8fafc;
+    background-color: var(--bg-surface-alt);
     border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     transition: all 0.2s ease;
 
     &--completed {
       background-color: #f1f5f9;
+      background-color: var(--bg-surface);
       opacity: 0.6;
     }
 
@@ -56,12 +60,24 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+
+    &--flex {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
   }
 
   &__item-title {
-    font-size: 0.95rem;
+    display: block;
+    font-size: 1.05rem;
     font-weight: 600;
     color: #1e293b;
+    color: var(--text-primary);
+
+    &--completed {
+      color: var(--text-secondary);
+    }
   }
 
   &__time {
@@ -79,6 +95,80 @@
       font-weight: bold;
       color: #dc2626;
     }
+
+    &--highlight {
+      font-weight: bold;
+      color: var(--color-primary);
+    }
+  }
+
+  /* Добавлено для TosnaTracker */
+  &__hint {
+    &--disabled {
+      font-size: 0.9rem;
+      color: var(--text-disabled);
+    }
+  }
+
+  &__desc {
+    &--muted {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+  }
+
+  &__badge-overdue {
+    margin-left: 8px;
+  }
+
+  &__done-text {
+    font-weight: bold;
+    color: var(--color-success);
+  }
+
+  &__form {
+    &--expanded {
+      padding-top: 16px;
+      margin-top: 16px;
+      border-top: 1px dashed var(--border-color);
+    }
+  }
+
+  &__form-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__form-label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.85rem;
+    font-weight: bold;
+  }
+
+  &__form-input {
+    width: 100%;
+    padding: 10px;
+    font-size: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+  }
+
+  &__form-textarea {
+    width: 100%;
+    padding: 10px;
+    font-size: 0.95rem;
+    resize: vertical;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+  }
+
+  &__form-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 4px;
   }
 }
 

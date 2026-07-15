@@ -7,7 +7,7 @@ export const AppLayout: React.FC = () => {
   const { user, isLoading } = useAuthStore();
 
   if (isLoading) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>;
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>{'Loading...'}</div>;
   }
 
   if (!user) {

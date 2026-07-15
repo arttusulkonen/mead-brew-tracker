@@ -1,3 +1,4 @@
+// src/pages/BrewSession.tsx
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaCheck, FaCodeBranch, FaPlay, FaPlus } from 'react-icons/fa';
@@ -53,7 +54,7 @@ const BrewSession: React.FC = () => {
     const requestWakeLock = async () => {
       try {
         const steps = currentSession?.sessionSteps || [];
-        const activeStep = steps.find((s: any) => s.isActive);
+        const activeStep = steps.find((s: any) => s?.isActive);
         if ('wakeLock' in navigator && activeStep) {
           wakeLock = await navigator.wakeLock.request('screen');
         }
@@ -75,9 +76,9 @@ const BrewSession: React.FC = () => {
   if (!currentSession) return <div className="home"><h2 className="home__title">{t('Session not found')}</h2></div>;
 
   const steps = currentSession.sessionSteps || [];
-  const activeStep = steps.find((s: any) => s.isActive);
-  const isPrepDone = steps.filter((s: any) => s.phase === 'Preparation').every((s: any) => s.isCompleted);
-  const isFermDone = steps.filter((s: any) => s.phase === 'Fermentation').every((s: any) => s.isCompleted);
+  const activeStep = steps.find((s: any) => s?.isActive);
+  const isPrepDone = steps.filter((s: any) => s?.phase === 'Preparation').every((s: any) => s?.isCompleted);
+  const isFermDone = steps.filter((s: any) => s?.phase === 'Fermentation').every((s: any) => s?.isCompleted);
 
   const canSplit = false; 
   const canMidAdd = ['Fermentation', 'Conditioning'].includes(currentSession.status) && !currentSession.isSplit;
@@ -86,9 +87,9 @@ const BrewSession: React.FC = () => {
     if (!currentSession || !activeBreweryId) return;
 
     const now = new Date();
-    const additions = currentSession.tosnaSchedule?.additions.map(add => 
+    const additions = (currentSession.tosnaSchedule?.additions || []).map(add => 
       add.id === additionId ? { ...add, isCompleted: true, completedAt: now.toISOString() } : add
-    ) || [];
+    );
 
     await updateTosnaSchedule(activeBreweryId, currentSession.id, additions);
     
@@ -109,7 +110,8 @@ const BrewSession: React.FC = () => {
   const handleMidSessionAdd = async () => {
     if (!currentSession?.id || !activeBreweryId || !midAddIngredientId || midAddQty <= 0) return;
     
-    const invItem = inventory.find(i => i.ingredientId === midAddIngredientId);
+    const safeInventory = inventory || [];
+    const invItem = safeInventory.find(i => i?.ingredientId === midAddIngredientId);
     if (!invItem) return;
     
     setIsMidAdding(true);
@@ -129,7 +131,7 @@ const BrewSession: React.FC = () => {
         timestamp: now.toISOString(),
         dayNumber,
         sg: null, ph: null, tempC: null,
-        actionTaken: `Mid-session addition: ${midAddQty}g of ${invItem.ingredient.name}`,
+        actionTaken: `Mid-session addition: ${midAddQty}g of ${invItem.ingredient?.name || 'ingredient'}`,
         notes: midAddNote,
         stepId: null
       });
@@ -172,7 +174,7 @@ const BrewSession: React.FC = () => {
     await updateSessionStatus(activeBreweryId, currentSession.id, 'Fermentation', parsedOg);
   };
 
-  const handleCompletePhase = async (newStatus: 'Conditioning' | 'Bottled') => {
+  const handleCompletePhase = async (newStatus: 'Conditioning' | 'Completed') => {
     if (!currentSession?.id || !activeBreweryId) return;
     if (window.confirm(t('Are you sure you want to advance to the next phase?'))) {
       await updateSessionStatus(activeBreweryId, currentSession.id, newStatus);
@@ -191,13 +193,15 @@ const BrewSession: React.FC = () => {
     }
   };
 
+  const rawStatus = currentSession.status || 'Brew Day';
+  
   const chartData = (currentSession.logs || [])
-    .filter(log => log.sg !== null)
+    .filter(log => log?.sg !== null && log?.sg !== undefined)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    .map(log => ({ day: `Day ${log.dayNumber}`, sg: log.sg }));
+    .map(log => ({ day: `${t('Day')} ${log.dayNumber}`, sg: log.sg }));
 
   return (
-    <div className="home" style={{ maxWidth: '1200px' }}>
+    <div className="home brew-session__container">
       
       {showMidAddModal && (
         <div className="modal-overlay">
@@ -205,17 +209,17 @@ const BrewSession: React.FC = () => {
             <h3 className="modal-title">{t('Add Ingredient to Batch')}</h3>
             <select className="modal-select" value={midAddIngredientId} onChange={e => setMidAddIngredientId(e.target.value)}>
               <option value="" disabled>{t('Select ingredient...')}</option>
-              {inventory.filter(i => i.quantityOnHand > 0).map(i => (
+              {(inventory || []).filter(i => i?.quantityOnHand > 0).map(i => (
                 <option key={i.ingredientId} value={i.ingredientId}>
-                  {i.ingredient.name} ({i.quantityOnHand} {t(`constants.units.${i.unit.toLowerCase()}`)} avail)
+                  {i.ingredient?.name || 'Unknown'} ({i.quantityOnHand} {t(`constants.units.${i.unit?.toLowerCase() || 'g'}`)} {t('avail')})
                 </option>
               ))}
             </select>
             <div className="modal-input-group">
-              <input type="number" className="setup-form-input" value={midAddQty} onChange={e => setMidAddQty(parseFloat(e.target.value) || 0)} />
-              <span className="modal-unit">g</span>
+              <input type="number" className="setup-form-input" value={midAddQty || ''} onChange={e => setMidAddQty(parseFloat(e.target.value) || 0)} />
+              <span className="modal-unit">{t('g')}</span>
             </div>
-            <textarea className="modal-textarea" value={midAddNote} onChange={e => setMidAddNote(e.target.value)} placeholder={t('Notes (optional)')} rows={3} />
+            <textarea className="modal-textarea" value={midAddNote || ''} onChange={e => setMidAddNote(e.target.value)} placeholder={t('Notes (optional)')} rows={3} />
             <div className="modal-actions">
               <button className="btn-secondary" onClick={() => setShowMidAddModal(false)}>{t('Cancel')}</button>
               <button className="btn-primary" onClick={handleMidSessionAdd} disabled={isMidAdding || !midAddIngredientId}>{isMidAdding ? t('Adding...') : t('Add to Batch')}</button>
@@ -229,7 +233,7 @@ const BrewSession: React.FC = () => {
           <div className="home-card modal-content">
             <h3 className="modal-title">{t('Start Fermentation')}</h3>
             <p className="modal-subtitle">{t('Please enter actual Original Gravity (OG)')}</p>
-            <input type="number" step="0.001" className="setup-form-input modal-input-large" value={actualOgInput} onChange={e => setActualOgInput(e.target.value)} />
+            <input type="number" step="0.001" className="setup-form-input modal-input-large" value={actualOgInput || ''} onChange={e => setActualOgInput(e.target.value)} />
             <div className="modal-actions">
               <button className="btn-secondary" onClick={() => setShowOgModal(false)}>{t('Cancel')}</button>
               <button className="btn-primary" onClick={handleConfirmStartFermentation}>{t('Start')}</button>
@@ -238,23 +242,38 @@ const BrewSession: React.FC = () => {
         </div>
       )}
 
-      {showSplitModal && <SplitBatchModal currentVolume={currentSession.batchSizeLiters} onClose={() => setShowSplitModal(false)} onSubmit={handleSplitBatch} />}
+      {showSplitModal && <SplitBatchModal currentVolume={currentSession.batchSizeLiters || 0} onClose={() => setShowSplitModal(false)} onSubmit={handleSplitBatch} />}
       <MeasurementBottomSheet isOpen={isBottomSheetOpen} onClose={() => setIsBottomSheetOpen(false)} onSubmit={handleMeasurementSubmit} activeStepTitle={activeStep?.title} />
 
       <header className="home__header brew-session__header">
         <div className="brew-session__title-block">
-          <h1 className="home__title">{currentSession.recipeName}</h1>
-          <span className="brew-item__badge brew-session__badge" data-status={getLegacyStatusKey(currentSession.status)}>
-            {t(currentSession.status)}
-            {currentSession.isSplit && ` • ${t('constants.actions.split')}`}
+          <h1 className="home__title">{currentSession.recipeName || t('Unknown Recipe')}</h1>
+          <span className="brew-item__badge brew-session__badge" data-status={getLegacyStatusKey(rawStatus)}>
+            {t(`constants.status.${rawStatus.toLowerCase().replace(' ', '_')}`, rawStatus)}
+            {currentSession.isSplit && ` • ${t('constants.actions.split', 'Split')}`}
           </span>
         </div>
         <div className="brew-session__actions">
           {canMidAdd && <button className="btn-secondary" onClick={() => setShowMidAddModal(true)}><FaPlus className="brew-session__icon"/> {t('Add Ingredient')}</button>}
           {canSplit && <button className="btn-secondary" onClick={() => setShowSplitModal(true)}><FaCodeBranch className="brew-session__icon"/> {t('Split')}</button>}
-          {currentSession.status === 'Brew Day' && !currentSession.isSplit && <button className="btn-primary" onClick={() => { setActualOgInput(currentSession.targetOg?.toString() || '1.000'); setShowOgModal(true); }} disabled={!isPrepDone}><FaPlay className="brew-session__icon"/> {t('Start Fermentation')}</button>}
-          {currentSession.status === 'Fermentation' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('Conditioning')} disabled={!isFermDone}><FaCheck className="brew-session__icon"/> {t('Move to Conditioning')}</button>}
-          {currentSession.status === 'Conditioning' && !currentSession.isSplit && <button className="btn-primary" onClick={() => handleCompletePhase('Bottled')}><FaCheck className="brew-session__icon"/> {t('Complete Brew')}</button>}
+          
+          {currentSession.status === 'Brew Day' && !currentSession.isSplit && (
+            <button className="btn-primary" onClick={() => { setActualOgInput(currentSession.targetOg?.toString() || '1.000'); setShowOgModal(true); }} disabled={!isPrepDone}>
+              <FaPlay className="brew-session__icon"/> {t('Start Fermentation')}
+            </button>
+          )}
+          
+          {currentSession.status === 'Fermentation' && !currentSession.isSplit && (
+            <button className="btn-primary" onClick={() => handleCompletePhase('Conditioning')} disabled={!isFermDone}>
+              <FaCheck className="brew-session__icon"/> {t('Move to Conditioning')}
+            </button>
+          )}
+          
+          {currentSession.status === 'Conditioning' && !currentSession.isSplit && (
+            <button className="btn-primary" onClick={() => handleCompletePhase('Completed')}>
+              <FaCheck className="brew-session__icon"/> {t('Complete & Analyze Brew')}
+            </button>
+          )}
         </div>
       </header>
 
@@ -264,7 +283,7 @@ const BrewSession: React.FC = () => {
           
           <div className="home-card">
             <div className="home-card__header"><h2 className="home-card__title">{t('Fermentation Chart')}</h2></div>
-            <div className="brew-session__chart-container" style={{ height: '300px', padding: '16px' }}>
+            <div className="brew-session__chart-wrapper">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
@@ -287,8 +306,8 @@ const BrewSession: React.FC = () => {
             <div className="home-card home-card--active-step">
               <div className="home-card__header"><h2 className="home-card__title home-card__title--primary">▶ {t('Active Step')}</h2></div>
               <div className="home-card__list">
-                <strong className="active-step__title">{activeStep.title}</strong>
-                <p className="active-step__desc">{activeStep.description}</p>
+                <strong className="active-step__title">{activeStep.title || ''}</strong>
+                <p className="active-step__desc">{activeStep.description || ''}</p>
                 <div className="active-step__timer">
                   ⏱ <ActiveTimer startedAt={activeStep.startedAt} accumulatedSeconds={activeStep.accumulatedSeconds} isActive={activeStep.isActive} />
                 </div>
@@ -304,34 +323,34 @@ const BrewSession: React.FC = () => {
                )}
              </div>
              <div className="home-card__list">
-               {currentSession.logs.length === 0 ? (
+               {(currentSession.logs || []).length === 0 ? (
                  <p className="brew-session__empty-logs">{t('No logs recorded yet.')}</p>
                ) : (
                  [...currentSession.logs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(log => {
-                   const linkedStep = steps.find(s => s.id === log.stepId);
+                   const linkedStep = steps.find(s => s?.id === log?.stepId);
                    
                    return (
                      <div key={log.id} className="log-item">
                        <div className="log-item__header">
                          <div className="log-item__title-group">
-                           <strong className="log-item__day">{t('Day')} {log.dayNumber}</strong> 
+                           <strong className="log-item__day">{t('Day')} {log.dayNumber || 1}</strong> 
                            {linkedStep && (
-                             <span className="badge badge--outline log-item__badge">📍 {linkedStep.title}</span>
+                             <span className="badge badge--outline log-item__badge">📍 {linkedStep.title || ''}</span>
                            )}
                          </div>
-                         <span className="log-item__time">{new Date(log.timestamp).toLocaleString()}</span>
+                         <span className="log-item__time">{log.timestamp ? new Date(log.timestamp).toLocaleString() : ''}</span>
                        </div>
                        
-                       <p className="log-item__action">{log.actionTaken}</p>
+                       <p className="log-item__action">{log.actionTaken || ''}</p>
                        
                        {log.notes && (
-                         <p className="log-item__notes" style={{ whiteSpace: 'pre-wrap', marginTop: '8px', fontSize: '0.9rem' }}>{log.notes}</p>
+                         <p className="log-item__notes-text">{log.notes}</p>
                        )}
                        
                        <div className="log-item__metrics">
-                         {log.sg !== null && <span className="log-item__metric"><strong>{t('SG')}:</strong> {log.sg.toFixed(3)}</span>}
-                         {log.ph !== null && <span className="log-item__metric"><strong>{t('pH')}:</strong> {log.ph.toFixed(2)}</span>}
-                         {log.tempC !== null && <span className="log-item__metric"><strong>{t('Temp')}:</strong> {log.tempC}°C</span>}
+                         {log.sg !== null && log.sg !== undefined && <span className="log-item__metric"><strong>{t('SG')}:</strong> {log.sg.toFixed(3)}</span>}
+                         {log.ph !== null && log.ph !== undefined && <span className="log-item__metric"><strong>{t('pH')}:</strong> {log.ph.toFixed(2)}</span>}
+                         {log.tempC !== null && log.tempC !== undefined && <span className="log-item__metric"><strong>{t('Temp')}:</strong> {log.tempC}°C</span>}
                        </div>
                      </div>
                    );

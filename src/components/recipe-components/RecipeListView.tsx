@@ -1,3 +1,4 @@
+// src/components/recipe-components/RecipeListView.tsx
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaBookOpen, FaPlus } from 'react-icons/fa';
@@ -27,7 +28,7 @@ export const RecipeListView: React.FC<RecipeListViewProps> = ({ recipes, isLoadi
 
       {isLoading ? (
         <div className="recipe-lab__loading">{t('Loading recipes...')}</div>
-      ) : recipes.length === 0 ? (
+      ) : (recipes || []).length === 0 ? (
         <div className="recipe-lab__empty-state">
           <FaBookOpen className="recipe-lab__empty-icon" />
           <p className="recipe-lab__empty-text">{t('No recipes found. Create your first recipe!')}</p>
@@ -37,7 +38,7 @@ export const RecipeListView: React.FC<RecipeListViewProps> = ({ recipes, isLoadi
         </div>
       ) : (
         <ul className="recipe-list">
-          {recipes.map(recipe => (
+          {(recipes || []).map(recipe => (
             <li
               key={recipe.id}
               className="recipe-card"
@@ -65,19 +66,19 @@ export const RecipeListView: React.FC<RecipeListViewProps> = ({ recipes, isLoadi
                 <div className="recipe-card__stat">
                   <span className="recipe-card__stat-label">{t('ABV')}</span>
                   <span className="recipe-card__stat-value recipe-card__stat-value--highlight">
-                    {recipe.targetAbv?.toFixed(1)}%
+                    {(recipe.targetAbv || 0).toFixed(1)}%
                   </span>
                 </div>
                 <div className="recipe-card__stat">
                   <span className="recipe-card__stat-label">{t('Size')}</span>
                   <span className="recipe-card__stat-value">
-                    {recipe.expectedBatchSizeLiters} {t('L')}
+                    {recipe.expectedBatchSizeLiters || 0} {t('L')}
                   </span>
                 </div>
                 <div className="recipe-card__stat">
                   <span className="recipe-card__stat-label">{t('OG')}</span>
                   <span className="recipe-card__stat-value">
-                    {recipe.targetOriginalGravity?.toFixed(3)}
+                    {(recipe.targetOriginalGravity || 1.000).toFixed(3)}
                   </span>
                 </div>
               </div>

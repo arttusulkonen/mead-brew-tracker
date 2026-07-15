@@ -1,3 +1,4 @@
+// src/store/useRecipeStore.ts
 import { create } from 'zustand';
 import { supabase } from '../supabase/client';
 import type { BeverageType, IdealTargetCurves, Recipe, RecipeIngredientReference, RecipeStep } from '../types/recipe';

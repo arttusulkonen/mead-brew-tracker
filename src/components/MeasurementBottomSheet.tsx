@@ -131,15 +131,15 @@ export const MeasurementBottomSheet: React.FC<MeasurementBottomSheetProps> = ({
           <div className="bottom-sheet__group">
             <label className="bottom-sheet__label">{t('Quick Actions')}</label>
             <div className="bottom-sheet__chips">
-              {ACTION_CHIPS.map(chip => (
+              {(ACTION_CHIPS || []).map(chip => (
                 <button
                   key={chip.id}
                   type="button"
-                  className={`bottom-sheet__chip ${actionInput === chip.name ? 'bottom-sheet__chip--active' : ''}`}
-                  onClick={() => handleChipClick(chip.name)}
+                  className={`bottom-sheet__chip ${actionInput === t(chip.name, chip.name) ? 'bottom-sheet__chip--active' : ''}`}
+                  onClick={() => handleChipClick(t(chip.name, chip.name))}
                   disabled={isSubmitting}
                 >
-                  {t(chip.name)}
+                  {t(chip.name, chip.name)}
                 </button>
               ))}
             </div>

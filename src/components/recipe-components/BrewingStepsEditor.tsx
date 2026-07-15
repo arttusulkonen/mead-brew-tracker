@@ -1,4 +1,3 @@
-// src/components/recipe-components/BrewingStepsEditor.tsx
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaCheck, FaChevronDown, FaChevronUp, FaMagic, FaPlus, FaTimes, FaTrash } from 'react-icons/fa';
@@ -35,7 +34,7 @@ export const BrewingStepsEditor: React.FC<BrewingStepsEditorProps> = ({
 
   return (
     <>
-      {aiProposedSteps.length > 0 && (
+      {(aiProposedSteps || []).length > 0 && (
         <section className="builder-section ai-proposed-steps-container">
           <div className="ai-container-header">
             <h3><FaMagic /> {t('AI Generated Steps Review')}</h3>
@@ -49,20 +48,20 @@ export const BrewingStepsEditor: React.FC<BrewingStepsEditorProps> = ({
             </div>
           </div>
           <div className="step-list">
-            {aiProposedSteps.map((step) => (
+            {(aiProposedSteps || []).map((step) => (
               <div key={step.id} className="step-item">
                 <div className="step-item__header">
                   <div className="step-item__header-left">
                     <span className="step-item__number">{step.stepNumber}</span>
                     <span className="btn-badge">
-                      {t(`constants.step_phases.${step.phase.toLowerCase()}`, step.phase)}
+                      {t(`constants.step_phases.${step.phase?.toLowerCase() || 'preparation'}`, step.phase)}
                     </span>
                   </div>
                   <div className='step-item__buttons'>
                     <button
                       type="button"
                       className="btn-text"
-                      onClick={() => setAiProposedSteps(prev => prev.map(s => s.id === step.id ? { ...s, isExpanded: !s.isExpanded } : s))}
+                      onClick={() => setAiProposedSteps(prev => (prev || []).map(s => s.id === step.id ? { ...s, isExpanded: !s.isExpanded } : s))}
                     >
                       {step.isExpanded ? <FaChevronUp /> : <FaChevronDown />}
                     </button>
@@ -70,11 +69,11 @@ export const BrewingStepsEditor: React.FC<BrewingStepsEditorProps> = ({
                 </div>
                 {step.isExpanded && (
                   <div className="step-item__body">
-                    <div style={{fontWeight: 'bold', fontSize: '1.1rem'}}>{step.title}</div>
-                    <p style={{margin: '0', color: 'var(--text-secondary)'}}>{step.description}</p>
+                    <div className="step-item__title">{step.title}</div>
+                    <p className="step-item__desc">{step.description}</p>
                     <div className="builder-row text-sm text-muted">
-                      <div>⏱ {step.durationValue} {t(`constants.units.${step.durationUnit.toLowerCase()}`, step.durationUnit)}</div>
-                      {step.targetTempC && <div>🌡 {step.targetTempC} °C</div>}
+                      <div>⏱ {step.durationValue || 0} {t(`constants.units.${step.durationUnit?.toLowerCase() || 'minutes'}`, step.durationUnit)}</div>
+                      {step.targetTempC != null && <div>🌡 {step.targetTempC} °C</div>}
                     </div>
                   </div>
                 )}
@@ -90,14 +89,14 @@ export const BrewingStepsEditor: React.FC<BrewingStepsEditorProps> = ({
         </div>
         <div className="builder-section__body">
           <div className="step-list">
-            {recipeSteps.map((step) => (
+            {(recipeSteps || []).map((step) => (
               <div key={step.id} className="step-item">
                 <div className="step-item__header">
                   <div className="step-item__header-left">
                     <span className="step-item__number">{step.stepNumber}</span>
                     <select
                       className="form-field__select form-field__select--small"
-                      value={step.phase}
+                      value={step.phase || 'Preparation'}
                       onChange={(e) => onUpdateStep(step.id, { phase: e.target.value as StepPhase })}
                       disabled={isSaving}
                     >
@@ -129,14 +128,14 @@ export const BrewingStepsEditor: React.FC<BrewingStepsEditorProps> = ({
                   <div className="step-item__body">
                     <input
                       type="text"
-                      value={step.title}
+                      value={step.title || ''}
                       onChange={(e) => onUpdateStep(step.id, { title: e.target.value })}
                       placeholder={t('Step Title')}
                       className="form-field__input"
                       disabled={isSaving}
                     />
                     <textarea
-                      value={step.description}
+                      value={step.description || ''}
                       onChange={(e) => onUpdateStep(step.id, { description: e.target.value })}
                       placeholder={t('Detailed instructions...')}
                       className="form-field__textarea"
@@ -147,18 +146,18 @@ export const BrewingStepsEditor: React.FC<BrewingStepsEditorProps> = ({
                     <div className="builder-row">
                       <div className="form-field builder-row__item">
                         <label className="form-field__label">{t('Duration')}</label>
-                        <div className="builder-row" style={{gap: '4px'}}>
+                        <div className="builder-row builder-row--tight">
                           <input
                             className="form-field__input builder-row__item"
                             type="number"
                             min="0"
-                            value={step.durationValue === 0 ? '' : step.durationValue}
+                            value={step.durationValue === 0 ? '' : (step.durationValue || '')}
                             onChange={(e) => onUpdateStep(step.id, { durationValue: parseFloat(e.target.value) || 0 })}
                             disabled={isSaving}
                           />
                           <select
                             className="form-field__select builder-row__item"
-                            value={step.durationUnit}
+                            value={step.durationUnit || 'minutes'}
                             onChange={(e) => onUpdateStep(step.id, { durationUnit: e.target.value as TimeUnit })}
                             disabled={isSaving}
                           >
@@ -184,7 +183,7 @@ export const BrewingStepsEditor: React.FC<BrewingStepsEditorProps> = ({
                 )}
               </div>
             ))}
-            <div style={{marginTop: '1rem'}}>
+            <div className="step-list__actions">
               <button type="button" className="btn-secondary btn-secondary--full" onClick={() => onAddStep('Preparation')} disabled={isSaving}>
                 <FaPlus /> {t('Add Manual Step')}
               </button>
