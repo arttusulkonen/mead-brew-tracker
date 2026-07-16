@@ -2,6 +2,7 @@
 import { calculateOneThirdSugarBreak } from '@mead-tracker/math';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FaLock, FaUnlock } from 'react-icons/fa';
 import type { BrewSession } from '../types/session';
 
 interface TosnaTrackerProps {
@@ -11,7 +12,7 @@ interface TosnaTrackerProps {
 
 export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddition }) => {
   const { t } = useTranslation();
-  const [currentHours, setCurrentHours] = useState<number>(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const [activeAdditionId, setActiveAdditionId] = useState<string | null>(null);
   const [inputSg, setInputSg] = useState<string>('');
   const [inputNotes, setInputNotes] = useState<string>('');
@@ -22,20 +23,32 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
 
   useEffect(() => {
     if (!fermentationStart) return;
-    const interval = setInterval(() => {
-      const ms = Date.now() - new Date(fermentationStart).getTime();
-      setCurrentHours(ms / (1000 * 60 * 60));
-    }, 60000);
     
-    const initialMs = Date.now() - new Date(fermentationStart).getTime();
-    setCurrentHours(initialMs / (1000 * 60 * 60));
-
+    const updateTimer = () => {
+      const startMs = new Date(fermentationStart).getTime();
+      setElapsedSeconds(Math.floor((Date.now() - startMs) / 1000));
+    };
+    
+    updateTimer(); // первый вызов без задержки
+    const interval = setInterval(updateTimer, 1000); // тикаем каждую секунду
     return () => clearInterval(interval);
   }, [fermentationStart]);
 
+  const formatExactTime = (totalSeconds: number) => {
+    const d = Math.floor(totalSeconds / 86400);
+    const h = Math.floor((totalSeconds % 86400) / 3600).toString().padStart(2, '0');
+    const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+    const s = (totalSeconds % 60).toString().padStart(2, '0');
+    if (d > 0) return `${d}d ${h}:${m}:${s}`;
+    return `${h}:${m}:${s}`;
+  };
+
   if (!tosna || !(tosna.additions || []).length) return null;
 
-  const targetSgBreak = calculateOneThirdSugarBreak(session?.actualOg || session?.targetOg || 1.000, session?.actualFg || session?.targetFg || 1.000);
+  const targetSgBreak = calculateOneThirdSugarBreak(
+    session?.actualOg || session?.targetOg || 1.000, 
+    session?.actualFg || session?.targetFg || 1.000
+  );
 
   const handleSave = async (additionId: string) => {
     setIsSubmitting(true);
@@ -59,7 +72,7 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
         <h2 className="home-card__title tosna-widget__title">{t('TOSNA 3.0 Schedule')}</h2>
         {fermentationStart && (
           <span className="tosna-widget__time tosna-widget__time--highlight">
-            {t('Elapsed')}: {Math.floor(currentHours)}h
+            ⏱ {formatExactTime(elapsedSeconds)}
           </span>
         )}
       </div>
@@ -72,15 +85,27 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
         
         {(tosna.additions || []).map((addition, index) => {
           if (!addition) return null;
-          const isOverdue = fermentationStart && !addition.isCompleted && !addition.isOneThirdBreak && currentHours >= (addition.targetHours || 0);
+          
+          const targetSeconds = (addition.targetHours || 0) * 3600;
+          // Добавка разблокирована, если это 1/3 Break ИЛИ прошло нужное количество времени
+          const isDue = addition.isOneThirdBreak || elapsedSeconds >= targetSeconds;
           const isExpanded = activeAdditionId === addition.id;
+          
+          let timeStatus = '';
+          if (!addition.isCompleted && !addition.isOneThirdBreak && fermentationStart) {
+            if (!isDue) {
+              const remaining = targetSeconds - elapsedSeconds;
+              const rh = Math.floor(remaining / 3600);
+              const rm = Math.floor((remaining % 3600) / 60);
+              timeStatus = t('Opens in {{h}}h {{m}}m', { h: rh, m: rm, defaultValue: `Opens in ${rh}h ${rm}m` });
+            }
+          }
           
           return (
             <div 
               key={addition.id} 
-              className={`tosna-widget__item ${isOverdue ? 'tosna-widget__item--overdue' : ''} ${addition.isCompleted ? 'tosna-widget__item--completed' : ''}`}
+              className={`tosna-widget__item ${addition.isCompleted ? 'tosna-widget__item--completed' : ''} ${isDue && !addition.isCompleted ? 'tosna-widget__item--due-now' : ''}`}
             >
-              
               <div className="tosna-widget__info tosna-widget__info--flex">
                 <div>
                   <strong className={`tosna-widget__item-title ${addition.isCompleted ? 'tosna-widget__item-title--completed' : ''}`}>
@@ -93,15 +118,22 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
                       ? t('Target SG: {{sg}}', { sg: (targetSgBreak || 1.000).toFixed(3) }) 
                       : t('Add {{amount}}g of Fermaid-O', { amount: tosna.dosePerAdditionGrams || 0 })}
                   </span>
-                  {isOverdue && <span className="badge badge--danger tosna-widget__badge-overdue">{t('OVERDUE')}</span>}
+                  
+                  {timeStatus && !isDue && (
+                    <div className="tosna-widget__time tosna-widget__time--locked">
+                      <FaLock size={10}/> {timeStatus}
+                    </div>
+                  )}
                 </div>
 
                 {!addition.isCompleted && !isExpanded && fermentationStart && (
                   <button 
-                    className="btn-primary btn-primary--small"
-                    onClick={() => setActiveAdditionId(addition.id)}
+                    className={`btn-primary btn-primary--small ${!isDue ? 'btn-disabled' : ''}`}
+                    onClick={() => isDue && setActiveAdditionId(addition.id)}
+                    disabled={!isDue}
+                    style={{ opacity: isDue ? 1 : 0.5, cursor: isDue ? 'pointer' : 'not-allowed' }}
                   >
-                    {t('Record')}
+                    {isDue ? <><FaUnlock style={{marginRight: '4px'}}/> {t('Record')}</> : t('Locked')}
                   </button>
                 )}
 

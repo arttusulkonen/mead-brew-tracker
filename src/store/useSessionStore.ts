@@ -19,9 +19,9 @@ interface SessionState {
   updateTosnaSchedule: (breweryId: string | null | undefined, sessionId: string | null | undefined, updatedAdditions: TosnaAddition[]) => Promise<void>;
   splitBrewSession: (payload: Record<string, unknown>) => Promise<void>;
   updateSessionStatus: (breweryId: string | null | undefined, sessionId: string | null | undefined, newStatus: BrewSessionStage, actualOg?: number) => Promise<void>;
+  deleteSession: (breweryId: string | null | undefined, sessionId: string | null | undefined) => Promise<void>;
 }
 
-// Строгий маппинг из БД в UI
 const normalizeStatus = (status: string): BrewSessionStage => {
   const map: Record<string, BrewSessionStage> = {
     'planned': 'Brew Day',
@@ -33,7 +33,6 @@ const normalizeStatus = (status: string): BrewSessionStage => {
   return map[status] || 'Brew Day';
 };
 
-// Строгий маппинг из UI в БД (критично для работы SQL триггеров)
 const getDatabaseStatusKey = (status: BrewSessionStage): string => {
   const map: Record<BrewSessionStage, string> = {
     'Brew Day': 'planned',
@@ -322,5 +321,28 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   splitBrewSession: async () => {
     set({ error: 'Split Batch functionality is not currently available.' });
     return;
-  } 
+  },
+
+  deleteSession: async (breweryId, sessionId) => {
+    if (!breweryId || !sessionId) return;
+    set({ isLoading: true, error: null });
+    try {
+      const { error } = await supabase
+        .from('brew_sessions')
+        .delete()
+        .eq('id', sessionId)
+        .eq('brewery_id', breweryId);
+
+      if (error) throw error;
+
+      set(state => ({
+        sessions: (state.sessions || []).filter(s => s.id !== sessionId),
+        currentSession: state.currentSession?.id === sessionId ? null : state.currentSession
+      }));
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'Failed to delete session' });
+    } finally {
+      set({ isLoading: false });
+    }
+  }
 }));

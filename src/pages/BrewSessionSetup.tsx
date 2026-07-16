@@ -167,7 +167,7 @@ const BrewSessionSetup: React.FC = () => {
           brewery_id: activeBreweryId,
           recipe_name: currentRecipe.name || 'Unnamed Recipe',
           beverage_type: currentRecipe.beverageType || 'Mead',
-          status: 'planned', // <--- ИСПРАВЛЕНИЕ: Отправляем строгий технический ключ для БД!
+          status: 'planned', 
           batch_size_liters: actualVolume,
           target_og: sessionDetails.og,
           target_fg: sessionDetails.fg,
@@ -193,57 +193,57 @@ const BrewSessionSetup: React.FC = () => {
     }
   };
 
-  if (isLoading) return <div className="global-loader"><div className="spinner"></div></div>;
-  if (!currentRecipe) return <div className="home-empty">{t('Recipe not found')}</div>;
+  if (isLoading) return <div className="brew-session-setup__loading"><div className="spinner"></div></div>;
+  if (!currentRecipe) return <div className="brew-session-setup--empty"><p className="brew-session-setup__empty-text">{t('Recipe not found')}</p></div>;
 
   const safePreBoil = preBoilVolume || 0;
   const safeActual = actualVolume || 0;
   const boilOffAmount = Math.max(0, safePreBoil - safeActual).toFixed(1);
 
   return (
-    <div className="home">
-      <header className="home__header brew-setup__header">
-        <div className="brew-setup__title-block">
-          <h1 className="home__title">{t('Brew Day Setup')}</h1>
-          <p className="home__subtitle">{t('Recipe')}: {currentRecipe.name || t('Unknown Recipe')}</p>
+    <div className="brew-session-setup">
+      <header className="brew-session-setup__header">
+        <div>
+          <h1 className="brew-session-setup__header-title">{t('Brew Day Setup')}</h1>
+          <p className="brew-session-setup__header-subtitle">{t('Recipe')}: {currentRecipe.name || t('Unknown Recipe')}</p>
         </div>
         <button type="button" className="btn-secondary" onClick={() => navigate(`/recipes/${currentRecipe.id}`)}>{t('Cancel')}</button>
       </header>
 
-      <div className="home__grid brew-setup__grid">
-        <div className="brew-setup__column">
+      <div className="brew-session-setup__grid">
+        <div className="brew-session-setup__main-column">
           
-          <div className="home-card">
-            <div className="home-card__header">
-              <h2 className="home-card__title"><FaSlidersH className="brew-setup__icon" /> {t('Volume & Scaling')}</h2>
+          <div className="brew-session-setup__card brew-session-setup__card--volume">
+            <h2 className="brew-session-setup__card-title">
+              <FaSlidersH className="brew-session-setup__icon" /> {t('Volume & Scaling')}
+            </h2>
+            <div className="brew-session-setup__form-group">
+              <label className="brew-session-setup__label">{t('Target Fermenter Volume (L)')}</label>
+              <input type="number" step="0.5" className="brew-session-setup__input brew-session-setup__input--primary" value={actualVolume || ''} onChange={(e) => handleScaleVolume(parseFloat(e.target.value) || 0)} disabled={isStarting} />
             </div>
-            <div className="home-card__list">
-              <div className="setup-form-group">
-                <label className="setup-form-label">{t('Target Fermenter Volume (L)')}</label>
-                <input type="number" step="0.5" className="setup-form-input" value={actualVolume || ''} onChange={(e) => handleScaleVolume(parseFloat(e.target.value) || 0)} disabled={isStarting} />
-              </div>
-              <div className="setup-form-group">
-                <label className="setup-form-label"><FaWater className="brew-setup__icon-water" /> {t('Pre-boil Volume (L)')}</label>
-                <input type="number" step="0.5" className="setup-form-input" value={preBoilVolume || ''} onChange={(e) => setPreBoilVolume(parseFloat(e.target.value) || 0)} disabled={isStarting} />
-                <span className="setup-form-hint">{t('Estimated boil-off')}: {boilOffAmount} {t('L')}</span>
-              </div>
+            <div className="brew-session-setup__form-group">
+              <label className="brew-session-setup__label">
+                <FaWater className="brew-session-setup__icon brew-session-setup__icon--water" /> {t('Pre-boil Volume (L)')}
+              </label>
+              <input type="number" step="0.5" className="brew-session-setup__input" value={preBoilVolume || ''} onChange={(e) => setPreBoilVolume(parseFloat(e.target.value) || 0)} disabled={isStarting} />
+              <span className="brew-session-setup__hint">
+                {t('Estimated boil-off')}: <span className="brew-session-setup__hint--highlight">{boilOffAmount}</span> {t('L')}
+              </span>
             </div>
           </div>
 
-          <div className="home-card">
-            <div className="home-card__header">
-              <h2 className="home-card__title">{t('Review Ingredients')}</h2>
-            </div>
-            <div className="home-card__list">
+          <div className="brew-session-setup__card">
+            <h2 className="brew-session-setup__card-title">{t('Review Ingredients')}</h2>
+            <div className="brew-session-setup__ingredients-list">
               {(sessionIngredients || []).map(ing => (
-                <div key={ing.id} className="setup-ingredient-row">
-                  <div className="setup-ingredient-info">
-                    <span className="setup-ingredient-category">{t(`constants.categories.${ing.category?.toLowerCase().replace(' ', '_') || 'other'}`, ing.category)}</span>
-                    <strong className="setup-ingredient-name">{ing.name || t('Unknown')}</strong>
+                <div key={ing.id} className="brew-session-setup__ingredient-item">
+                  <div className="brew-session-setup__ingredient-info">
+                    <span className="brew-session-setup__category">{t(`constants.categories.${ing.category?.toLowerCase().replace(' ', '_') || 'other'}`, ing.category)}</span>
+                    <strong className="brew-session-setup__ingredient-name">{ing.name || t('Unknown')}</strong>
                   </div>
-                  <div className="setup-ingredient-actions">
-                    <input type="number" className="setup-form-input setup-form-input--small" value={ing.quantity || ''} onChange={(e) => handleIngredientChange(ing.id, parseFloat(e.target.value) || 0)} disabled={isStarting} />
-                    <span className="setup-ingredient-unit">{t('constants.units.g', 'g')}</span>
+                  <div className="brew-session-setup__ingredient-controls">
+                    <input type="number" className="brew-session-setup__quantity-input" value={ing.quantity || ''} onChange={(e) => handleIngredientChange(ing.id, parseFloat(e.target.value) || 0)} disabled={isStarting} />
+                    <span className="brew-session-setup__unit">{t('constants.units.g', 'g')}</span>
                   </div>
                 </div>
               ))}
@@ -251,36 +251,32 @@ const BrewSessionSetup: React.FC = () => {
           </div>
         </div>
 
-        <div className="brew-setup__column">
-          <button type="button" className="btn-primary brew-setup__btn-start" onClick={handleStartSession} disabled={isStarting}>
-            <FaPlay className="brew-setup__icon" /> {isStarting ? t('Starting...') : t('Start Brew Day')}
+        <div className="brew-session-setup__side-column">
+          <button type="button" className="brew-session-setup__btn brew-session-setup__btn--action" onClick={handleStartSession} disabled={isStarting}>
+            <FaPlay className="brew-session-setup__icon" /> {isStarting ? t('Starting...') : t('Start Brew Day')}
           </button>
 
           {(sessionDetails.tosna || (sessionIngredients || []).some(i => i?.category === 'Hops' && i?.additionStage?.toLowerCase().includes('dry hop'))) && (
-            <div className="home-card home-card--success">
-              <div className="home-card__header home-card__header--transparent">
-                <h2 className="home-card__title home-card__title--success">✨ {t('Smart Tracker Activated')}</h2>
-              </div>
-              <div className="home-card__list">
-                <ul className="setup-smart-list">
-                  {sessionDetails.tosna && (
-                    <li>{t('TOSNA 3.0 tracker will activate during Fermentation.')}</li>
-                  )}
-                  {(sessionIngredients || []).some(i => i?.category === 'Hops' && i?.additionStage?.toLowerCase().includes('dry hop')) && (
-                    <li>{t('Dry Hop Addition')}</li>
-                  )}
-                </ul>
-              </div>
+            <div className="brew-session-setup__card">
+              <h2 className="brew-session-setup__card-title brew-session-setup__card-title--static">✨ {t('Smart Tracker Activated')}</h2>
+              <ul className="brew-session-setup__smart-list">
+                {sessionDetails.tosna && (
+                  <li>{t('TOSNA 3.0 tracker will activate during Fermentation.')}</li>
+                )}
+                {(sessionIngredients || []).some(i => i?.category === 'Hops' && i?.additionStage?.toLowerCase().includes('dry hop')) && (
+                  <li>{t('Dry Hop Addition')}</li>
+                )}
+              </ul>
             </div>
           )}
 
-          <div className="home-card">
-            <div className="home-card__header"><h2 className="home-card__title">{t('Dynamic Specifications')}</h2></div>
-            <div className="home-card__list brew-setup__specs">
-              <div className="setup-spec-row"><span className="setup-spec-label">{t('Target Style')}</span><strong className="setup-spec-value">{t(currentRecipe.targetStyle || '')}</strong></div>
-              <div className="setup-spec-row"><span className="setup-spec-label">{t('Estimated OG')}</span><strong className="setup-spec-value">{(sessionDetails.og || 1.000).toFixed(3)}</strong></div>
-              <div className="setup-spec-row"><span className="setup-spec-label">{t('Target FG')}</span><strong className="setup-spec-value">{(sessionDetails.fg || 1.000).toFixed(3)}</strong></div>
-              <div className="setup-spec-row"><span className="setup-spec-label">{t('Estimated ABV')}</span><strong className="setup-spec-value setup-spec-value--highlight">{(sessionDetails.abv || 0).toFixed(1)}%</strong></div>
+          <div className="brew-session-setup__card">
+            <h2 className="brew-session-setup__card-title">{t('Dynamic Specifications')}</h2>
+            <div className="brew-session-setup__spec-list">
+              <div className="brew-session-setup__spec-row"><span className="brew-session-setup__spec-label">{t('Target Style')}</span><strong className="brew-session-setup__spec-value">{t(currentRecipe.targetStyle || '')}</strong></div>
+              <div className="brew-session-setup__spec-row"><span className="brew-session-setup__spec-label">{t('Estimated OG')}</span><strong className="brew-session-setup__spec-value">{(sessionDetails.og || 1.000).toFixed(3)}</strong></div>
+              <div className="brew-session-setup__spec-row"><span className="brew-session-setup__spec-label">{t('Target FG')}</span><strong className="brew-session-setup__spec-value">{(sessionDetails.fg || 1.000).toFixed(3)}</strong></div>
+              <div className="brew-session-setup__spec-row"><span className="brew-session-setup__spec-label">{t('Estimated ABV')}</span><strong className="brew-session-setup__spec-value brew-session-setup__spec-value--accent">{(sessionDetails.abv || 0).toFixed(1)}%</strong></div>
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 // src/pages/Brew.tsx
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaPlayCircle } from 'react-icons/fa';
+import { FaPlayCircle, FaTrash } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useSessionStore } from '../store/useSessionStore';
@@ -21,7 +21,7 @@ const Brew: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { activeBreweryId } = useBreweryStore();
-  const { sessions, fetchSessions, isLoading } = useSessionStore();
+  const { sessions, fetchSessions, deleteSession, isLoading } = useSessionStore();
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -59,6 +59,13 @@ const Brew: React.FC = () => {
     return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
   };
 
+  const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    if (window.confirm(t('Are you sure you want to delete this brew session? This action cannot be undone.'))) {
+      await deleteSession(activeBreweryId, sessionId);
+    }
+  };
+
   const renderSessionCard = (session: any) => {
     if (!session) return null;
     const activeStep = (session.sessionSteps || []).find((s: any) => s?.isActive);
@@ -79,10 +86,21 @@ const Brew: React.FC = () => {
         }}
       >
         <div className="brew-dashboard__card-header">
-          <h3 className="brew-dashboard__card-title">{session.recipeName || t('Unknown Recipe')}</h3>
-          <span className="brew-dashboard__badge" data-status={getLegacyStatusKey(rawStatus)}>
-            {t(`constants.status.${rawStatus.toLowerCase().replace(' ', '_')}`, rawStatus)}
-          </span>
+          <div>
+            <h3 className="brew-dashboard__card-title">{session.recipeName || t('Unknown Recipe')}</h3>
+            <span className="brew-dashboard__badge" data-status={getLegacyStatusKey(rawStatus)}>
+              {t(`constants.status.${rawStatus.toLowerCase().replace(' ', '_')}`, rawStatus)}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="btn-text"
+            style={{ color: 'var(--color-error)', padding: '4px', zIndex: 2 }}
+            onClick={(e) => handleDeleteSession(e, session.id)}
+            title={t('Delete Session')}
+          >
+            <FaTrash />
+          </button>
         </div>
 
         {activeStep && (

@@ -1,6 +1,6 @@
 // src/pages/Recipes.tsx
 import { calculateAbvCrouch, calculateIbuTinseth, calculateMcu, calculateTosna, estimateOG, estimateSrmMorey, srmToEbc } from '@mead-tracker/math';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../supabase/client';
 
@@ -45,12 +45,21 @@ interface AiResponseIngredient {
 const Recipes: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { activeBrewery } = useBreweryStore();
-  const { recipes, saveRecipe, updateRecipe, isLoading: isRecipesLoading } = useRecipeStore();
+  
+  // ИСПРАВЛЕНИЕ: Достаем fetchRecipes из стора
+  const { recipes, saveRecipe, updateRecipe, fetchRecipes, isLoading: isRecipesLoading } = useRecipeStore();
 
   const state = useRecipeBuilderState();
   const [aiProposedIngredients, setAiProposedIngredients] = useState<AiIngredientProposal[]>([]);
   const [aiProposedSteps, setAiProposedSteps] = useState<RecipeStepEntry[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // ИСПРАВЛЕНИЕ: Автоматически подтягиваем рецепты, если зашли напрямую на страницу
+  useEffect(() => {
+    if (activeBrewery?.id) {
+      fetchRecipes(activeBrewery.id);
+    }
+  }, [activeBrewery?.id, fetchRecipes]);
 
   const currentSelectedStyle = useMemo(() => {
     return (state.bjcpStyles || []).find(s => s?.style_id === state.selectedStyleId) || null;
