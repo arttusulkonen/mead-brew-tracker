@@ -29,7 +29,12 @@ const normalizeStatus = (status: string): BrewSessionStage => {
     'fermenting': 'Fermentation',
     'aging': 'Conditioning',
     'completed': 'Completed',
-    'split': 'Completed'
+    'split': 'Completed',
+    'Brew Day': 'Brew Day',
+    'Fermentation': 'Fermentation',
+    'Conditioning': 'Conditioning',
+    'Bottled': 'Completed',
+    'Completed': 'Completed'
   };
   return map[status] || 'Brew Day';
 };

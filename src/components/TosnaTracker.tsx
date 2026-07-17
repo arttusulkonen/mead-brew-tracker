@@ -27,14 +27,12 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
     
     const updateTimer = () => {
       const startMs = new Date(fermentationStart).getTime();
-      // Если варка завершена, останавливаем время на моменте её завершения (или текущем, если даты нет)
-      const endMs = session?.completedDate ? new Date(session.completedDate).getTime() : Date.now();
+      if (isNaN(startMs)) return; // Защита от Invalid Date
       
-      if (isSessionEnded && session?.completedDate) {
-         setElapsedSeconds(Math.floor((endMs - startMs) / 1000));
-      } else {
-         setElapsedSeconds(Math.floor((Date.now() - startMs) / 1000));
-      }
+      const endMs = session?.completedDate ? new Date(session.completedDate).getTime() : Date.now();
+      const refTime = (isSessionEnded && !isNaN(endMs)) ? endMs : Date.now();
+      
+      setElapsedSeconds(Math.max(0, Math.floor((refTime - startMs) / 1000)));
     };
     
     updateTimer(); 

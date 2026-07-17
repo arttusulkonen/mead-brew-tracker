@@ -98,6 +98,7 @@ const Brew: React.FC = () => {
             style={{ color: 'var(--color-error)', padding: '4px', zIndex: 2 }}
             onClick={(e) => handleDeleteSession(e, session.id)}
             title={t('Delete Session')}
+            aria-label={t('Delete Session')} 
           >
             <FaTrash />
           </button>

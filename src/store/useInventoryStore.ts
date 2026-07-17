@@ -364,7 +364,10 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     
     try {
       const currentInventory = get().inventory || [];
-      const updatesToMake = [];
+      
+      // ИСПРАВЛЕНИЕ: Агрегируем все списания по ID складской позиции, 
+      // чтобы избежать гонки данных при дублировании ингредиентов в рецепте.
+      const decrementsMap = new Map<string, number>();
 
       for (const ing of ingredientsToConsume) {
         if (ing?.quantity > 0) {
@@ -373,6 +376,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
           
           if (invItem) {
             let decrementQty = ing.quantity;
+            // Приводим граммы из рецепта к единицам измерения на складе
             switch (invItem.unit) {
               case 'kg':
               case 'L':
@@ -391,18 +395,29 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
                 decrementQty = ing.quantity;
             }
 
-            if (invItem.quantityOnHand < decrementQty) {
-              throw new Error(`Insufficient stock for ${invItem.ingredient?.name || 'ingredient'}`);
-            }
-
-            updatesToMake.push({
-              id: invItem.id,
-              newQty: invItem.quantityOnHand - decrementQty
-            });
+            const currentDec = decrementsMap.get(invItem.id) || 0;
+            decrementsMap.set(invItem.id, currentDec + decrementQty);
           }
         }
       }
       
+      const updatesToMake = [];
+
+      // Валидируем агрегированные списания перед отправкой в БД
+      for (const [invId, totalDecrement] of decrementsMap.entries()) {
+        const invItem = currentInventory.find(i => i.id === invId);
+        if (invItem) {
+          if (invItem.quantityOnHand < totalDecrement) {
+            throw new Error(`Insufficient stock for ${invItem.ingredient?.name || 'ingredient'}`);
+          }
+          updatesToMake.push({
+            id: invId,
+            newQty: invItem.quantityOnHand - totalDecrement
+          });
+        }
+      }
+      
+      // Отправляем финальные значения
       const updatePromises = updatesToMake.map(update => 
         supabase
           .from('inventory')
@@ -412,7 +427,6 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       );
       
       const results = await Promise.all(updatePromises);
-      
       for (const result of results) {
         if (result.error) throw result.error;
       }

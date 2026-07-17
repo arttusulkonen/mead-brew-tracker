@@ -282,10 +282,10 @@ const Inventory: React.FC = () => {
                       {t(`constants.categories.${item.ingredient.category.toLowerCase().replace(' ', '_')}`)}
                     </span>
                     <div className="stock-card__actions">
-                      <button className="stock-card__btn-action" onClick={() => handleOpenEdit(item)} title={t('Edit')}>
+                      <button className="stock-card__btn-action" onClick={() => handleOpenEdit(item)} title={t('Edit')} aria-label={t('Edit')}>
                         <FaPen />
                       </button>
-                      <button className="stock-card__btn-action stock-card__btn-action--danger" onClick={() => handleDeleteItem(item.id)} title={t('Remove from inventory')}>
+                      <button className="stock-card__btn-action stock-card__btn-action--danger" onClick={() => handleDeleteItem(item.id)} title={t('Remove from inventory')} aria-label={t('Remove from inventory')}>
                         <FaTrash />
                       </button>
                     </div>

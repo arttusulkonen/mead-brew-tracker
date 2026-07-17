@@ -3,27 +3,31 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS', // Добавлено
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
 serve(async (req) => {
-  // Обработка CORS preflight-запроса
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { sessionId, breweryId, locale = 'ru' } = await req.json()
-
-    if (!sessionId || !breweryId) {
-      throw new Error('Missing sessionId or breweryId')
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      })
     }
 
-    // Инициализируем Supabase клиент от лица текущего пользователя (RLS защита)
+    const { sessionId, breweryId, locale = 'ru' } = await req.json()
+    if (!sessionId || !breweryId) throw new Error('Missing sessionId or breweryId')
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+      { global: { headers: { Authorization: authHeader } } }
     )
 
     // 1. Получаем данные сессии
