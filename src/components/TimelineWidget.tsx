@@ -12,7 +12,6 @@ interface TimelineWidgetProps {
   sessionId: string;
   steps: any[];
   startDate: string;
-  // ИСПРАВЛЕНИЕ: Добавлен пропс-перехватчик для глобальных статусов варки
   onPhaseAction?: (phase: string) => void;
 }
 
@@ -402,7 +401,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
                 <div className="timeline__item-header">
                   <div className="timeline__title-group">
                     <span className="timeline__phase">
-                      {t(`constants.step_phases.${step.phase?.toLowerCase() || 'preparation'}`, step.phase || 'Preparation')}
+                      {t(`constants.step_phases.${step.phase?.toLowerCase() || 'preparation'}`, step.phase || 'Preparation') as string}
                     </span>
                     <strong className="timeline__item-title">{step.title || t('Unknown Step')}</strong>
                   </div>

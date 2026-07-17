@@ -188,4 +188,48 @@
     border: 1px dashed var(--border-color);
     border-radius: $border-radius-md;
   }
+
+  .ai-report {
+    margin-bottom: 24px;
+    background-color: rgb(168 85 247 / 5%);
+    border: 1px solid rgb(168 85 247 / 20%);
+
+    &__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid rgb(168 85 247 / 10%);
+    }
+
+    &__title {
+      margin: 0;
+      font-size: 1.25rem;
+      color: #9333ea; // Фиолетовый оттенок для ИИ
+    }
+
+    &__score-badge {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 12px;
+      background-color: var(--bg-surface);
+      border-radius: 20px;
+      box-shadow: 0 2px 4px rgb(0 0 0 / 5%);
+    }
+
+    &__score-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    &__score-value {
+      font-size: 1.1rem;
+      
+      &--high { color: var(--color-success); }
+      &--medium { color: var(--color-warning); }
+    }
+  }
 }

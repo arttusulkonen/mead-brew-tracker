@@ -89,7 +89,7 @@ const Brew: React.FC = () => {
           <div>
             <h3 className="brew-dashboard__card-title">{session.recipeName || t('Unknown Recipe')}</h3>
             <span className="brew-dashboard__badge" data-status={getLegacyStatusKey(rawStatus)}>
-              {t(`constants.status.${rawStatus.toLowerCase().replace(' ', '_')}`, rawStatus)}
+              {t(`constants.status.${rawStatus.toLowerCase().replace(' ', '_')}`, rawStatus) as string}
             </span>
           </div>
           <button

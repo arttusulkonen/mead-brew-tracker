@@ -238,7 +238,7 @@ const BrewSessionSetup: React.FC = () => {
               {(sessionIngredients || []).map(ing => (
                 <div key={ing.id} className="brew-session-setup__ingredient-item">
                   <div className="brew-session-setup__ingredient-info">
-                    <span className="brew-session-setup__category">{t(`constants.categories.${ing.category?.toLowerCase().replace(' ', '_') || 'other'}`, ing.category)}</span>
+                    <span className="brew-session-setup__category">{t(`constants.categories.${ing.category?.toLowerCase().replace(' ', '_') || 'other'}`, ing.category) as string}</span>
                     <strong className="brew-session-setup__ingredient-name">{ing.name || t('Unknown')}</strong>
                   </div>
                   <div className="brew-session-setup__ingredient-controls">

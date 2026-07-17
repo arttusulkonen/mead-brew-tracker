@@ -29,9 +29,9 @@
 
   &__item {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px;
+    flex-direction: column; // ИСПРАВЛЕНИЕ: Форма теперь падает вниз!
+    gap: 8px;
+    padding: 16px;
     margin-bottom: 12px;
     background-color: var(--bg-surface-alt);
     border: 1px solid var(--border-color);
@@ -50,21 +50,27 @@
 
     &--due-now {
       background-color: rgb(245 158 11 / 5%);
-      border-color: rgb(245 158 11 / 20%);
-      box-shadow: 0 0 0 2px rgb(245 158 11 / 10%);
+      border-color: rgb(245 158 11 / 30%);
+      box-shadow: 0 0 0 2px rgb(245 158 11 / 15%);
     }
   }
 
   &__info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    width: 100%;
 
     &--flex {
       display: flex;
-      align-items: center;
+      gap: 12px;
+      align-items: center; // Центрируем кнопку и текст
       justify-content: space-between;
     }
+  }
+
+  &__text-content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
   }
 
   &__item-title {
@@ -134,8 +140,9 @@
 
   &__form {
     &--expanded {
+      width: 100%;
       padding-top: 16px;
-      margin-top: 16px;
+      margin-top: 8px;
       border-top: 1px dashed var(--border-color);
     }
   }
@@ -148,37 +155,47 @@
 
   &__form-label {
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     font-size: 0.85rem;
-    font-weight: bold;
+    font-weight: 600;
     color: var(--text-primary);
   }
 
   &__form-input {
     width: 100%;
-    padding: 10px;
+    padding: 10px 12px;
     font-size: 1rem;
     color: var(--text-primary);
     background-color: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: 6px;
+
+    &:focus {
+      border-color: var(--color-primary);
+      outline: none;
+    }
   }
 
   &__form-textarea {
     width: 100%;
-    padding: 10px;
+    padding: 10px 12px;
     font-size: 0.95rem;
     color: var(--text-primary);
     resize: vertical;
     background-color: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: 6px;
+
+    &:focus {
+      border-color: var(--color-primary);
+      outline: none;
+    }
   }
 
   &__form-actions {
     display: flex;
-    gap: 8px;
+    gap: 12px;
     justify-content: flex-end;
-    margin-top: 4px;
+    margin-top: 8px;
   }
 }

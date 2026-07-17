@@ -20,6 +20,7 @@ interface SessionState {
   splitBrewSession: (payload: Record<string, unknown>) => Promise<void>;
   updateSessionStatus: (breweryId: string | null | undefined, sessionId: string | null | undefined, newStatus: BrewSessionStage, actualOg?: number) => Promise<void>;
   deleteSession: (breweryId: string | null | undefined, sessionId: string | null | undefined) => Promise<void>;
+  analyzeBrewSession: (breweryId: string | null | undefined, sessionId: string, locale: string) => Promise<void>;
 }
 
 const normalizeStatus = (status: string): BrewSessionStage => {
@@ -90,7 +91,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           completedDate: row.completed_date || null,
           createdAt: row.created_at,
           updatedAt: row.updated_at,
-          createdBy: row.created_by || ''
+          createdBy: row.created_by || '',
+          aiScore: row.ai_score || null,
+          aiAnalysisReport: row.ai_analysis_report || null
         } as BrewSession;
       });
 
@@ -168,7 +171,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         completedDate: sessionData.completed_date || null,
         createdAt: sessionData.created_at,
         updatedAt: sessionData.updated_at,
-        createdBy: sessionData.created_by || ''
+        createdBy: sessionData.created_by || '',
+        aiScore: sessionData.ai_score || null,
+        aiAnalysisReport: sessionData.ai_analysis_report || null
       };
 
       set({ currentSession: mappedSession });
@@ -344,5 +349,32 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
-  }
+  },  
+
+  analyzeBrewSession: async (breweryId, sessionId, locale) => {
+    if (!breweryId || !sessionId) return;
+    set({ isLoading: true, error: null });
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-brew', {
+        body: { sessionId, breweryId, locale }
+      });
+      
+      if (error) throw error;
+      
+      const { currentSession } = get();
+      if (currentSession && currentSession.id === sessionId) {
+        set({
+          currentSession: {
+            ...currentSession,
+            aiScore: data.score,
+            aiAnalysisReport: data.report
+          }
+        });
+      }
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'AI Analysis failed' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
 }));

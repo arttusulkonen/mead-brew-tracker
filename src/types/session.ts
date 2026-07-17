@@ -65,4 +65,7 @@ export interface BrewSession {
   parentSessionId?: UUID | null;
   splitTimestamp?: string | null;
   isAggregated?: boolean;
+
+  aiScore?: number | null;
+  aiAnalysisReport?: string | null;
 }

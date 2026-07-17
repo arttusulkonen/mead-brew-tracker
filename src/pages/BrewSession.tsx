@@ -28,9 +28,9 @@ const getLegacyStatusKey = (status: string) => {
 const BrewSession: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { activeBreweryId } = useBreweryStore();
-  const { currentSession, fetchSessionById, clearCurrentSession, isLoading, addLogToSession, updateSessionStatus, updateTosnaSchedule, splitBrewSession } = useSessionStore();
+  const { currentSession, fetchSessionById, clearCurrentSession, isLoading, addLogToSession, updateSessionStatus, updateTosnaSchedule, splitBrewSession, analyzeBrewSession } = useSessionStore();
   const { inventory, consumeIngredients, fetchInventory } = useInventoryStore();
 
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
@@ -195,10 +195,8 @@ const BrewSession: React.FC = () => {
     }
     setShowOgModal(false);
     
-    // 1. Апдейтим статус сессии (и pitch_timestamp)
     await updateSessionStatus(activeBreweryId, currentSession.id, 'Fermentation', parsedOg);
     
-    // 2. СРАЗУ ЖЕ добавляем первый лог, чтобы построилась нулевая точка на графике!
     await addLogToSession(activeBreweryId, currentSession.id, {
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
@@ -298,6 +296,12 @@ const BrewSession: React.FC = () => {
         <div className="brew-session__actions">
           {canMidAdd && <button className="btn-secondary" onClick={() => setShowMidAddModal(true)}><FaPlus className="brew-session__icon"/> {t('Add Ingredient')}</button>}
           {canSplit && <button className="btn-secondary" onClick={() => setShowSplitModal(true)}><FaCodeBranch className="brew-session__icon"/> {t('Split')}</button>}
+          
+          {currentSession.status === 'Completed' && !currentSession.aiAnalysisReport && (
+            <button className="btn-primary" onClick={() => analyzeBrewSession(activeBreweryId, currentSession.id, i18n.language)}>
+              ✨ {t('Analyze Brew', 'Анализировать варку')}
+            </button>
+          )}
         </div>
       </header>
 
@@ -328,6 +332,27 @@ const BrewSession: React.FC = () => {
           </div>
         )}
       </div>
+
+      {currentSession.aiAnalysisReport && (
+        <div className="brew-session__card ai-report">
+          <div className="ai-report__header">
+            <h2 className="ai-report__title">✨ {t('AI Master Brewer Report', 'Отчет ИИ-технолога')}</h2>
+            {currentSession.aiScore !== null && currentSession.aiScore !== undefined && (
+              <div className="ai-report__score-badge">
+                <span className="ai-report__score-label">{t('Score', 'Оценка')}:</span>
+                <strong className={`ai-report__score-value ${currentSession.aiScore >= 80 ? 'ai-report__score-value--high' : 'ai-report__score-value--medium'}`}>
+                  {currentSession.aiScore}/100
+                </strong>
+              </div>
+            )}
+          </div>
+          <div className="ai-report__content">
+            <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', color: 'var(--text-secondary)' }}>
+              {currentSession.aiAnalysisReport}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="brew-session__grid">
         <div className="brew-session__col-main">

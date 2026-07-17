@@ -70,17 +70,58 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
     
     set({ isLoading: true, error: null });
     try {
+      // Подтягиваем рецепты вместе с базовыми данными их сессий (Golden Batch Data)
       const { data, error } = await supabase
         .from('recipes')
-        .select('*')
+        .select(`
+          *,
+          brew_sessions (
+            status,
+            ai_score,
+            actual_original_gravity,
+            actual_final_gravity
+          )
+        `)
         .eq('brewery_id', breweryId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      const formattedRecipes = ((data as RecipeRow[]) ?? []).map(mapRowToRecipe);
+      const formattedRecipes = (data || []).map((row: any) => {
+        const sessions = row.brew_sessions || [];
+        const completedSessions = sessions.filter((s: any) => s.status === 'completed');
+        
+        // Считаем среднюю оценку ИИ среди завершенных варок
+        const scores = completedSessions.map((s: any) => s.ai_score).filter((v: any) => typeof v === 'number');
+        const avgAiScore = scores.length > 0 ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : null;
+
+        return {
+          id: row.id,
+          breweryId: row.brewery_id,
+          name: row.name,
+          beverageType: row.beverage_type,
+          targetStyle: row.target_style,
+          expectedBatchSizeLiters: row.expected_batch_size_liters,
+          targetOriginalGravity: row.target_original_gravity,
+          targetFinalGravity: row.target_final_gravity,
+          targetAbv: row.target_abv,
+          targetIbu: row.target_ibu,
+          targetColorEbc: row.target_color_ebc,
+          ingredients: typeof row.ingredients === 'string' ? JSON.parse(row.ingredients) : (row.ingredients || []),
+          steps: typeof row.steps === 'string' ? JSON.parse(row.steps) : (row.steps || []),
+          targetCurves: row.target_curves,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          createdBy: row.created_by,
+          
+          // НОВЫЕ ПОЛЯ АНАЛИТИКИ
+          totalBrews: sessions.length,
+          completedBrews: completedSessions.length,
+          avgAiScore: avgAiScore
+        };
+      });
       
-      set({ recipes: formattedRecipes, isLoading: false });
+      set({ recipes: formattedRecipes as Recipe[], isLoading: false });
     } catch (error: unknown) {
       set({ error: error instanceof Error ? error.message : 'Failed to fetch recipes', isLoading: false });
     }
@@ -158,7 +199,8 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       const formatted = mapRowToRecipe(data[0] as RecipeRow);
       set(state => ({
         currentRecipe: state.currentRecipe?.id === recipeId ? formatted : state.currentRecipe,
-        recipes: state.recipes.map(r => r.id === recipeId ? formatted : r)
+        // Мы не заменяем объект в массиве напрямую через mapRowToRecipe, 
+        // чтобы не потерять уже подтянутую аналитику. fetchRecipes обновит список корректно.
       }));
 
       return formatted;
@@ -179,14 +221,32 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
     try {
       const { data, error } = await supabase
         .from('recipes')
-        .select('*')
+        .select(`
+          *,
+          brew_sessions (
+            status,
+            ai_score
+          )
+        `)
         .eq('id', recipeId)
         .single();
       
       if (error) throw error;
       
       if (data) {
-        set({ currentRecipe: mapRowToRecipe(data as RecipeRow), isLoading: false });
+        const row = data as any;
+        const sessions = row.brew_sessions || [];
+        const completedSessions = sessions.filter((s: any) => s.status === 'completed');
+        
+        const scores = completedSessions.map((s: any) => s.ai_score).filter((v: any) => typeof v === 'number');
+        const avgAiScore = scores.length > 0 ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : null;
+
+        const mapped = mapRowToRecipe(row);
+        (mapped as any).totalBrews = sessions.length;
+        (mapped as any).completedBrews = completedSessions.length;
+        (mapped as any).avgAiScore = avgAiScore;
+
+        set({ currentRecipe: mapped, isLoading: false });
       }
     } catch (error: unknown) {
       set({ error: error instanceof Error ? error.message : 'Recipe not found', isLoading: false, currentRecipe: null });

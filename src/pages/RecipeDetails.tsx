@@ -3,18 +3,27 @@ import { calculateOneThirdSugarBreak, calculateTosna } from '@mead-tracker/math'
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { RecipePerformanceWidget } from '../components/recipe-components/RecipePerformanceWidget';
 import { useRecipeStore } from '../store/useRecipeStore';
+import type { Recipe } from '../types/recipe';
 
 const RecipeDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { currentRecipe, fetchRecipeById, clearCurrentRecipe, isLoading, deleteRecipe } = useRecipeStore();
-
+  const { currentRecipe, fetchRecipeById, clearCurrentRecipe, isLoading, deleteRecipe, recipes } = useRecipeStore();
+  
   useEffect(() => {
     fetchRecipeById(id);
     return () => clearCurrentRecipe();
   }, [id, fetchRecipeById, clearCurrentRecipe]);
+
+  // Ищем рецепт в списке (где есть расширенная статистика) или используем текущий
+  const activeRecipeStats = useMemo(() => {
+    if (!id) return null;
+    const found = recipes.find(r => r.id === id) || currentRecipe;
+    return found as (Recipe & { totalBrews?: number; completedBrews?: number; avgAiScore?: number | null }) | null;
+  }, [id, recipes, currentRecipe]);
 
   const selectedRecipeTosna = useMemo(() => {
     if (!currentRecipe || currentRecipe.beverageType !== 'Mead') return null;
@@ -59,18 +68,18 @@ const RecipeDetails: React.FC = () => {
 
   const handleDelete = async () => {
     if (!currentRecipe || !currentRecipe.id) return;
-    if (window.confirm(t('Are you sure you want to delete this recipe?'))) {
+    if (window.confirm(t('Are you sure you want to delete this recipe?', 'Вы уверены, что хотите удалить этот рецепт?'))) {
       try {
         await deleteRecipe(currentRecipe.id);
         navigate('/recipes');
       } catch {
-        alert(t('Failed to delete recipe. Check your permissions.'));
+        alert(t('Failed to delete recipe. Check your permissions.', 'Не удалось удалить рецепт.'));
       }
     }
   };
 
   if (isLoading) {
-    return <div className="recipe-details__loading">{t('Loading recipe...')}</div>;
+    return <div className="recipe-details__loading"><div className="spinner"></div></div>;
   }
 
   if (!currentRecipe) {
@@ -90,7 +99,7 @@ const RecipeDetails: React.FC = () => {
         <div className="recipe-details__title-block">
           <h1 className="recipe-details__title">{currentRecipe.name}</h1>
           <span className="recipe-details__subtitle">
-            {t(`constants.beverage_types.${currentRecipe.beverageType?.toLowerCase() || 'other'}`, currentRecipe.beverageType || 'Other')} &bull; {currentRecipe.targetStyle}
+            {t(`constants.beverage_types.${currentRecipe.beverageType?.toLowerCase() || 'other'}`, currentRecipe.beverageType || 'Other') as string} &bull; {currentRecipe.targetStyle}
           </span>
         </div>
         <div className="recipe-details__actions">
@@ -113,7 +122,7 @@ const RecipeDetails: React.FC = () => {
                   <li key={ing.id} className="recipe-details__ingredient-item">
                     <div className="recipe-details__ingredient-info">
                       <span className="recipe-details__badge">
-                        {t(`constants.categories.${ing.category?.toLowerCase().replace(' ', '_') || 'other'}`, ing.category)}
+                        {t(`constants.categories.${ing.category?.toLowerCase().replace(' ', '_') || 'other'}`, ing.category) as string}
                       </span>
                       <strong className="recipe-details__ingredient-name">{ing.name}</strong>
                       {item.nutrientRole && (
@@ -140,13 +149,13 @@ const RecipeDetails: React.FC = () => {
                   <div className="recipe-details__step-header">
                     <strong className="recipe-details__step-title">{step.title}</strong>
                     <span className="recipe-details__badge recipe-details__badge--outline">
-                      {t(`constants.step_phases.${step.phase?.toLowerCase() || 'preparation'}`, step.phase)}
+                      {t(`constants.step_phases.${step.phase?.toLowerCase() || 'preparation'}`, step.phase || 'Preparation') as string}
                     </span>
                   </div>
                   <p className="recipe-details__step-desc">{step.description}</p>
                   <div className="recipe-details__step-meta">
                     <span className="recipe-details__step-duration">
-                      {step.durationValue || 0} {t(`constants.units.${step.durationUnit?.toLowerCase() || 'minutes'}`, step.durationUnit)}
+                      {step.durationValue || 0} {t(`constants.units.${step.durationUnit?.toLowerCase() || 'minutes'}`, step.durationUnit) as string}
                     </span>
                     {step.targetTempC != null && <span className="recipe-details__step-temp">{step.targetTempC} °C</span>}
                   </div>
@@ -158,6 +167,13 @@ const RecipeDetails: React.FC = () => {
         </main>
 
         <aside className="recipe-details__sidebar">
+          {/* Наш новый виджет статистики */}
+          <RecipePerformanceWidget 
+            totalBrews={activeRecipeStats?.totalBrews} 
+            completedBrews={activeRecipeStats?.completedBrews} 
+            avgAiScore={activeRecipeStats?.avgAiScore} 
+          />
+          
           <div className="stat-panel">
             <h3 className="stat-panel__title">{t('Specifications')}</h3>
             <ul className="stat-panel__list">
