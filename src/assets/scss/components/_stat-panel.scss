@@ -1,0 +1,21 @@
+.stat-panel {
+  &--finance {
+    background-color: rgb(34 197 94 / 3%); // Легкий зеленоватый оттенок
+    border: 1px solid var(--color-success);
+  }
+
+  &__icon-money {
+    color: var(--color-success);
+  }
+
+  &__title--flex {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  &__value--success {
+    font-size: 1.3rem;
+    color: var(--color-success);
+  }
+}

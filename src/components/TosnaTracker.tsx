@@ -12,32 +12,53 @@ interface TosnaTrackerProps {
 
 export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddition }) => {
   const { t } = useTranslation();
-  const [currentHours, setCurrentHours] = useState<number>(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const [activeAdditionId, setActiveAdditionId] = useState<string | null>(null);
   const [inputSg, setInputSg] = useState<string>('');
   const [inputNotes, setInputNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const tosna = session.tosnaSchedule;
-  const fermentationStart = session.pitchTimestamp;
+  const tosna = session?.tosnaSchedule;
+  const fermentationStart = session?.pitchTimestamp;
+  const isSessionEnded = session?.status === 'Completed' || session?.status === 'Conditioning';
 
   useEffect(() => {
     if (!fermentationStart) return;
     
     const updateTimer = () => {
-      const ms = Date.now() - new Date(fermentationStart).getTime();
-      setCurrentHours(Math.max(0, ms / (1000 * 60 * 60)));
+      const startMs = new Date(fermentationStart).getTime();
+      if (isNaN(startMs)) return; 
+      
+      const endMs = session?.completedDate ? new Date(session.completedDate).getTime() : Date.now();
+      const refTime = (isSessionEnded && !isNaN(endMs)) ? endMs : Date.now();
+      
+      setElapsedSeconds(Math.max(0, Math.floor((refTime - startMs) / 1000)));
     };
+    
+    updateTimer(); 
+    
+    if (!isSessionEnded) {
+      const interval = setInterval(updateTimer, 1000); 
+      return () => clearInterval(interval);
+    }
+  }, [fermentationStart, isSessionEnded, session?.completedDate]);
 
-    updateTimer();
-    const interval = setInterval(updateTimer, 1000);
+  const formatExactTime = (totalSeconds: number) => {
+    if (totalSeconds < 0) return '00:00:00';
+    const d = Math.floor(totalSeconds / 86400);
+    const h = Math.floor((totalSeconds % 86400) / 3600).toString().padStart(2, '0');
+    const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+    const s = (totalSeconds % 60).toString().padStart(2, '0');
+    if (d > 0) return `${d}d ${h}:${m}:${s}`;
+    return `${h}:${m}:${s}`;
+  };
 
-    return () => clearInterval(interval);
-  }, [fermentationStart]);
+  if (!tosna || !(tosna.additions || []).length) return null;
 
-  if (!tosna || !tosna.additions || tosna.additions.length === 0) return null;
-
-  const targetSgBreak = calculateOneThirdSugarBreak(session.actualOg || session.targetOg || 1.000, session.actualFg || session.targetFg || 1.000);
+  const targetSgBreak = calculateOneThirdSugarBreak(
+    session?.actualOg || session?.targetOg || 1.000, 
+    session?.actualFg || session?.targetFg || 1.000
+  );
 
   const handleSave = async (additionId: string) => {
     setIsSubmitting(true);
@@ -61,7 +82,7 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
         <h2 className="home-card__title tosna-widget__title">{t('TOSNA 3.0 Schedule')}</h2>
         {fermentationStart && (
           <span className="tosna-widget__time tosna-widget__time--highlight">
-            {t('Elapsed')}: {Math.floor(currentHours)}h {Math.floor((currentHours % 1) * 60)}m
+            ⏱ {formatExactTime(elapsedSeconds)} {isSessionEnded ? t('(Stopped)') : ''}
           </span>
         )}
       </div>
@@ -72,40 +93,44 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
           </p>
         )}
         
-        {tosna.additions.map((addition, index) => {
-          const targetHours = addition.targetHours || 0;
-          const isDue = addition.isOneThirdBreak || currentHours >= targetHours;
-          const isOverdue = fermentationStart && !addition.isCompleted && !addition.isOneThirdBreak && currentHours >= targetHours;
+        {(tosna.additions || []).map((addition, index) => {
+          if (!addition) return null;
+          
+          const targetSeconds = (addition.targetHours || 0) * 3600;
+          const isDue = addition.isOneThirdBreak || elapsedSeconds >= targetSeconds;
+          const isOverdue = fermentationStart && !addition.isCompleted && !addition.isOneThirdBreak && elapsedSeconds >= targetSeconds;
           const isExpanded = activeAdditionId === addition.id;
           
           let timeStatus = '';
-          if (!addition.isCompleted && !addition.isOneThirdBreak && fermentationStart && !isDue) {
-            const remainingHours = targetHours - currentHours;
-            const rh = Math.floor(remainingHours);
-            const rm = Math.floor((remainingHours - rh) * 60);
-            timeStatus = t('Opens in {{h}}h {{m}}m', { h: rh, m: rm, defaultValue: `Opens in ${rh}h ${rm}m` });
+          if (!addition.isCompleted && !addition.isOneThirdBreak && fermentationStart) {
+            if (!isDue) {
+              const remaining = targetSeconds - elapsedSeconds;
+              const rh = Math.floor(remaining / 3600);
+              const rm = Math.floor((remaining % 3600) / 60);
+              timeStatus = t('Opens in {{h}}h {{m}}m', { h: rh, m: rm, defaultValue: `Opens in ${rh}h ${rm}m` });
+            }
           }
           
           return (
             <div 
               key={addition.id} 
-              className={`tosna-widget__item ${isOverdue ? 'tosna-widget__item--overdue' : ''} ${addition.isCompleted ? 'tosna-widget__item--completed' : ''} ${isDue && !addition.isCompleted ? 'tosna-widget__item--due-now' : ''}`} 
+              className={`tosna-widget__item ${isOverdue ? 'tosna-widget__item--overdue' : ''} ${addition.isCompleted ? 'tosna-widget__item--completed' : ''} ${isDue && !addition.isCompleted ? 'tosna-widget__item--due-now' : ''}`}
             >
               <div className="tosna-widget__info tosna-widget__info--flex">
                 <div className="tosna-widget__text-content">
                   <strong className={`tosna-widget__item-title ${addition.isCompleted ? 'tosna-widget__item-title--completed' : ''}`}>
                     {addition.isOneThirdBreak 
                       ? t('1/3 Sugar Break') 
-                      : t('Addition {{num}} ({{hours}}h)', { num: index + 1, hours: targetHours })}
+                      : t('Addition {{num}} ({{hours}}h)', { num: index + 1, hours: addition.targetHours || 0 })}
                   </strong>
                   
                   <span className="tosna-widget__desc tosna-widget__desc--muted">
                     {addition.isOneThirdBreak 
-                      ? t('Target SG: {{sg}}', { sg: targetSgBreak.toFixed(3) }) 
-                      : t('Add {{amount}}g of Fermaid-O', { amount: tosna.dosePerAdditionGrams })}
+                      ? t('Target SG: {{sg}}', { sg: (targetSgBreak || 1.000).toFixed(3) }) 
+                      : t('Add {{amount}}g of Fermaid-O', { amount: tosna.dosePerAdditionGrams || 0 })}
                   </span>
-
-                  {timeStatus && (
+                  
+                  {timeStatus && !isDue && (
                     <div className="tosna-widget__time tosna-widget__time--locked">
                       <FaLock size={10} /> {timeStatus as string}
                     </div>
@@ -114,7 +139,7 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
                   {isOverdue && <span className="badge badge--danger tosna-widget__badge-overdue">{t('OVERDUE')}</span>}
                 </div>
 
-                {!addition.isCompleted && !isExpanded && fermentationStart && (
+                {!addition.isCompleted && !isExpanded && fermentationStart && !isSessionEnded && (
                   <button 
                     className={`btn-primary btn-primary--small tosna-widget__btn-record ${!isDue ? 'btn-disabled' : ''}`}
                     onClick={() => isDue && setActiveAdditionId(addition.id)}
@@ -133,7 +158,7 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
                 <div className="tosna-widget__form tosna-widget__form--expanded">
                   <div className="tosna-widget__form-layout">
                     <div>
-                      <label className="tosna-widget__form-label">{t('Specific Gravity (SG)')}</label>
+                      <label className="tosna-widget__form-label">{t('Current Gravity (SG)', 'Текущая плотность (SG)')}</label>
                       <input 
                         className="tosna-widget__form-input"
                         type="number" 
@@ -144,19 +169,19 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
                       />
                     </div>
                     <div>
-                      <label className="tosna-widget__form-label">{t('Notes & Observations')}</label>
+                      <label className="tosna-widget__form-label">{t('Notes & Observations', 'Заметки и наблюдения')}</label>
                       <textarea 
                         className="tosna-widget__form-textarea"
-                        placeholder={t('Notes...')} 
+                        placeholder={t('Notes...', 'Заметки...')} 
                         value={inputNotes} 
                         onChange={e => setInputNotes(e.target.value)} 
-                        rows={2}
+                        rows={3}
                       />
                     </div>
                     <div className="tosna-widget__form-actions">
-                      <button className="btn-secondary" onClick={() => setActiveAdditionId(null)} disabled={isSubmitting}>{t('Cancel')}</button>
+                      <button className="btn-secondary" onClick={() => setActiveAdditionId(null)} disabled={isSubmitting}>{t('Cancel', 'Отмена')}</button>
                       <button className="btn-primary" onClick={() => handleSave(addition.id)} disabled={isSubmitting}>
-                        {isSubmitting ? t('Saving...') : t('Save Addition')}
+                        {isSubmitting ? t('Saving...', 'Сохранение...') : t('Save Addition', 'Сохранить добавку')}
                       </button>
                     </div>
                   </div>

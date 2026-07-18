@@ -12,7 +12,7 @@
     "dev": "vite",
     "build:math": "npm run build --workspace=@mead-tracker/math",
     "build": "npm run build:math && tsc -b && vite build",
-    "deploy:supabase": "supabase functions deploy generate-recipe",
+    "deploy:supabase": "supabase functions deploy --no-verify-jwt",
     "preview": "vite preview",
     "i18n:extract": "npx i18next-parser --config i18next-parser.config.cjs \"src/**/*.{ts,tsx}\"",
     "i18n:translate": "npx tsx --env-file=.env scripts/auto-translate.ts",

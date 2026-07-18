@@ -3,10 +3,17 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaPen, FaPlus, FaTimes, FaTrash } from 'react-icons/fa';
 import { EditedIngredientData, IngredientEditorModal } from '../components/IngredientEditorModal';
+import { CostCalculatorWidget } from '../components/inventory/CostCalculatorWidget';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useInventoryStore } from '../store/useInventoryStore';
 import type { IngredientUnion, PopulatedInventoryItem, UnitType } from '../types/ingredient';
 import { UNIT_TYPES } from '../types/ingredient';
+
+const getBaseUnit = (u: string) => {
+  if (['g', 'kg', 'oz', 'lb'].includes(u)) return 'kg';
+  if (['ml', 'L', 'gal'].includes(u)) return 'L';
+  return 'unit';
+};
 
 const Inventory: React.FC = () => {
   const { t } = useTranslation();
@@ -26,9 +33,13 @@ const Inventory: React.FC = () => {
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
+  // Стейты редактирования склада
   const [editingStockItem, setEditingStockItem] = useState<PopulatedInventoryItem | null>(null);
   const [editStockQty, setEditStockQty] = useState<number | ''>('');
   const [editStockUnit, setEditStockUnit] = useState<UnitType>('g');
+  const [editCostPerBaseUnit, setEditCostPerBaseUnit] = useState<number>(0);
+  const [editCurrency, setEditCurrency] = useState<string>('€');
+  const [showCostCalculator, setShowCostCalculator] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
@@ -131,15 +142,21 @@ const Inventory: React.FC = () => {
     setEditingStockItem(item);
     setEditStockQty(item.quantityOnHand);
     setEditStockUnit(item.unit);
+    setEditCostPerBaseUnit(item.costPerBaseUnit || 0);
+    setEditCurrency(item.currency || '€');
+    setShowCostCalculator(false);
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!activeBrewery?.id || !editingStockItem || editStockQty === '') return;
     setIsUpdating(true);
     try {
       await updateItem(activeBrewery.id, editingStockItem.id, {
         quantityOnHand: Number(editStockQty),
-        unit: editStockUnit
+        unit: editStockUnit,
+        costPerBaseUnit: editCostPerBaseUnit,
+        currency: editCurrency
       });
       setEditingStockItem(null);
     } catch (err) {
@@ -186,19 +203,16 @@ const Inventory: React.FC = () => {
 
   if (!activeBrewery) {
     return (
-      <div className="inventory-page">
-        <div className="inventory-page__empty-state">
-          <p className="inventory-page__empty-text">{t('Please select or create a brewery to manage inventory.')}</p>
+      <div className="inventory">
+        <div className="inventory__empty-state">
+          <p className="inventory__empty-text">{t('Please select or create a brewery to manage inventory.')}</p>
         </div>
       </div>
     );
   }
 
-if (import.meta.env.DEV) {
-  console.log('Inventory items:', JSON.stringify(inventory, null, 2));
-}
   return (
-    <div className="inventory-page">
+    <div className="inventory">
       {isAddModalOpen && (
         <IngredientEditorModal
           isOpen={isAddModalOpen}
@@ -215,16 +229,17 @@ if (import.meta.env.DEV) {
           <div className="editor-modal" onMouseDown={e => e.stopPropagation()}>
             <div className="editor-modal__header">
               <h2>{t('Edit Stock')}</h2>
-              <button type="button" className="btn-secondary" onClick={() => setEditingStockItem(null)} style={{ padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+              <button type="button" className="btn-secondary" onClick={() => setEditingStockItem(null)} aria-label={t('Close')}>
                 <FaTimes />
               </button>
             </div>
 
-            <div className="editor-modal__body">
-              <p className="form-field__label">{editingStockItem.ingredient.name}</p>
-              <div className="editor-modal__grid editor-modal__grid--stock">
-                <div className="form-field">
-                  <label className="form-field__label">{t('Quantity')}</label>
+            <form onSubmit={handleSaveEdit} className="editor-modal__body">
+              <p className="modal-subtitle mb-md"><strong>{editingStockItem.ingredient.name}</strong></p>
+
+              <div className="form-field mb-md">
+                <label className="form-field__label">{t('Quantity on hand')}</label>
+                <div className="form-field__group">
                   <input
                     type="number"
                     min="0"
@@ -233,9 +248,6 @@ if (import.meta.env.DEV) {
                     value={editStockQty}
                     onChange={e => setEditStockQty(e.target.value === '' ? '' : parseFloat(e.target.value))}
                   />
-                </div>
-                <div className="form-field">
-                  <label className="form-field__label">{t('Unit')}</label>
                   <select
                     className="form-field__select"
                     value={editStockUnit}
@@ -247,100 +259,122 @@ if (import.meta.env.DEV) {
                   </select>
                 </div>
               </div>
-            </div>
 
-            <div className="editor-modal__footer">
-              <button type="button" className="btn-secondary" onClick={() => setEditingStockItem(null)}>{t('Cancel')}</button>
-              <button type="button" className="btn-primary" onClick={handleSaveEdit} disabled={isUpdating || editStockQty === ''}>
-                {isUpdating ? t('Saving...') : t('Save')}
-              </button>
-            </div>
+              <div className="form-field mb-md">
+                <label className="form-field__label">{t('Normalized Cost')}</label>
+                {!showCostCalculator ? (
+                  <div className="inventory__cost-display">
+                    <span className="inventory__cost-value">
+                      {editCostPerBaseUnit > 0 
+                        ? `${editCostPerBaseUnit.toFixed(2)} ${editCurrency} / ${t(`constants.units.${getBaseUnit(editStockUnit)}`)}` 
+                        : t('Not set')}
+                    </span>
+                    <button type="button" className="btn-secondary btn-secondary--small" onClick={() => setShowCostCalculator(true)}>
+                      {t('Update')}
+                    </button>
+                  </div>
+                ) : (
+                  <CostCalculatorWidget
+                    initialUnit={editStockUnit}
+                    onCostCalculated={(cost, curr) => {
+                      if (cost > 0) {
+                        setEditCostPerBaseUnit(cost);
+                        setEditCurrency(curr);
+                      }
+                    }}
+                  />
+                )}
+              </div>
+
+              <div className="editor-modal__footer">
+                <button type="button" className="btn-secondary btn-secondary--outline" onClick={() => setEditingStockItem(null)}>
+                  {t('Cancel')}
+                </button>
+                <button type="submit" className="btn-primary" disabled={isUpdating || editStockQty === ''}>
+                  {isUpdating ? t('Saving...') : t('Save')}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      <header className="inventory-page__header">
-        <div className="inventory-page__title-block">
-          <h1 className="inventory-page__title">{t('Workspace Inventory')}</h1>
-          <span className="inventory-page__subtitle">{activeBrewery.name}</span>
+      <header className="inventory__header">
+        <div className="inventory__title-block">
+          <h1 className="inventory__title">{t('Workspace Inventory')}</h1>
+          <span className="inventory__subtitle">{activeBrewery.name}</span>
         </div>
-        <div className="inventory-page__actions">
-          <button type="button" style={{ padding: '8px 16px', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => setIsAddModalOpen(true)}>
-            <FaPlus /> {t('Add Ingredient', 'Добавить ингредиент')}
+        <div className="inventory__actions">
+          <button type="button" className="btn-primary" onClick={() => setIsAddModalOpen(true)}>
+            <FaPlus /> {t('Add Ingredient')}
           </button>
         </div>
       </header>
 
-      {error && <div className="inventory-page__error">{error}</div>}
+      {error && <div className="session-alert session-alert--warning inventory__error">{error}</div>}
 
-      <div className="inventory-page__layout">
-        <main className="inventory-page__main">
-          {isLoading && (!inventory || inventory.length === 0) ? (
-            <div className="global-loader">
-              <div className="spinner"></div>
-            </div>
-          ) : !inventory || inventory.length === 0 ? (
-            <div className="inventory-page__empty-state">
-              <p className="inventory-page__empty-text">{t('Your inventory is empty. Add ingredients to get started.')}</p>
-            </div>
-          ) : (
-            <ul className="inventory-grid">
-              {inventory.map((item) => {
-                if (!item || !item.id) return null;
-                const isOutOfStock = item.quantityOnHand <= 0;
+      <div className="inventory__layout">
+        {isLoading && (!inventory || inventory.length === 0) ? (
+          <div className="global-loader">
+            <div className="spinner"></div>
+          </div>
+        ) : !inventory || inventory.length === 0 ? (
+          <div className="inventory__empty-state">
+            <p className="inventory__empty-text">{t('Your inventory is empty. Add ingredients to get started.')}</p>
+          </div>
+        ) : (
+          <ul className="inventory__grid">
+            {inventory.map((item) => {
+              if (!item || !item.id) return null;
+              const isOutOfStock = item.quantityOnHand <= 0;
 
-                return (
-                  <li key={item.id} className={`stock-card ${isOutOfStock ? 'stock-card--empty' : ''}`}>
-                    <div className="stock-card__header">
-                      <span className={`stock-card__badge stock-card__badge--${getCategoryClassModifier(item.ingredient.category)}`}>
-                        {t(`constants.categories.${item.ingredient.category.toLowerCase().replace(' ', '_')}`)}
-                      </span>
-                      <div className="form-field__group" style={{ gap: '4px' }}>
-                        <button
-                          className="btn-icon"
-                          onClick={() => handleOpenEdit(item)}
-                          title={t('Edit')}
-                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
-                        >
-                          <FaPen />
-                        </button>
-                        <button
-                          className="btn-icon danger-outline"
-                          onClick={() => handleDeleteItem(item.id)}
-                          aria-label={t('Remove item')}
-                          title={t('Remove from inventory')}
-                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-danger)' }}
-                        >
-                          <FaTrash />
-                        </button>
+              return (
+                <li key={item.id} className={`stock-card ${isOutOfStock ? 'stock-card--empty' : ''}`}>
+                  <div className="stock-card__header">
+                    <span className={`stock-card__badge stock-card__badge--${getCategoryClassModifier(item.ingredient.category)}`}>
+                      {t(`constants.categories.${item.ingredient.category.toLowerCase().replace(' ', '_')}`)}
+                    </span>
+                    <div className="stock-card__actions">
+                      <button className="stock-card__btn-action" onClick={() => handleOpenEdit(item)} title={t('Edit')} aria-label={t('Edit')}>
+                        <FaPen />
+                      </button>
+                      <button className="stock-card__btn-action stock-card__btn-action--danger" onClick={() => handleDeleteItem(item.id)} title={t('Remove from inventory')} aria-label={t('Remove from inventory')}>
+                        <FaTrash />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="stock-card__body">
+                    <h3 className="stock-card__title" title={item.ingredient.name}>
+                      {item.ingredient.name}
+                    </h3>
+                    <p className="stock-card__meta">
+                      {renderIngredientMeta(item.ingredient)}
+                    </p>
+                  </div>
+
+                  <div className="stock-card__footer">
+                    <div className="stock-card__cost">
+                      {item.costPerBaseUnit && item.costPerBaseUnit > 0 ? (
+                        <span className="stock-card__cost-val">
+                          {item.costPerBaseUnit.toFixed(2)}{item.currency} / {t(`constants.units.${getBaseUnit(item.unit)}`)}
+                        </span>
+                      ) : null}
+                    </div>
+                    {isOutOfStock ? (
+                      <span className="stock-card__amount stock-card__amount--empty">{t('Out of stock')}</span>
+                    ) : (
+                      <div className="stock-card__amount">
+                        <span className="stock-card__value">{item.quantityOnHand}</span>
+                        <span className="stock-card__unit">{t(`constants.units.${item.unit.toLowerCase()}`)}</span>
                       </div>
-                    </div>
-
-                    <div className="stock-card__body">
-                      <h3 className="stock-card__title" title={item.ingredient.name}>
-                        {item.ingredient.name}
-                      </h3>
-                      <p className="stock-card__meta">
-                        {renderIngredientMeta(item.ingredient)}
-                      </p>
-                    </div>
-
-                    <div className="stock-card__footer">
-                      {isOutOfStock ? (
-                        <span className="stock-card__amount stock-card__amount--empty">{t('Out of stock')}</span>
-                      ) : (
-                        <div className="stock-card__amount">
-                          <span className="stock-card__value">{item.quantityOnHand}</span>
-                          <span className="stock-card__unit">{t(`constants.units.${item.unit.toLowerCase()}`)}</span>
-                        </div>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </main>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </div>
   );

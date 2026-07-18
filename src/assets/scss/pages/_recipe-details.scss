@@ -8,7 +8,6 @@
   padding: $spacing-xl;
   margin: 0 auto;
 
-  // --- Состояния загрузки и пустого экрана ---
   &__loading {
     padding: $spacing-xxl;
     font-size: 1.2rem;
@@ -31,7 +30,6 @@
     color: var(--text-primary);
   }
 
-  // --- Шапка рецепта ---
   &__header {
     display: flex;
     flex-wrap: wrap;
@@ -67,7 +65,6 @@
     align-items: center;
   }
 
-  // --- Кнопки (специфичные для шапки) ---
   &__btn-primary {
     @include button-primary;
 
@@ -105,7 +102,6 @@
     }
   }
 
-  // --- Основная сетка (Layout) ---
   &__layout {
     display: grid;
     grid-template-columns: 1fr;
@@ -113,7 +109,6 @@
     align-items: start;
 
     @media (min-width: $breakpoint-lg) {
-      // 2 колонки на больших экранах, как в builder-layout
       grid-template-columns: 2fr 1fr;
     }
   }
@@ -130,7 +125,6 @@
     gap: $spacing-lg;
   }
 
-  // --- Секции (Ингредиенты, Шаги) ---
   &__section {
     padding: $spacing-xl;
     background-color: var(--bg-surface);
@@ -145,7 +139,6 @@
     color: var(--text-primary);
   }
 
-  // --- Список ингредиентов ---
   &__ingredient-list {
     display: flex;
     flex-direction: column;
@@ -185,7 +178,6 @@
     white-space: nowrap;
   }
 
-  // --- Бейджи ---
   &__badge {
     padding: 4px 8px;
     font-size: 0.75rem;
@@ -201,7 +193,6 @@
     }
   }
 
-  // --- Список шагов ---
   &__step-list {
     display: flex;
     flex-direction: column;
@@ -209,7 +200,7 @@
     padding: 0;
     margin: 0;
     list-style: none;
-    counter-reset: step-counter; // Добавляем нумерацию шагов
+    counter-reset: step-counter;
   }
 
   &__step-item {
@@ -218,7 +209,7 @@
     flex-direction: column;
     gap: $spacing-sm;
     padding: $spacing-md;
-    padding-left: calc(#{$spacing-xl} + 10px); // Отступ под цифру
+    padding-left: calc(#{$spacing-xl} + 10px);
     background-color: var(--bg-surface-alt);
     border: 1px solid var(--border-color);
     border-radius: $border-radius-md;
@@ -237,7 +228,7 @@
       color: white;
       content: counter(step-counter);
       counter-increment: step-counter;
-      background-color: #64748b; // Позаимствовал цвет из recipe-lab
+      background-color: #64748b;
       border-radius: 50%;
     }
   }
@@ -279,7 +270,7 @@
     display: flex;
     gap: $spacing-md;
     align-items: center;
-    color: var(--color-error); // Температура часто выделяется
+    color: var(--color-error);
     
     &::before {
       display: block;
@@ -288,6 +279,113 @@
       content: '';
       background-color: var(--border-color);
       border-radius: 50%;
+    }
+  }
+}
+
+.recipe-performance {
+  padding: 16px;
+  margin-bottom: 24px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 2%);
+
+  &__header {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 0 0 16px;
+    font-size: 1rem;
+    color: var(--text-primary);
+  }
+
+  &__icon {
+    color: var(--color-primary);
+  }
+
+  &__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  &__stat {
+    flex: 1;
+    min-width: 100px;
+
+    &--divider {
+      padding-left: 16px;
+      border-left: 1px solid var(--border-color);
+    }
+  }
+
+  &__label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+
+  &__value-group {
+    display: flex;
+    gap: 4px;
+    align-items: baseline;
+
+    &--column {
+      flex-direction: column;
+      gap: 2px;
+      align-items: flex-start;
+    }
+  }
+
+  &__value {
+    font-size: 1.25rem;
+    color: var(--text-primary);
+
+    &--ai {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      color: #9333ea; // Фиолетовый акцент для ИИ
+    }
+  }
+
+  &__sub-value {
+    font-size: 0.85rem;
+    color: var(--text-disabled);
+  }
+
+  &__star-icon {
+    font-size: 1rem;
+    color: #eab308; // Золотой
+  }
+
+  // НОВЫЕ СТИЛИ ДЛЯ ИНТЕРАКТИВНЫХ ЗВЕЗД
+  &__stars-container {
+    display: flex;
+    gap: 2px;
+  }
+
+  &__star-btn {
+    padding: 0;
+    font-size: 1.1rem;
+    color: var(--border-color); // Серые пустые звезды по умолчанию
+    cursor: pointer;
+    background: none;
+    border: none;
+    transition: color 0.2s ease, transform 0.1s ease;
+
+    &:disabled {
+      cursor: default;
+    }
+
+    &--filled {
+      color: #eab308; // Подсветка золотым
+    }
+
+    &:not(:disabled):hover {
+      transform: scale(1.15); // Небольшое увеличение при наведении
     }
   }
 }

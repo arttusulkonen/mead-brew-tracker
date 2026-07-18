@@ -1,3 +1,4 @@
+// src/components/ActiveTimer.tsx
 import React, { useEffect, useState } from 'react';
 
 interface ActiveTimerProps {
@@ -15,11 +16,16 @@ export const ActiveTimer: React.FC<ActiveTimerProps> = ({
 
   useEffect(() => {
     const calculateTime = () => {
-      let totalSeconds = accumulatedSeconds;
+      let totalSeconds = accumulatedSeconds || 0;
       
       if (isActive && startedAt) {
-        totalSeconds += Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+        const startMs = new Date(startedAt).getTime();
+        if (!isNaN(startMs)) {
+          totalSeconds += Math.floor((Date.now() - startMs) / 1000);
+        }
       }
+
+      totalSeconds = Math.max(0, totalSeconds);
 
       const h = Math.floor(totalSeconds / 3600);
       const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');

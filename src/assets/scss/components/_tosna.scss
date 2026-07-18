@@ -1,3 +1,5 @@
+@use '../settings/variables' as *;
+
 .tosna-widget {
   &__header {
     display: flex;
@@ -7,9 +9,24 @@
     margin-bottom: 16px;
   }
 
-  &__hint--disabled {
-    font-size: 0.9rem;
-    color: var(--text-disabled);
+  &__target {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+
+    strong {
+      color: var(--color-primary);
+    }
+  }
+
+  &__alert {
+    margin-bottom: 16px;
+  }
+
+  &__hint {
+    &--disabled {
+      font-size: 0.9rem;
+      color: var(--text-disabled);
+    }
   }
 
   &__list {
@@ -19,7 +36,10 @@
   }
 
   &__item {
-    padding: 12px;
+    display: flex;
+    flex-direction: column; 
+    gap: 8px;
+    padding: 16px;
     margin-bottom: 12px;
     background-color: var(--bg-surface-alt);
     border: 1px solid var(--border-color);
@@ -28,31 +48,40 @@
 
     &--completed {
       background-color: var(--bg-surface);
-      opacity: 0.8;
+      opacity: 0.6;
     }
 
     &--overdue {
-      background-color: #fef2f2;
-      border-color: #fca5a5;
+      background-color: rgb(239 68 68 / 5%);
+      border-color: rgb(239 68 68 / 20%);
     }
 
     &--due-now {
-      background-color: #fefce8;
-      border-color: #fcd34d;
-      box-shadow: 0 0 0 2px rgb(252 211 77 / 30%);
+      background-color: rgb(245 158 11 / 5%);
+      border-color: rgb(245 158 11 / 30%);
+      box-shadow: 0 0 0 2px rgb(245 158 11 / 15%);
     }
   }
 
-  &__info--flex {
-    display: flex;
-    flex-direction: column;
-    gap: .5rem;
-    align-items: flex-start;
-    justify-content: space-between;
+  &__info {
+    width: 100%;
+
+    &--flex {
+      display: flex; 
+      flex-direction: column;
+      gap: 12px;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
   }
 
   &__text-content {
+    display: flex;
     flex: 1;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+    justify-content: space-between;
   }
 
   &__item-title {
@@ -66,15 +95,18 @@
     }
   }
 
-  &__desc--muted {
-    display: block;
-    margin-top: 2px;
-    font-size: 0.85rem;
-    color: var(--text-secondary);
+  &__desc {
+    &--muted {
+      display: block;
+      margin-top: 2px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
   }
 
   &__time {
     font-size: 0.8rem;
+    color: var(--text-secondary);
 
     &--highlight {
       font-weight: bold;
@@ -86,18 +118,22 @@
       gap: 4px;
       align-items: center;
       margin-top: 4px;
+      font-size: 0.8rem;
       font-weight: bold;
       color: #8b5cf6;
+    }
+
+    &--overdue {
+      font-weight: bold;
+      color: var(--color-error);
     }
   }
 
   &__badge-overdue {
-    display: inline-block;
-    margin-top: 4px;
+    margin-left: 8px;
   }
 
   &__done-text {
-    margin-left: 12px;
     font-weight: bold;
     color: var(--color-success);
   }
@@ -116,11 +152,13 @@
     margin-right: 4px;
   }
 
-  /* Стили раскрытой формы */
-  &__form--expanded {
-    padding-top: 16px;
-    margin-top: 16px;
-    border-top: 1px dashed var(--border-color);
+  &__form {
+    &--expanded {
+      width: 100%;
+      padding-top: 16px;
+      margin-top: 8px;
+      border-top: 1px dashed var(--border-color);
+    }
   }
 
   &__form-layout {
@@ -131,21 +169,20 @@
 
   &__form-label {
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     font-size: 0.85rem;
-    font-weight: bold;
+    font-weight: 600;
     color: var(--text-primary);
   }
 
-  &__form-input,
-  &__form-textarea {
+  &__form-input {
     width: 100%;
-    padding: 10px;
+    padding: 10px 12px;
     font-size: 1rem;
+    color: var(--text-primary);
     background-color: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: 6px;
-    transition: border-color 0.2s;
 
     &:focus {
       border-color: var(--color-primary);
@@ -154,14 +191,25 @@
   }
 
   &__form-textarea {
+    width: 100%;
+    padding: 10px 12px;
     font-size: 0.95rem;
+    color: var(--text-primary);
     resize: vertical;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+
+    &:focus {
+      border-color: var(--color-primary);
+      outline: none;
+    }
   }
 
   &__form-actions {
     display: flex;
     gap: 8px;
     justify-content: flex-end;
-    margin-top: 4px;
+    margin-top: 8px;
   }
 }

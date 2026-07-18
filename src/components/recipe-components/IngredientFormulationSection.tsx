@@ -1,4 +1,3 @@
-// src/components/recipe-components/IngredientFormulationSection.tsx
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaMagic } from 'react-icons/fa';
@@ -30,7 +29,7 @@ export const IngredientFormulationSection: React.FC<IngredientFormulationSection
             step="0.1"
             min="1"
             max="20"
-            value={targetAutoAbv}
+            value={targetAutoAbv || 5.0}
             onChange={(e) => setTargetAutoAbv(parseFloat(e.target.value) || 5.0)}
           />
           <button
@@ -44,7 +43,7 @@ export const IngredientFormulationSection: React.FC<IngredientFormulationSection
         </div>
       </div>
 
-      <div className="builder-section__body" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div className="builder-section__body builder-section__body--spaced">
         {children}
       </div>
     </section>

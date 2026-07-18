@@ -1,9 +1,8 @@
 @use '../settings/variables' as *;
-@use '../mixins/typography' as *;
 
-.inventory-page {
-  max-width: $breakpoint-xl;
-  padding: 0 $spacing-md;
+.inventory {
+  max-width: 1400px;
+  padding: $spacing-xl $spacing-md;
   margin: 0 auto;
 
   &__header {
@@ -22,14 +21,13 @@
   }
 
   &__title {
-    @include heading-1;
-
     margin: 0;
+    font-size: 2rem;
+    color: var(--text-primary);
   }
 
   &__subtitle {
-    @include text-base;
-
+    font-size: 1rem;
     color: var(--text-secondary);
   }
 
@@ -40,36 +38,47 @@
   }
 
   &__error {
-    padding: $spacing-md;
     margin-bottom: $spacing-md;
-    color: var(--color-danger);
-    background-color: rgb(239 68 68 / 10%);
-    border-radius: $border-radius-md;
+  }
+
+  &__cost-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background-color: var(--bg-surface-alt);
+    border: 1px solid var(--border-color);
+    border-radius: $border-radius-sm;
+  }
+
+  &__cost-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
   }
 
   &__empty-state {
     padding: $spacing-xxl $spacing-lg;
     text-align: center;
     background-color: var(--bg-surface);
-    border: 1px solid var(--border-color);
+    border: 1px dashed var(--border-color);
     border-radius: $border-radius-lg;
   }
 
   &__empty-text {
-    @include text-base;
-
     margin: 0;
+    font-size: 1rem;
     color: var(--text-secondary);
   }
-}
 
-.inventory-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: $spacing-md;
-  padding: 0;
-  margin: 0;
-  list-style: none;
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: $spacing-md;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
 }
 
 .stock-card {
@@ -80,12 +89,12 @@
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: $border-radius-md;
-  box-shadow: $box-shadow-sm;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 2%);
   transition: all 0.2s ease;
 
   &:hover {
     border-color: var(--color-primary);
-    box-shadow: $box-shadow-base;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 5%);
   }
 
   &--empty {
@@ -100,37 +109,66 @@
   }
 
   &__badge {
-    @include text-small;
-
     padding: 4px 8px;
     font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
     border-radius: $border-radius-sm;
 
-    &--fermentable {
+    // Семантические цвета для категорий ингредиентов
+    &--fermentable,
+    &--honey {
       color: #b45309;
-      background-color: #fef3c7;
+      background-color: rgb(251 191 36 / 15%);
     }
 
     &--hops {
-      color: #1d4ed8;
-      background-color: #d1fae5;
+      color: #15803d;
+      background-color: rgb(34 197 94 / 15%);
     }
 
     &--yeast {
       color: #7e22ce;
-      background-color: #fce7f3;
+      background-color: rgb(168 85 247 / 15%);
     }
 
     &--additive {
-      color: #4b5563;
-      background-color: #f3f4f6;
+      color: #475569;
+      background-color: rgb(148 163 184 / 15%);
     }
 
     &--water-profile {
       color: #0369a1;
-      background-color: #e0f2fe;
+      background-color: rgb(14 165 233 / 15%);
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  &__btn-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    background-color: transparent;
+    border: none;
+    border-radius: 4px;
+    transition: all 0.2s;
+
+    &:hover {
+      color: var(--text-primary);
+      background-color: var(--bg-surface-alt);
+    }
+
+    &--danger:hover {
+      color: var(--color-error);
+      background-color: rgb(239 68 68 / 10%);
     }
   }
 
@@ -139,15 +177,15 @@
   }
 
   &__title {
-    @include heading-3;
-
     margin: 0 0 $spacing-xs;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
   }
 
   &__meta {
-    @include text-small;
-
     margin: 0;
+    font-size: 0.85rem;
     color: var(--text-secondary);
   }
 
@@ -159,6 +197,17 @@
     border-top: 1px solid var(--border-color);
   }
 
+  &__cost {
+    display: flex;
+    align-items: center;
+  }
+
+  &__cost-val {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
   &__amount {
     display: flex;
     gap: 4px;
@@ -166,7 +215,7 @@
 
     &--empty {
       font-weight: 600;
-      color: var(--color-danger);
+      color: var(--color-error);
     }
   }
 
@@ -177,8 +226,8 @@
   }
 
   &__unit {
-    @include text-small;
-
+    font-size: 0.85rem;
     font-weight: 600;
+    color: var(--text-secondary);
   }
 }

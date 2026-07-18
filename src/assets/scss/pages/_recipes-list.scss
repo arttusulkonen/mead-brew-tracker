@@ -3,7 +3,7 @@
 .recipe-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: $spacing-xl; // Чуть увеличили отступ между карточками
+  gap: $spacing-xl;
   padding: 0;
   margin: 0;
   list-style: none;
@@ -12,22 +12,21 @@
 .recipe-card {
   display: flex;
   flex-direction: column;
-  height: 100%; // Карточки в одном ряду будут одинаковой высоты
+  height: 100%;
   padding: $spacing-lg;
   cursor: pointer;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: $border-radius-lg; // Сделали углы чуть мягче
+  border-radius: $border-radius-lg;
   box-shadow: 0 4px 6px rgb(0 0 0 / 2%), 0 1px 3px rgb(0 0 0 / 2%);
   transition: all 0.2s ease-out;
 
   &:hover {
-    border-color: var(--color-primary); // Подсвечиваем рамку
-    box-shadow: 0 12px 24px rgb(0 0 0 / 8%), 0 4px 8px rgb(0 0 0 / 4%); // Углубляем тень
-    transform: translateY(-4px); // Карточка "всплывает"
+    border-color: var(--color-primary);
+    box-shadow: 0 12px 24px rgb(0 0 0 / 8%), 0 4px 8px rgb(0 0 0 / 4%);
+    transform: translateY(-4px);
   }
 
-  // Доступность для управления с клавиатуры (Tab)
   &:focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
@@ -37,7 +36,7 @@
 
   &__main {
     display: flex;
-    flex: 1; // Растягиваем, чтобы футер прижался к низу
+    flex: 1;
     flex-direction: column;
     margin-bottom: $spacing-lg;
   }
@@ -53,28 +52,72 @@
   &__title {
     margin: 0;
     font-size: 1.25rem;
+    font-weight: 700;
     line-height: 1.3;
     color: var(--text-primary);
   }
 
   &__badge {
-    flex-shrink: 0; // Чтобы бейдж не сжимался длинным названием
+    flex-shrink: 0;
     padding: 4px 10px;
     font-size: 0.75rem;
     font-weight: 700;
     color: var(--color-primary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    background-color: rgb(0 123 255 / 8%);
-    border-radius: 16px; // Сделали бейдж в виде "пилюли"
+    background-color: rgb(0 123 255 / 8%); // Легкий синий фон
+    border-radius: 16px;
   }
 
-  &__style {
-    font-size: 0.95rem;
+  // --- НОВЫЙ БЛОК: Мета-информация (Стиль, литры, рейтинг) ---
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px; // 8px отступ между строками, 10px между элементами
+    align-items: center;
+    margin-top: 6px;
+    font-size: 0.85rem;
     color: var(--text-secondary);
   }
 
-  // Красивая сеточка для параметров рецепта
+  &__meta-divider {
+    font-size: 0.8rem;
+    color: var(--border-color);
+  }
+
+  &__meta-item {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+
+    &--user-rating {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    &--ai-rating {
+      padding: 2px 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #9333ea; // Фиолетовый текст
+      background-color: rgb(147 51 234 / 8%); // Легкий фиолетовый фон
+      border-radius: 4px;
+    }
+  }
+
+  &__star-icon {
+    font-size: 0.95rem;
+    color: #eab308; // Золотой
+    transform: translateY(-1px); // Оптическое выравнивание иконки относительно текста
+  }
+
+  &__meta-count {
+    font-weight: normal;
+    color: var(--text-disabled);
+  }
+
+  // -------------------------------------------------------------
+
   &__stats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -102,12 +145,11 @@
     color: var(--text-primary);
 
     &--highlight {
-      color: var(--color-primary); // Выделяем крепость цветом
+      color: var(--color-primary);
     }
   }
 }
 
-// Улучшенное пустое состояние (Empty State)
 .recipe-lab__empty-state {
   display: flex;
   flex-direction: column;

@@ -41,32 +41,32 @@ export const MeadWizardSection: React.FC<MeadWizardSectionProps> = ({
         <div className="builder-row">
           <div className="form-field builder-row__item">
             <label className="form-field__label">{t('Base Style')}</label>
-            <select className="form-field__select" value={wizardStyle} onChange={e => setWizardStyle(e.target.value)}>
-              {MEAD_STYLES.map(s => <option key={s.id} value={s.id}>{t(s.name, s.name)}</option>)}
+            <select className="form-field__select" value={wizardStyle || ''} onChange={e => setWizardStyle(e.target.value)}>
+              {(MEAD_STYLES || []).map(s => <option key={s.id} value={s.id}>{t(s.name, s.name)}</option>)}
             </select>
           </div>
           <div className="form-field builder-row__item">
             <label className="form-field__label">{t('Sweetness / FG')}</label>
-            <select className="form-field__select" value={wizardSweetness} onChange={e => {
+            <select className="form-field__select" value={wizardSweetness || ''} onChange={e => {
               setWizardSweetness(e.target.value);
-              const selected = SWEETNESS_LEVELS.find(lvl => lvl.id === e.target.value);
+              const selected = (SWEETNESS_LEVELS || []).find(lvl => lvl.id === e.target.value);
               if (selected) {
                 setTargetFg(selected.minFg);
               }
             }}>
-              {SWEETNESS_LEVELS.map(s => <option key={s.id} value={s.id}>{t(s.name, s.name)}</option>)}
+              {(SWEETNESS_LEVELS || []).map(s => <option key={s.id} value={s.id}>{t(s.name, s.name)}</option>)}
             </select>
           </div>
           <div className="form-field builder-row__item">
             <label className="form-field__label">{t('Honey Terroir')}</label>
-            <select className="form-field__select" value={wizardHoney} onChange={e => setWizardHoney(e.target.value)}>
-              {HONEY_TERROIR.map(s => <option key={s.id} value={s.id}>{t(s.name, s.name)}</option>)}
+            <select className="form-field__select" value={wizardHoney || ''} onChange={e => setWizardHoney(e.target.value)}>
+              {(HONEY_TERROIR || []).map(s => <option key={s.id} value={s.id}>{t(s.name, s.name)}</option>)}
             </select>
           </div>
         </div>
 
-        {(meadIngredientHint || meadYeastSuggestions.length > 0) && (
-          <div className="suggestions-box" style={{ marginTop: '1rem' }}>
+        {(meadIngredientHint || (meadYeastSuggestions || []).length > 0) && (
+          <div className="suggestions-box mt-md">
             {meadIngredientHint && (
               <div className="suggestions-box__group">
                 <h4><FaInfoCircle /> {t('Typically used for this mead style', 'Обычно используют для этого стиля мёда')}</h4>
@@ -79,10 +79,10 @@ export const MeadWizardSection: React.FC<MeadWizardSectionProps> = ({
                 </button>
               </div>
             )}
-            {meadYeastSuggestions.length > 0 && (
+            {(meadYeastSuggestions || []).length > 0 && (
               <div className="suggestions-box__group">
                 <h4>{t('Suggested Yeasts for this ABV tier', 'Подходящие дрожжи для этого уровня ABV')}</h4>
-                {meadYeastSuggestions.map(y => (
+                {(meadYeastSuggestions || []).map(y => (
                   <button type="button" key={y.id} className="suggestion-tag" onClick={() => openIngredientModal('Yeast', y.name)}>{y.name}</button>
                 ))}
               </div>
@@ -92,10 +92,9 @@ export const MeadWizardSection: React.FC<MeadWizardSectionProps> = ({
 
         <button
           type="button"
-          className="btn-secondary btn-secondary--full"
+          className="btn-secondary btn-secondary--full mt-md"
           onClick={onGenerate}
           disabled={isGenerating}
-          style={{ marginTop: '1rem' }}
         >
           <FaMagic /> {isGenerating ? t('AI is thinking...') : t('Generate / Review Steps with AI')}
         </button>

@@ -1,3 +1,4 @@
+// src/types/recipe.ts
 import type { AdditiveType, IngredientCategory, UnitType, UUID } from './ingredient';
 
 export type BeverageType = 'Beer' | 'Mead' | 'Cider' | 'Other';

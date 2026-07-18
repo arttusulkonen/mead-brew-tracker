@@ -99,7 +99,7 @@ export function useRecipeBuilderState() {
     try {
       const { data: ingData } = await supabase.from('ingredients').select('*');
       if (ingData) {
-        const formattedCatalog = (ingData as IngredientRow[]).map(item => ({
+        const formattedCatalog = (ingData as IngredientRow[] || []).map(item => ({
           id: item.id,
           name: item.name,
           category: item.category,
@@ -135,7 +135,7 @@ export function useRecipeBuilderState() {
 
       const { data: styleData } = await supabase.from('styles').select('*');
       if (styleData) {
-        const formattedStyles = (styleData as StyleRow[]).map(item => ({
+        const formattedStyles = (styleData as StyleRow[] || []).map(item => ({
           style_id: item.style_id,
           name: item.name,
           category: item.category,
@@ -165,11 +165,11 @@ export function useRecipeBuilderState() {
   }, []);
 
   useEffect(() => {
-    if (location.state && location.state.editRecipe) {
+    if (location?.state?.editRecipe) {
       const r = location.state.editRecipe as RecipeStateData;
-      setRecipeName(r.name);
+      setRecipeName(r.name || '');
       setBeverageType(r.beverageType || 'Mead');
-      setBatchSizeLiters(r.expectedBatchSizeLiters);
+      setBatchSizeLiters(r.expectedBatchSizeLiters || 20);
       setTargetStyle(r.targetStyle || 'Standard');
       setTargetFg(r.targetFinalGravity || 1.000);
 
@@ -177,19 +177,19 @@ export function useRecipeBuilderState() {
         setWizardStyle(r.baseStyle);
       }
 
-      const matchedSweetness = SWEETNESS_LEVELS.find(lvl => Math.abs(lvl.minFg - (r.targetFinalGravity || 1.000)) < 0.005);
+      const matchedSweetness = (SWEETNESS_LEVELS || []).find(lvl => Math.abs(lvl.minFg - (r.targetFinalGravity || 1.000)) < 0.005);
       if (matchedSweetness) setWizardSweetness(matchedSweetness.id);
 
-      const matchedStyle = bjcpStyles.find(s => s.name === r.targetStyle);
+      const matchedStyle = (bjcpStyles || []).find(s => s.name === r.targetStyle);
       if (matchedStyle) setSelectedStyleId(matchedStyle.style_id);
 
-      const mappedIngredients = r.ingredients.map(ing => {
+      const mappedIngredients = (r.ingredients || []).map(ing => {
         return {
           id: ing.id,
           globalIngredientId: ing.globalIngredientId ?? null,
           name: ing.name,
           category: ing.category as IngredientCategory,
-          quantity: ing.quantity,
+          quantity: ing.quantity || 0,
           note: ing.note || '',
           showNote: !!ing.note,
           form: ing.form,
@@ -203,11 +203,11 @@ export function useRecipeBuilderState() {
           diastaticPowerLintner: ing.diastaticPowerLintner,
           sugarContentBrix: ing.sugarContentBrix,
           alphaAcidPct: ing.alphaAcidPct,
-          alphaAcidPctMin: (ing as { alphaAcidPctMin?: number }).alphaAcidPctMin,
+          alphaAcidPctMin: (ing as { alphaAcidPctMin?: number })?.alphaAcidPctMin,
           alcoholTolerancePct: ing.alcoholTolerancePct,
-          alcoholTolerancePctMin: (ing as { alcoholTolerancePctMin?: number }).alcoholTolerancePctMin,
+          alcoholTolerancePctMin: (ing as { alcoholTolerancePctMin?: number })?.alcoholTolerancePctMin,
           attenuationPct: ing.attenuationPct,
-          attenuationPctMin: (ing as { attenuationPctMin?: number }).attenuationPctMin,
+          attenuationPctMin: (ing as { attenuationPctMin?: number })?.attenuationPctMin,
           tempMinC: ing.tempMinC,
           tempMaxC: ing.tempMaxC,
           nitrogenDemand: ing.nitrogenDemand,
@@ -227,7 +227,7 @@ export function useRecipeBuilderState() {
       });
       setRecipeIngredients(mappedIngredients);
 
-      const mappedSteps = r.steps.map(step => ({
+      const mappedSteps = (r.steps || []).map(step => ({
         ...step,
         isExpanded: false
       }));
@@ -266,21 +266,21 @@ export function useRecipeBuilderState() {
 
   const handleRemoveIngredient = (id: string, onRemoved?: (id: string) => void) => {
     if (!id) return;
-    setRecipeIngredients(prev => prev.filter(item => item.id !== id));
+    setRecipeIngredients(prev => (prev || []).filter(item => item.id !== id));
     onRemoved?.(id);
   };
 
   const updateIngredient = (id: string, updates: Partial<RecipeIngredientEntry>) => {
     if (!id) return;
-    setRecipeIngredients(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
+    setRecipeIngredients(prev => (prev || []).map(item => item.id === id ? { ...item, ...updates } : item));
   };
 
   const handleAddStep = (phase: RecipeStepEntry['phase'] = 'Preparation') => {
     setRecipeSteps(prev => [
-      ...prev,
+      ...(prev || []),
       {
         id: crypto.randomUUID(),
-        stepNumber: prev.length + 1,
+        stepNumber: (prev || []).length + 1,
         phase,
         title: '',
         description: '',
@@ -295,14 +295,14 @@ export function useRecipeBuilderState() {
   const handleRemoveStep = (id: string) => {
     if (!id) return;
     setRecipeSteps(prev => {
-      const filtered = prev.filter(step => step.id !== id);
+      const filtered = (prev || []).filter(step => step.id !== id);
       return filtered.map((step, index) => ({ ...step, stepNumber: index + 1 }));
     });
   };
 
   const updateStep = (id: string, updates: Partial<RecipeStepEntry>) => {
     if (!id) return;
-    setRecipeSteps(prev => prev.map(step => step.id === id ? { ...step, ...updates } : step));
+    setRecipeSteps(prev => (prev || []).map(step => step.id === id ? { ...step, ...updates } : step));
   };
 
   return {

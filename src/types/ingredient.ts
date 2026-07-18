@@ -93,6 +93,8 @@ export interface WorkspaceInventoryItem {
   unit: UnitType;
   batchLotNumber?: string;
   expirationDate?: string;
+  costPerBaseUnit?: number;
+  currency?: string;
 }
 
 export interface PopulatedInventoryItem extends WorkspaceInventoryItem {

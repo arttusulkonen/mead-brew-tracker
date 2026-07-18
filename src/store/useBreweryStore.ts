@@ -16,7 +16,7 @@ interface BreweryState {
   activeBrewery: Brewery | null;
   activeBreweryId: string | null;
   isLoading: boolean;
-  error: string | null; // <--- ДОБАВЛЕНО
+  error: string | null;
   fetchBreweries: (userId: string) => Promise<void>;
   createBrewery: (userId: string, name: string, isPersonal?: boolean, inviteEmails?: string) => Promise<Brewery | null>;
   deleteBrewery: (breweryId: string) => Promise<boolean>;
@@ -44,13 +44,14 @@ export const useBreweryStore = create<BreweryState>((set, get) => ({
   error: null,
 
   setActiveBrewery: (brewery) => set({ 
-    activeBrewery: brewery, 
+    activeBrewery: brewery ?? null, 
     activeBreweryId: brewery?.id || null 
   }),
 
-  setBreweries: (breweries) => set({ breweries }),
+  setBreweries: (breweries) => set({ breweries: breweries ?? [] }),
 
   fetchBreweries: async (userId: string) => {
+    if (!userId) return;
     set({ isLoading: true, error: null });
     try {
       const { data, error } = await supabase
@@ -83,8 +84,9 @@ export const useBreweryStore = create<BreweryState>((set, get) => ({
   },
 
   createBrewery: async (userId, name, isPersonal = false, inviteEmails = '') => {
+    if (!userId || !name) return null;
     try {
-      const emailsList = inviteEmails
+      const emailsList = (inviteEmails || '')
         .split(',')
         .map(e => e.trim().toLowerCase())
         .filter(e => e.includes('@'));
@@ -122,6 +124,7 @@ export const useBreweryStore = create<BreweryState>((set, get) => ({
   },
 
   deleteBrewery: async (breweryId) => {
+    if (!breweryId) return false;
     try {
       const { error } = await supabase.from('breweries').delete().eq('id', breweryId);
       if (error) throw error;
@@ -133,9 +136,10 @@ export const useBreweryStore = create<BreweryState>((set, get) => ({
   },
 
   inviteToBrewery: async (breweryId, email) => {
+    if (!breweryId || !email) return false;
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      const brewery = get().breweries.find(b => b.id === breweryId);
+      const brewery = get().breweries?.find(b => b?.id === breweryId);
       if (!brewery) return false;
 
       const newInvites = [...new Set([...(brewery.invitedEmails || []), normalizedEmail])];
@@ -148,7 +152,7 @@ export const useBreweryStore = create<BreweryState>((set, get) => ({
       if (error) throw error;
 
       set(state => ({
-        breweries: state.breweries.map(b => b.id === breweryId ? { ...b, invitedEmails: newInvites } : b)
+        breweries: (state.breweries || []).map(b => b?.id === breweryId ? { ...b, invitedEmails: newInvites } : b)
       }));
       return true;
     } catch (error) {
@@ -158,8 +162,8 @@ export const useBreweryStore = create<BreweryState>((set, get) => ({
   },
 
   processPendingInvites: async (userId, userEmail) => {
+    if (!userId || !userEmail) return;
     try {
-      // Ищем пивоварни, где мы числимся в приглашенных (Supabase RLS это пропустит)
       const { data, error } = await supabase
         .from('breweries')
         .select('*')
