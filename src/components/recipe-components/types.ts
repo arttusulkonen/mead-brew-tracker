@@ -1,8 +1,4 @@
-/*
- * File: src/components/recipe-components/types.ts
- * Description: Type definitions for the recipe builder UI components, including AI proposals and UI state extensions.
- */
-
+// src/components/recipe-components/types.ts
 import type { RecipeIngredientReference, RecipeStep } from '../../types/recipe';
 
 export interface AiIngredientProposal {

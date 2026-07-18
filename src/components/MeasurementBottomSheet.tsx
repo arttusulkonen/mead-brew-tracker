@@ -48,7 +48,8 @@ export const MeasurementBottomSheet: React.FC<MeasurementBottomSheetProps> = ({
         sg: sgInput ? parseFloat(sgInput) : null,
         ph: phInput ? parseFloat(phInput) : null,
         tempC: tempInput ? parseFloat(tempInput) : null,
-        actionTaken: actionInput.trim(),
+        // ИСПРАВЛЕНИЕ: Отправляем стабильный ключ в БД (без лишних пробелов)
+        actionTaken: actionInput.trim(), 
         notes: notesInput.trim()
       });
       onClose();
@@ -57,8 +58,9 @@ export const MeasurementBottomSheet: React.FC<MeasurementBottomSheetProps> = ({
     }
   };
 
-  const handleChipClick = (chipName: string) => {
-    setActionInput(prev => prev === chipName ? '' : chipName);
+  const handleChipClick = (chipKey: string) => {
+    // ИСПРАВЛЕНИЕ: Сравниваем и сохраняем оригинальный ключ из базы (chip.name), а не его перевод
+    setActionInput(prev => prev === chipKey ? '' : chipKey);
   };
 
   const isValid = Boolean(sgInput || phInput || tempInput || actionInput || notesInput);
@@ -131,15 +133,17 @@ export const MeasurementBottomSheet: React.FC<MeasurementBottomSheetProps> = ({
           <div className="bottom-sheet__group">
             <label className="bottom-sheet__label">{t('Quick Actions')}</label>
             <div className="bottom-sheet__chips">
-              {ACTION_CHIPS.map(chip => (
+              {(ACTION_CHIPS || []).map(chip => (
                 <button
                   key={chip.id}
                   type="button"
+                  // ИСПРАВЛЕНИЕ: Проверяем стабильный ключ
                   className={`bottom-sheet__chip ${actionInput === chip.name ? 'bottom-sheet__chip--active' : ''}`}
                   onClick={() => handleChipClick(chip.name)}
                   disabled={isSubmitting}
                 >
-                  {t(chip.name)}
+                  {/* ИСПРАВЛЕНИЕ: Переводим только визуальную часть */}
+                  {t(chip.name, chip.name) as string}
                 </button>
               ))}
             </div>

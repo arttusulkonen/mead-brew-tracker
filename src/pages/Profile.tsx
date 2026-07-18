@@ -1,7 +1,7 @@
+// src/pages/Profile.tsx
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import '../assets/scss/pages/_profile.scss';
 import { useAuthStore } from '../store/useAuthStore';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { supabase } from '../supabase/client';
@@ -85,41 +85,39 @@ const Profile: React.FC = () => {
   };
 
   return (
-    <div className="profile-container">
-      <div className="profile-header">
-        <div className="header-main">
-          <h1>{t('Profile')}</h1>
-        </div>
-        <p>{user?.email}</p>
+    <div className="profile">
+      <div className="profile__header">
+        <h1 className="profile__title">{t('Profile')}</h1>
+        <p className="profile__email">{user?.email}</p>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && <div className="session-alert session-alert--warning profile__error">{error}</div>}
 
-      <h2 className="section-title">{t('My Breweries')}</h2>
+      <h2 className="profile__section-title">{t('My Breweries')}</h2>
       
-      <div className="breweries-list">
+      <div className="profile__brewery-list">
         {breweries?.map((brewery) => (
-          <div key={brewery.id} className={`brewery-card ${activeBrewery?.id === brewery.id ? 'active' : ''}`}>
-            <div className="brewery-info">
-              <span className="brewery-name">{brewery.name}</span>
-              <span className="brewery-type">
+          <div key={brewery.id} className={`profile__brewery-card ${activeBrewery?.id === brewery.id ? 'profile__brewery-card--active' : ''}`}>
+            <div className="profile__brewery-info">
+              <span className="profile__brewery-name">{brewery.name}</span>
+              <span className="profile__brewery-type">
                 {brewery.isPersonal ? t('Personal') : t('Shared')} • {brewery.members.length} {t('members')}
               </span>
             </div>
             
-            <div className="card-actions">
+            <div className="profile__brewery-actions">
               {activeBrewery?.id !== brewery.id && (
-                <button className="btn-switch" onClick={() => setActiveBrewery(brewery)}>
+                <button className="btn-secondary btn-secondary--small" onClick={() => setActiveBrewery(brewery)}>
                   {t('Select')}
                 </button>
               )}
               
               {!brewery.isPersonal && user?.id === brewery.ownerId && (
                 <>
-                  <button className="btn-invite" onClick={() => handleInviteToExisting(brewery.id)}>
+                  <button className="btn-secondary btn-secondary--small" onClick={() => handleInviteToExisting(brewery.id)}>
                     {t('Invite')}
                   </button>
-                  <button className="btn-delete" onClick={() => handleDeleteBrewery(brewery.id)}>
+                  <button className="btn-secondary btn-secondary--small profile__btn-delete" onClick={() => handleDeleteBrewery(brewery.id)}>
                     {t('Delete')}
                   </button>
                 </>
@@ -129,11 +127,12 @@ const Profile: React.FC = () => {
         ))}
       </div>
 
-      <h2 className="section-title">{t('Create Shared Brewery')}</h2>
-      <form className="create-brewery-form" onSubmit={handleCreateBrewery}>
-        <div className="form-group">
-          <label htmlFor="breweryName">{t('Brewery Name')}</label>
+      <h2 className="profile__section-title">{t('Create Shared Brewery')}</h2>
+      <form className="profile__form" onSubmit={handleCreateBrewery}>
+        <div className="profile__form-group">
+          <label className="profile__form-label" htmlFor="breweryName">{t('Brewery Name')}</label>
           <input
+            className="profile__form-input"
             type="text"
             id="breweryName"
             value={newBreweryName}
@@ -141,9 +140,10 @@ const Profile: React.FC = () => {
             required
           />
         </div>
-        <div className="form-group">
-          <label htmlFor="inviteEmails">{t('Invite Emails (comma separated)')}</label>
+        <div className="profile__form-group">
+          <label className="profile__form-label" htmlFor="inviteEmails">{t('Invite Emails (comma separated)')}</label>
           <input
+            className="profile__form-input"
             type="text"
             id="inviteEmails"
             value={inviteEmails}
@@ -151,13 +151,13 @@ const Profile: React.FC = () => {
             placeholder="friend1@mail.com, friend2@mail.com"
           />
         </div>
-        <button type="submit" className="btn-submit" disabled={isLoading || !newBreweryName.trim()}>
+        <button type="submit" className="btn-primary" disabled={isLoading || !newBreweryName.trim()}>
           {isLoading ? t('Creating...') : t('Create')}
         </button>
       </form>
 
-      <div className="logout-section">
-        <button className="btn-logout" onClick={handleLogout}>
+      <div className="profile__logout">
+        <button className="btn-secondary profile__btn-logout" onClick={handleLogout}>
           {t('Logout')}
         </button>
       </div>

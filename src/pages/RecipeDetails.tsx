@@ -3,18 +3,27 @@ import { calculateOneThirdSugarBreak, calculateTosna } from '@mead-tracker/math'
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { RecipePerformanceWidget } from '../components/recipe-components/RecipePerformanceWidget';
 import { useRecipeStore } from '../store/useRecipeStore';
+import type { Recipe } from '../types/recipe';
 
 const RecipeDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { currentRecipe, fetchRecipeById, clearCurrentRecipe, isLoading, deleteRecipe } = useRecipeStore();
-
+  const { currentRecipe, fetchRecipeById, clearCurrentRecipe, isLoading, deleteRecipe, recipes } = useRecipeStore();
+  
   useEffect(() => {
     fetchRecipeById(id);
     return () => clearCurrentRecipe();
   }, [id, fetchRecipeById, clearCurrentRecipe]);
+
+  // Ищем рецепт в списке (где есть расширенная статистика) или используем текущий
+  const activeRecipeStats = useMemo(() => {
+    if (!id) return null;
+    const found = recipes.find(r => r.id === id) || currentRecipe;
+    return found as (Recipe & { totalBrews?: number; completedBrews?: number; avgAiScore?: number | null }) | null;
+  }, [id, recipes, currentRecipe]);
 
   const selectedRecipeTosna = useMemo(() => {
     if (!currentRecipe || currentRecipe.beverageType !== 'Mead') return null;
@@ -23,7 +32,8 @@ const RecipeDetails: React.FC = () => {
     let yeastNitrogenDemand: 'Low' | 'Medium' | 'High' | 'Very High' | undefined;
     let customNutrientName = '';
 
-    currentRecipe.ingredients.forEach(ing => {
+    (currentRecipe.ingredients || []).forEach(ing => {
+      if (!ing) return;
       const item = ing as any;
       if (item.category === 'Yeast') {
         yeastAddedGrams += item.quantity || 0;
@@ -43,7 +53,7 @@ const RecipeDetails: React.FC = () => {
       else if (yeastNitrogenDemand === 'High' || yeastNitrogenDemand === 'Very High') nFactor = 1.25;
 
       return {
-        ...calculateTosna(currentRecipe.expectedBatchSizeLiters, currentRecipe.targetOriginalGravity, nFactor),
+        ...calculateTosna(Number(currentRecipe.expectedBatchSizeLiters || 0), Number(currentRecipe.targetOriginalGravity || 1.000), nFactor),
         yeastAdded: yeastAddedGrams,
         customNutrientName: customNutrientName || 'Fermaid-O'
       };
@@ -58,18 +68,18 @@ const RecipeDetails: React.FC = () => {
 
   const handleDelete = async () => {
     if (!currentRecipe || !currentRecipe.id) return;
-    if (window.confirm(t('Are you sure you want to delete this recipe?'))) {
+    if (window.confirm(t('Are you sure you want to delete this recipe?', 'Вы уверены, что хотите удалить этот рецепт?'))) {
       try {
         await deleteRecipe(currentRecipe.id);
         navigate('/recipes');
       } catch {
-        alert(t('Failed to delete recipe. Check your permissions.'));
+        alert(t('Failed to delete recipe. Check your permissions.', 'Не удалось удалить рецепт.'));
       }
     }
   };
 
   if (isLoading) {
-    return <div className="recipe-details__loading">{t('Loading recipe...')}</div>;
+    return <div className="recipe-details__loading"><div className="spinner"></div></div>;
   }
 
   if (!currentRecipe) {
@@ -88,7 +98,9 @@ const RecipeDetails: React.FC = () => {
       <header className="recipe-details__header">
         <div className="recipe-details__title-block">
           <h1 className="recipe-details__title">{currentRecipe.name}</h1>
-          <span className="recipe-details__subtitle">{t(`constants.beverage_types.${currentRecipe.beverageType.toLowerCase()}`, currentRecipe.beverageType)} &bull; {currentRecipe.targetStyle}</span>
+          <span className="recipe-details__subtitle">
+            {t(`constants.beverage_types.${currentRecipe.beverageType?.toLowerCase() || 'other'}`, currentRecipe.beverageType || 'Other') as string} &bull; {currentRecipe.targetStyle}
+          </span>
         </div>
         <div className="recipe-details__actions">
           <button type="button" className="btn-secondary" onClick={handleEdit}>{t('Edit')}</button>
@@ -103,13 +115,15 @@ const RecipeDetails: React.FC = () => {
           <section className="recipe-details__section">
             <h2 className="recipe-details__section-title">{t('Ingredients')}</h2>
             <ul className="recipe-details__ingredient-list">
-              {currentRecipe.ingredients.map(ing => {
+              {(currentRecipe.ingredients || []).map(ing => {
                 const item = ing as any;
                 const roleKey = item.nutrientRole ? `constants.nutrient_roles.${item.nutrientRole.toLowerCase()}` : '';
                 return (
                   <li key={ing.id} className="recipe-details__ingredient-item">
                     <div className="recipe-details__ingredient-info">
-                      <span className="recipe-details__badge">{t(`constants.categories.${ing.category.toLowerCase().replace(' ', '_')}`, ing.category)}</span>
+                      <span className="recipe-details__badge">
+                        {t(`constants.categories.${ing.category?.toLowerCase().replace(' ', '_') || 'other'}`, ing.category) as string}
+                      </span>
                       <strong className="recipe-details__ingredient-name">{ing.name}</strong>
                       {item.nutrientRole && (
                         <span className="recipe-details__badge recipe-details__badge--outline">
@@ -120,7 +134,7 @@ const RecipeDetails: React.FC = () => {
                         <span className="recipe-details__badge recipe-details__badge--outline">{item.additionStage}</span>
                       )}
                     </div>
-                    <span className="recipe-details__ingredient-quantity">{ing.quantity} {t('g')}</span>
+                    <span className="recipe-details__ingredient-quantity">{ing.quantity || 0} {t('g')}</span>
                   </li>
                 );
               })}
@@ -130,16 +144,20 @@ const RecipeDetails: React.FC = () => {
           <section className="recipe-details__section">
             <h2 className="recipe-details__section-title">{t('Brewing Steps')}</h2>
             <ol className="recipe-details__step-list">
-              {currentRecipe.steps.map((step) => (
+              {(currentRecipe.steps || []).map((step) => (
                 <li key={step.id} className="recipe-details__step-item">
                   <div className="recipe-details__step-header">
                     <strong className="recipe-details__step-title">{step.title}</strong>
-                    <span className="recipe-details__badge recipe-details__badge--outline">{t(`constants.step_phases.${step.phase.toLowerCase()}`, step.phase)}</span>
+                    <span className="recipe-details__badge recipe-details__badge--outline">
+                      {t(`constants.step_phases.${step.phase?.toLowerCase() || 'preparation'}`, step.phase || 'Preparation') as string}
+                    </span>
                   </div>
                   <p className="recipe-details__step-desc">{step.description}</p>
                   <div className="recipe-details__step-meta">
-                    <span className="recipe-details__step-duration">{step.durationValue} {t(`constants.units.${step.durationUnit.toLowerCase()}`, step.durationUnit)}</span>
-                    {step.targetTempC && <span className="recipe-details__step-temp">{step.targetTempC} °C</span>}
+                    <span className="recipe-details__step-duration">
+                      {step.durationValue || 0} {t(`constants.units.${step.durationUnit?.toLowerCase() || 'minutes'}`, step.durationUnit) as string}
+                    </span>
+                    {step.targetTempC != null && <span className="recipe-details__step-temp">{step.targetTempC} °C</span>}
                   </div>
                 </li>
               ))}
@@ -149,30 +167,37 @@ const RecipeDetails: React.FC = () => {
         </main>
 
         <aside className="recipe-details__sidebar">
+          {/* Наш новый виджет статистики */}
+          <RecipePerformanceWidget 
+            totalBrews={activeRecipeStats?.totalBrews} 
+            completedBrews={activeRecipeStats?.completedBrews} 
+            avgAiScore={activeRecipeStats?.avgAiScore} 
+          />
+          
           <div className="stat-panel">
             <h3 className="stat-panel__title">{t('Specifications')}</h3>
             <ul className="stat-panel__list">
               <li className="stat-panel__item">
                 <span className="stat-panel__label">{t('Batch Size')}</span>
-                <span className="stat-panel__value">{currentRecipe.expectedBatchSizeLiters} {t('L')}</span>
+                <span className="stat-panel__value">{currentRecipe.expectedBatchSizeLiters || 0} {t('L')}</span>
               </li>
               <li className="stat-panel__item">
                 <span className="stat-panel__label">{t('Estimated ABV')}</span>
-                <span className="stat-panel__value stat-panel__value--highlight">{currentRecipe.targetAbv?.toFixed(1)}%</span>
+                <span className="stat-panel__value stat-panel__value--highlight">{(currentRecipe.targetAbv || 0).toFixed(1)}%</span>
               </li>
               <li className="stat-panel__item">
                 <span className="stat-panel__label">{t('OG / FG')}</span>
-                <span className="stat-panel__value">{currentRecipe.targetOriginalGravity?.toFixed(3)} / {currentRecipe.targetFinalGravity?.toFixed(3)}</span>
+                <span className="stat-panel__value">{(currentRecipe.targetOriginalGravity || 0).toFixed(3)} / {(currentRecipe.targetFinalGravity || 0).toFixed(3)}</span>
               </li>
               {currentRecipe.beverageType === 'Beer' && (
                 <>
                   <li className="stat-panel__item">
                     <span className="stat-panel__label">{t('Target IBU')}</span>
-                    <span className="stat-panel__value">{currentRecipe.targetIbu?.toFixed(1) || '0.0'}</span>
+                    <span className="stat-panel__value">{(currentRecipe.targetIbu || 0).toFixed(1)}</span>
                   </li>
                   <li className="stat-panel__item">
                     <span className="stat-panel__label">{t('Target Color (EBC)')}</span>
-                    <span className="stat-panel__value">{currentRecipe.targetColorEbc?.toFixed(1) || '0.0'}</span>
+                    <span className="stat-panel__value">{(currentRecipe.targetColorEbc || 0).toFixed(1)}</span>
                   </li>
                 </>
               )}
@@ -185,24 +210,24 @@ const RecipeDetails: React.FC = () => {
               <ul className="stat-panel__list stat-panel__list--stacked">
                 <li className="stat-panel__item stat-panel__item--row">
                   <span className="stat-panel__label">{t('Addition 1')} ({t('24h')})</span>
-                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams}g</span>
+                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams || 0}g</span>
                 </li>
                 <li className="stat-panel__item stat-panel__item--row">
                   <span className="stat-panel__label">{t('Addition 2')} ({t('48h')})</span>
-                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams}g</span>
+                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams || 0}g</span>
                 </li>
                 <li className="stat-panel__item stat-panel__item--row">
                   <span className="stat-panel__label">{t('Addition 3')} ({t('72h')})</span>
-                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams}g</span>
+                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams || 0}g</span>
                 </li>
                 <li className="stat-panel__item stat-panel__item--row">
                   <span className="stat-panel__label">{t('Addition 4')} ({t('1/3 Sugar Break')})</span>
-                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams}g</span>
+                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams || 0}g</span>
                 </li>
               </ul>
               <div className="stat-panel__footer">
                  <span className="stat-panel__subtext">
-                   {t('Target SG for final addition')}: <strong>{calculateOneThirdSugarBreak(currentRecipe.targetOriginalGravity, currentRecipe.targetFinalGravity).toFixed(3)}</strong>
+                   {t('Target SG for final addition')}: <strong>{calculateOneThirdSugarBreak(currentRecipe.targetOriginalGravity || 1.000, currentRecipe.targetFinalGravity || 1.000).toFixed(3)}</strong>
                  </span>
               </div>
             </div>

@@ -243,6 +243,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   },
 
   addCustomIngredient: async (ingredientData) => {
+    if (!ingredientData) return null;
     set({ isLoading: true, error: null });
     try {
       const payload: Record<string, unknown> = {
@@ -289,7 +290,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
       if (data) {
         const newIngredient = mapIngredientRow(data as IngredientRow);
-        set(state => ({ globalIngredients: [...state.globalIngredients, newIngredient] }));
+        set(state => ({ globalIngredients: [...(state.globalIngredients || []), newIngredient] }));
         return newIngredient;
       }
       return null;
@@ -302,7 +303,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   },
 
   updateItem: async (breweryId, itemId, updates) => {
-    if (!breweryId || !itemId) return false;
+    if (!breweryId || !itemId || !updates) return false;
     set({ isLoading: true, error: null });
     try {
       const payload: Record<string, unknown> = {};
@@ -320,7 +321,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       if (error) throw error;
 
       set(state => ({
-        inventory: state.inventory.map(item =>
+        inventory: (state.inventory || []).map(item =>
           item.id === itemId ? { ...item, ...updates } : item
         )
       }));
@@ -346,7 +347,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       if (error) throw error;
 
       set(state => ({
-        inventory: state.inventory.filter(item => item.id !== itemId)
+        inventory: (state.inventory || []).filter(item => item.id !== itemId)
       }));
       return true;
     } catch (err: unknown) {
@@ -358,18 +359,24 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   },
 
   consumeIngredients: async (breweryId, ingredientsToConsume) => {
-    if (!breweryId || !ingredientsToConsume.length) return false;
+    if (!breweryId || !ingredientsToConsume?.length) return false;
     set({ isLoading: true, error: null });
+    
     try {
-      const currentInventory = get().inventory;
-      const updatePromises = [];
+      const currentInventory = get().inventory || [];
+      
+      // ИСПРАВЛЕНИЕ: Агрегируем все списания по ID складской позиции, 
+      // чтобы избежать гонки данных при дублировании ингредиентов в рецепте.
+      const decrementsMap = new Map<string, number>();
 
       for (const ing of ingredientsToConsume) {
-        if (ing.quantity > 0) {
-          const invItem = currentInventory.find(i => i.id === ing.inventoryItemId) || currentInventory.find(i => i.ingredientId === ing.globalIngredientId);
+        if (ing?.quantity > 0) {
+          const invItem = currentInventory.find(i => i.id === ing.inventoryItemId) || 
+                          currentInventory.find(i => i.ingredientId === ing.globalIngredientId);
           
           if (invItem) {
             let decrementQty = ing.quantity;
+            // Приводим граммы из рецепта к единицам измерения на складе
             switch (invItem.unit) {
               case 'kg':
               case 'L':
@@ -388,23 +395,38 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
                 decrementQty = ing.quantity;
             }
 
-            if (invItem.quantityOnHand < decrementQty) {
-              throw new Error(`Insufficient stock for ${invItem.ingredient?.name || 'ingredient'}`);
-            }
-
-            updatePromises.push(
-              supabase
-                .from('inventory')
-                .update({ quantity_on_hand: invItem.quantityOnHand - decrementQty })
-                .eq('id', invItem.id)
-                .eq('brewery_id', breweryId)
-            );
+            const currentDec = decrementsMap.get(invItem.id) || 0;
+            decrementsMap.set(invItem.id, currentDec + decrementQty);
           }
         }
       }
       
-      const results = await Promise.all(updatePromises);
+      const updatesToMake = [];
+
+      // Валидируем агрегированные списания перед отправкой в БД
+      for (const [invId, totalDecrement] of decrementsMap.entries()) {
+        const invItem = currentInventory.find(i => i.id === invId);
+        if (invItem) {
+          if (invItem.quantityOnHand < totalDecrement) {
+            throw new Error(`Insufficient stock for ${invItem.ingredient?.name || 'ingredient'}`);
+          }
+          updatesToMake.push({
+            id: invId,
+            newQty: invItem.quantityOnHand - totalDecrement
+          });
+        }
+      }
       
+      // Отправляем финальные значения
+      const updatePromises = updatesToMake.map(update => 
+        supabase
+          .from('inventory')
+          .update({ quantity_on_hand: update.newQty })
+          .eq('id', update.id)
+          .eq('brewery_id', breweryId)
+      );
+      
+      const results = await Promise.all(updatePromises);
       for (const result of results) {
         if (result.error) throw result.error;
       }

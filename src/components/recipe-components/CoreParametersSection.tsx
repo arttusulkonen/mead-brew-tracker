@@ -53,7 +53,7 @@ export const CoreParametersSection: React.FC<CoreParametersSectionProps> = ({
           <label className="form-field__label">{t('Beverage Type')}</label>
           <select 
             className="form-field__select" 
-            value={beverageType} 
+            value={beverageType || 'Beer'} 
             onChange={handleBeverageTypeChange}
           >
             <option value="Beer">{t('constants.beverage_types.beer', 'Beer')}</option>
@@ -76,7 +76,7 @@ export const CoreParametersSection: React.FC<CoreParametersSectionProps> = ({
           <input
             className="form-field__input"
             type="text"
-            value={recipeName}
+            value={recipeName || ''}
             onChange={(e) => setRecipeName(e.target.value)}
             placeholder={t('e.g. Traditional Wildflower Mead')}
           />
@@ -88,7 +88,7 @@ export const CoreParametersSection: React.FC<CoreParametersSectionProps> = ({
               <label className="form-field__label">{t('Target ABV Tier')}</label>
               <select
                 className="form-field__select"
-                value={targetStyle}
+                value={targetStyle || 'Standard (7-10%)'}
                 onChange={handleTargetStyleChange}
               >
                 <option value="Session (4-6%)">{t('Session (4-6%) - Light & Drinkable')}</option>

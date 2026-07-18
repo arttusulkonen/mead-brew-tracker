@@ -1,4 +1,4 @@
-// /StyleSearchModal.tsx:
+// src/components/StyleSearchModal.tsx
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaSearch, FaTimes } from 'react-icons/fa';
@@ -12,15 +12,27 @@ interface StyleSearchModalProps {
   beverageType: string;
 }
 
-export const StyleSearchModal: React.FC<StyleSearchModalProps> = ({ isOpen, onClose, onSelect, styles, beverageType }) => {
+export const StyleSearchModal: React.FC<StyleSearchModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSelect, 
+  styles, 
+  beverageType 
+}) => {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredStyles = useMemo(() => {
-    return styles.filter(s => {
+    return (styles || []).filter(s => {
+      if (!s) return false;
       const matchesType = s.beverage_type === beverageType;
-      const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            s.category.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const safeName = s.name || '';
+      const safeCategory = s.category || '';
+      const query = searchQuery.toLowerCase();
+      
+      const matchesSearch = safeName.toLowerCase().includes(query) || 
+                            safeCategory.toLowerCase().includes(query);
       return matchesType && matchesSearch;
     });
   }, [styles, searchQuery, beverageType]);
@@ -53,8 +65,8 @@ export const StyleSearchModal: React.FC<StyleSearchModalProps> = ({ isOpen, onCl
             {filteredStyles.map(s => (
               <li key={s.style_id} className="search-modal__list-item" onClick={() => onSelect(s.style_id)}>
                 <div className="search-modal__item-header">
-                  <strong className="search-modal__item-title">{s.name}</strong>
-                  <span className="search-modal__item-category">{s.category}</span>
+                  <strong className="search-modal__item-title">{s.name || t('Unknown Style')}</strong>
+                  <span className="search-modal__item-category">{s.category || ''}</span>
                 </div>
                 <div className="search-modal__meta-grid search-modal__meta-grid--tight">
                   <div className="search-modal__meta-item"><span>{t('OG')}</span><strong>{s.ogMin ?? '-'} - {s.ogMax ?? '-'}</strong></div>

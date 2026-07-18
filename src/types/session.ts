@@ -1,3 +1,4 @@
+// src/types/session.ts
 import type { UUID } from './ingredient';
 import type { BeverageType, RecipeIngredientReference, RecipeStep } from './recipe';
 
@@ -64,4 +65,7 @@ export interface BrewSession {
   parentSessionId?: UUID | null;
   splitTimestamp?: string | null;
   isAggregated?: boolean;
+
+  aiScore?: number | null;
+  aiAnalysisReport?: string | null;
 }

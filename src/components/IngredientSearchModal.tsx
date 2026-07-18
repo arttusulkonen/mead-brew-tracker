@@ -13,7 +13,14 @@ interface IngredientSearchModalProps {
   initialSearchQuery?: string;
 }
 
-export const IngredientSearchModal: React.FC<IngredientSearchModalProps> = ({ isOpen, onClose, onSelect, catalog, initialCategory = 'All', initialSearchQuery = '' }) => {
+export const IngredientSearchModal: React.FC<IngredientSearchModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSelect, 
+  catalog, 
+  initialCategory = 'All', 
+  initialSearchQuery = '' 
+}) => {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [activeCategory, setActiveCategory] = useState<string>(initialCategory);
@@ -28,10 +35,16 @@ export const IngredientSearchModal: React.FC<IngredientSearchModalProps> = ({ is
   }, [isOpen, initialCategory, initialSearchQuery]);
 
   const filteredCatalog = useMemo(() => {
-    return catalog.filter(ing => {
-      const matchesSearch = ing.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            (ing.origin && ing.origin.toLowerCase().includes(searchQuery.toLowerCase()));
+    return (catalog || []).filter(ing => {
+      if (!ing) return false;
+      const safeName = ing.name || '';
+      const safeOrigin = ing.origin || '';
+      const query = searchQuery.toLowerCase();
+      
+      const matchesSearch = safeName.toLowerCase().includes(query) || 
+                            safeOrigin.toLowerCase().includes(query);
       const matchesCategory = activeCategory === 'All' || ing.category === activeCategory;
+      
       return matchesSearch && matchesCategory;
     }).slice(0, 50); 
   }, [catalog, searchQuery, activeCategory]);
@@ -111,10 +124,10 @@ export const IngredientSearchModal: React.FC<IngredientSearchModalProps> = ({ is
             {filteredCatalog.map(ing => (
               <li key={ing.id} className="search-modal__list-item" onClick={() => onSelect(ing.id)}>
                 <div className="search-modal__item-header">
-                  <span className={`search-modal__badge search-modal__badge--${ing.category.toLowerCase().replace(' ', '-')}`}>
-                    {t(`constants.categories.${ing.category.toLowerCase().replace(' ', '_')}`, ing.category)}
+                  <span className={`search-modal__badge search-modal__badge--${(ing.category || 'other').toLowerCase().replace(' ', '-')}`}>
+                    {t(`constants.categories.${(ing.category || 'other').toLowerCase().replace(' ', '_')}`, ing.category || 'Other')}
                   </span>
-                  <strong className="search-modal__item-title">{ing.name}</strong>
+                  <strong className="search-modal__item-title">{ing.name || t('Unknown')}</strong>
                 </div>
                 {renderDetails(ing)}
                 {ing.notes && <p className="search-modal__item-desc">{ing.notes.substring(0, 120)}{ing.notes.length > 120 ? '...' : ''}</p>}

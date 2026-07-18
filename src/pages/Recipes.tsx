@@ -1,6 +1,6 @@
 // src/pages/Recipes.tsx
 import { calculateAbvCrouch, calculateIbuTinseth, calculateMcu, calculateTosna, estimateOG, estimateSrmMorey, srmToEbc } from '@mead-tracker/math';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../supabase/client';
 
@@ -45,15 +45,24 @@ interface AiResponseIngredient {
 const Recipes: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { activeBrewery } = useBreweryStore();
-  const { recipes, saveRecipe, updateRecipe, isLoading: isRecipesLoading } = useRecipeStore();
+  
+  // ИСПРАВЛЕНИЕ: Достаем fetchRecipes из стора
+  const { recipes, saveRecipe, updateRecipe, fetchRecipes, isLoading: isRecipesLoading } = useRecipeStore();
 
   const state = useRecipeBuilderState();
   const [aiProposedIngredients, setAiProposedIngredients] = useState<AiIngredientProposal[]>([]);
   const [aiProposedSteps, setAiProposedSteps] = useState<RecipeStepEntry[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // ИСПРАВЛЕНИЕ: Автоматически подтягиваем рецепты, если зашли напрямую на страницу
+  useEffect(() => {
+    if (activeBrewery?.id) {
+      fetchRecipes(activeBrewery.id);
+    }
+  }, [activeBrewery?.id, fetchRecipes]);
+
   const currentSelectedStyle = useMemo(() => {
-    return state.bjcpStyles.find(s => s.style_id === state.selectedStyleId) || null;
+    return (state.bjcpStyles || []).find(s => s?.style_id === state.selectedStyleId) || null;
   }, [state.selectedStyleId, state.bjcpStyles]);
 
   const recipeDetails: RecipeDetailsStats = useMemo(() => {
@@ -67,13 +76,13 @@ const Recipes: React.FC = () => {
     let customNutrientName = '';
     const dynamicAdditives: Array<{ id: string; name: string; totalGrams: number; rule: string }> = [];
 
-    state.recipeIngredients.forEach(item => {
+    (state.recipeIngredients || []).forEach(item => {
+      if (!item) return;
       if (item.category === 'Fermentable' || item.category === 'Honey') {
         let brixVal = 80;
         if (item.category === 'Honey' && item.sugarContentBrix) {
           brixVal = item.sugarContentBrix;
         } else if (item.yieldPpg) {
-          // ИСПОЛЬЗУЕМ ЧИСТЫЙ PPG ДЛЯ FERMENTABLE (estimateOG ждет PPG или Brix в зависимости от логики)
           brixVal = item.yieldPpg; 
         }
 
@@ -99,11 +108,12 @@ const Recipes: React.FC = () => {
     const estimatedAbv = calculateAbvCrouch(estimatedOg, state.targetFg);
     const estimatedEbc = state.beverageType === 'Beer' ? srmToEbc(estimateSrmMorey(totalMcu)) : 0;
 
-    state.recipeIngredients.forEach(item => {
+    (state.recipeIngredients || []).forEach(item => {
+      if (!item) return;
       if (item.category === 'Hops' && state.beverageType === 'Beer' && state.batchSizeLiters > 0) {
         const boilTime = item.boilTimeMinutes || 0;
         const alpha = item.alphaAcidPct || 5;
-        totalIbu += calculateIbuTinseth(alpha, item.quantity, boilTime, state.batchSizeLiters, estimatedOg);
+        totalIbu += calculateIbuTinseth(alpha, item.quantity || 0, boilTime, state.batchSizeLiters, estimatedOg);
       }
     });
 
@@ -115,13 +125,13 @@ const Recipes: React.FC = () => {
       tosnaData = calculateTosna(state.batchSizeLiters, estimatedOg, nFactor);
     }
 
-    state.recipeIngredients.forEach(item => {
-      if (item.category !== 'Additive') return;
+    (state.recipeIngredients || []).forEach(item => {
+      if (!item || item.category !== 'Additive') return;
       let calculatedGrams = 0;
       let ruleApplied = '';
 
       if (item.additiveType === 'Nutrient' && tosnaData) {
-        if (item.nutrientRole === 'Rehydration' || (!item.nutrientRole && item.name.toLowerCase().includes('go-ferm'))) {
+        if (item.nutrientRole === 'Rehydration' || (!item.nutrientRole && item.name?.toLowerCase().includes('go-ferm'))) {
           calculatedGrams = tosnaData.goFermGrams;
           ruleApplied = 'TOSNA 3.0: Rehydration';
         } else if (item.nutrientRole === 'Fermentation' || !item.nutrientRole) {
@@ -150,7 +160,7 @@ const Recipes: React.FC = () => {
     return validateStyleBounds(currentSelectedStyle, recipeDetails.og, state.targetFg, recipeDetails.abv, recipeDetails.ibu, recipeDetails.ebc);
   }, [currentSelectedStyle, recipeDetails, state.targetFg]);
 
-  const suggestions = useMemo(() => getSuggestedIngredients(currentSelectedStyle, state.globalCatalog), [currentSelectedStyle, state.globalCatalog]);
+  const suggestions = useMemo(() => getSuggestedIngredients(currentSelectedStyle, state.globalCatalog || []), [currentSelectedStyle, state.globalCatalog]);
 
   const isAbvMismatch = useMemo(() => {
     if (state.beverageType !== 'Mead') return false;
@@ -169,8 +179,8 @@ const Recipes: React.FC = () => {
 
   const meadYeastSuggestions = useMemo(() => {
     if (state.beverageType !== 'Mead' || !meadYeastToleranceRange) return [];
-    return state.globalCatalog.filter(ing => {
-      if (ing.category !== 'Yeast') return false;
+    return (state.globalCatalog || []).filter(ing => {
+      if (ing?.category !== 'Yeast') return false;
       const tolerance = (ing as YeastIngredient).alcoholTolerancePct;
       return typeof tolerance === 'number' && tolerance >= meadYeastToleranceRange.min && tolerance <= meadYeastToleranceRange.max;
     }).slice(0, 5);
@@ -188,7 +198,7 @@ const Recipes: React.FC = () => {
   }, [state.beverageType, state.wizardStyle, t]);
 
   const handleAutoCalculateHoney = () => {
-    const targetEntry = state.recipeIngredients.find(i => i.category === 'Fermentable' || i.category === 'Honey');
+    const targetEntry = (state.recipeIngredients || []).find(i => i?.category === 'Fermentable' || i?.category === 'Honey');
     if (!targetEntry) return;
 
     let minGrams = 100, maxGrams = 25000, bestGrams = 1000, iterations = 0;
@@ -196,7 +206,8 @@ const Recipes: React.FC = () => {
       const midGrams = Math.floor((minGrams + maxGrams) / 2);
       let totalGramsForCalc = 0, totalWeightedBrix = 0;
 
-      state.recipeIngredients.forEach(ing => {
+      (state.recipeIngredients || []).forEach(ing => {
+        if (!ing) return;
         if (ing.category === 'Fermentable' || ing.category === 'Honey') {
           let brixVal = 80;
           if (ing.category === 'Honey' && ing.sugarContentBrix) {
@@ -234,8 +245,8 @@ const Recipes: React.FC = () => {
         targetAbv: state.targetAutoAbv,
         batchSizeLiters: state.batchSizeLiters,
         targetFg: state.targetFg,
-        locale: i18n.resolvedLanguage || i18n.language || 'en',
-        ingredients: state.recipeIngredients.map(i => ({
+        locale: i18n?.resolvedLanguage || i18n?.language || 'en',
+        ingredients: (state.recipeIngredients || []).map(i => ({
           ingredientId: i.id,
           globalIngredientId: i.globalIngredientId,
           name: i.name,
@@ -285,14 +296,14 @@ const Recipes: React.FC = () => {
   };
 
   const handleSaveRecipe = async () => {
-    if (!activeBrewery?.id || !state.recipeName || state.recipeIngredients.length === 0) return;
+    if (!activeBrewery?.id || !state.recipeName || (state.recipeIngredients || []).length === 0) return;
     state.setIsSaving(true);
     try {
       const { data: authData } = await supabase.auth.getUser();
       const userId = authData?.user?.id;
       if (!userId) throw new Error('User not authenticated');
 
-      const formattedIngredients = state.recipeIngredients.map(ing => {
+      const formattedIngredients = (state.recipeIngredients || []).map(ing => {
         const copy = { ...ing } as Partial<RecipeIngredientEntry>;
         delete copy.showNote;
         delete copy.alphaAcidPctMin;
@@ -301,7 +312,7 @@ const Recipes: React.FC = () => {
         return copy as unknown as RecipeIngredientReference;
       });
 
-      const formattedSteps = state.recipeSteps.map(step => {
+      const formattedSteps = (state.recipeSteps || []).map(step => {
         const copy = { ...step } as Partial<RecipeStepEntry>;
         delete copy.isExpanded;
         return copy as unknown as RecipeStep;
@@ -344,7 +355,7 @@ const Recipes: React.FC = () => {
   }
 
   if (state.view === 'list') {
-    return <RecipeListView recipes={recipes} isLoading={isRecipesLoading} onCreate={() => state.setView('builder')} />;
+    return <RecipeListView recipes={recipes || []} isLoading={isRecipesLoading} onCreate={() => state.setView('builder')} />;
   }
 
   return (
@@ -354,14 +365,14 @@ const Recipes: React.FC = () => {
           isOpen={true}
           onClose={() => state.setActiveIngredientCategory(null)}
           onSave={(data: EditedIngredientData) => {
-            state.setRecipeIngredients(prev => [...prev, { id: crypto.randomUUID(), ...data, showNote: !!data.note } as unknown as RecipeIngredientEntry]);
+            state.setRecipeIngredients(prev => [...(prev || []), { id: crypto.randomUUID(), ...data, showNote: !!data.note } as unknown as RecipeIngredientEntry]);
             state.setActiveIngredientCategory(null);
           }}
-          catalog={state.globalCatalog}
+          catalog={state.globalCatalog || []}
           category={state.activeIngredientCategory}
           initialQuery={state.modalInitialQuery}
           initialAdditiveType={state.modalInitialAdditiveType}
-          onIngredientCreated={(newIng) => state.setGlobalCatalog(prev => [...prev, newIng as IngredientUnion])}
+          onIngredientCreated={(newIng) => state.setGlobalCatalog(prev => [...(prev || []), newIng as IngredientUnion])}
         />
       )}
 
@@ -369,7 +380,7 @@ const Recipes: React.FC = () => {
         isOpen={state.isStyleModalOpen}
         onClose={() => state.setIsStyleModalOpen(false)}
         onSelect={(id) => { state.setSelectedStyleId(id); state.setIsStyleModalOpen(false); }}
-        styles={state.bjcpStyles}
+        styles={state.bjcpStyles || []}
         beverageType={state.beverageType}
       />
 
@@ -415,23 +426,23 @@ const Recipes: React.FC = () => {
               return (
                 <IngredientGroup
                   key={cat} category={cat} title={titleMap[cat]} beverageType={state.beverageType}
-                  recipeIngredients={state.recipeIngredients} aiProposedIngredients={aiProposedIngredients}
+                  recipeIngredients={state.recipeIngredients || []} aiProposedIngredients={aiProposedIngredients || []}
                   isSaving={state.isSaving} onOpenModal={state.openIngredientModal} onUpdateIngredient={state.updateIngredient}
-                  onRemoveIngredient={(id) => state.handleRemoveIngredient(id, (id) => setAiProposedIngredients(prev => prev.filter(p => p.ingredientId !== id)))}
+                  onRemoveIngredient={(id) => state.handleRemoveIngredient(id, (id) => setAiProposedIngredients(prev => (prev || []).filter(p => p.ingredientId !== id)))}
                   onAcceptProposal={(proposal) => {
                     state.updateIngredient(proposal.ingredientId, { quantity: proposal.suggestedQuantityGrams, note: proposal.aiNote, showNote: !!proposal.aiNote });
-                    setAiProposedIngredients(prev => prev.filter(p => p.ingredientId !== proposal.ingredientId));
+                    setAiProposedIngredients(prev => (prev || []).filter(p => p.ingredientId !== proposal.ingredientId));
                   }}
-                  onRejectProposal={(id) => setAiProposedIngredients(prev => prev.filter(p => p.ingredientId !== id))}
+                  onRejectProposal={(id) => setAiProposedIngredients(prev => (prev || []).filter(p => p.ingredientId !== id))}
                 />
               );
             })}
           </IngredientFormulationSection>
 
           <BrewingStepsEditor
-            recipeSteps={state.recipeSteps} aiProposedSteps={aiProposedSteps} isSaving={state.isSaving}
+            recipeSteps={state.recipeSteps || []} aiProposedSteps={aiProposedSteps || []} isSaving={state.isSaving}
             onAddStep={state.handleAddStep} onRemoveStep={state.handleRemoveStep} onUpdateStep={state.updateStep}
-            onAcceptAllAiSteps={() => { state.setRecipeSteps(aiProposedSteps.map(s => ({ ...s, isExpanded: false }))); setAiProposedSteps([]); }}
+            onAcceptAllAiSteps={() => { state.setRecipeSteps((aiProposedSteps || []).map(s => ({ ...s, isExpanded: false }))); setAiProposedSteps([]); }}
             onRejectAllAiSteps={() => setAiProposedSteps([])} setAiProposedSteps={setAiProposedSteps}
           />
         </main>
@@ -448,9 +459,9 @@ const Recipes: React.FC = () => {
           handleSaveRecipe={handleSaveRecipe}
           isSaving={state.isSaving}
           recipeName={state.recipeName}
-          recipeIngredientsLength={state.recipeIngredients.length}
+          recipeIngredientsLength={(state.recipeIngredients || []).length}
           editingRecipeId={state.editingRecipeId}
-          recipeIngredients={state.recipeIngredients}
+          recipeIngredients={state.recipeIngredients || []}
         />
       </div>
     </div>

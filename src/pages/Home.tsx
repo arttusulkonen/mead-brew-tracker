@@ -1,3 +1,4 @@
+// src/pages/Home.tsx
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaArrowRight, FaPlayCircle } from 'react-icons/fa';
@@ -28,9 +29,14 @@ const Home: React.FC = () => {
   }, [activeBreweryId, fetchRecipes, fetchSessions]);
 
   const recentRecipes = (recipes || []).slice(0, 3);
-  const activeSessions = (sessions || []).filter(s => ['planned', 'fermenting', 'aging'].includes(s?.status || ''));
+  
+  // ИСПРАВЛЕНИЕ: Фильтруем по нормализованным UI-статусам
+  const activeSessions = (sessions || []).filter(s => 
+    ['Brew Day', 'Fermentation', 'Conditioning'].includes(s?.status || '')
+  );
 
   const getStepDuration = (step: any) => {
+    if (!step) return 0;
     let total = step.accumulatedSeconds || 0;
     if (step.isActive && step.startedAt) {
       total += Math.floor((Date.now() - new Date(step.startedAt).getTime()) / 1000);
@@ -39,6 +45,7 @@ const Home: React.FC = () => {
   };
 
   const formatTime = (seconds: number) => {
+    if (typeof seconds !== 'number' || isNaN(seconds)) return '00:00';
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
     const s = (seconds % 60).toString().padStart(2, '0');
@@ -72,7 +79,8 @@ const Home: React.FC = () => {
           ) : activeSessions.length > 0 ? (
             <div className="home-card__list">
               {activeSessions.map(session => {
-                const activeStep = session.sessionSteps?.find((s: any) => s.isActive);
+                const activeStep = (session.sessionSteps || []).find((s: any) => s?.isActive);
+                const rawStatus = session.status || 'Brew Day';
                 
                 return (
                   <div 
@@ -89,16 +97,17 @@ const Home: React.FC = () => {
                     }}
                   >
                     <div className="brew-item__header">
-                      <h3 className="brew-item__title">{session.recipeName}</h3>
-                      <span className="brew-item__badge" data-status={session.status}>
-                        {t(session.status.charAt(0).toUpperCase() + session.status.slice(1))}
+                      <h3 className="brew-item__title">{session.recipeName || t('Unknown Recipe')}</h3>
+                      <span className="brew-item__badge" data-status={rawStatus}>
+                        {/* ИСПРАВЛЕНИЕ: Безопасный перевод статуса */}
+                        {t(`constants.status.${rawStatus.toLowerCase().replace(' ', '_')}`, rawStatus)}
                       </span>
                     </div>
                     
                     <div className="brew-item__details">
-                      <span className="brew-item__detail-text">{session.batchSizeLiters} {t('L')}</span>
+                      <span className="brew-item__detail-text">{session.batchSizeLiters || 0} {t('L')}</span>
                       <span className="brew-item__detail-text">•</span>
-                      <span className="brew-item__detail-text">{t('Started')}: {new Date(session.startDate).toLocaleDateString()}</span>
+                      <span className="brew-item__detail-text">{t('Started')}: {session.startDate ? new Date(session.startDate).toLocaleDateString() : '-'}</span>
                     </div>
                     
                     {activeStep && (
@@ -111,7 +120,7 @@ const Home: React.FC = () => {
                             {formatTime(getStepDuration(activeStep))}
                           </span>
                         </div>
-                        <strong className="brew-item__step-name">{activeStep.title}</strong>
+                        <strong className="brew-item__step-name">{activeStep.title || ''}</strong>
                       </div>
                     )}
                   </div>
@@ -146,10 +155,10 @@ const Home: React.FC = () => {
                   to={`/recipes/${recipe.id}`} 
                   className="recipe-item"
                 >
-                  <h3 className="recipe-item__title">{recipe.name}</h3>
+                  <h3 className="recipe-item__title">{recipe.name || t('Unknown Recipe')}</h3>
                   <div className="recipe-item__meta">
-                    <span className="recipe-item__style">{t(recipe.targetStyle)}</span>
-                    <span className="recipe-item__abv">{recipe.targetAbv?.toFixed(1)}% ABV</span>
+                    <span className="recipe-item__style">{t(recipe.targetStyle || '')}</span>
+                    <span className="recipe-item__abv">{(recipe.targetAbv || 0).toFixed(1)}% {t('ABV')}</span>
                   </div>
                 </Link>
               ))}
