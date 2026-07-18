@@ -434,7 +434,6 @@ const Recipes: React.FC = () => {
 
           <IngredientFormulationSection targetAutoAbv={state.targetAutoAbv} setTargetAutoAbv={state.setTargetAutoAbv} handleAutoCalculateHoney={handleAutoCalculateHoney}>
             {(['Fermentable', 'Honey', 'Hops', 'Yeast', 'Additive'] as IngredientCategory[]).map(cat => {
-              if (state.beverageType !== 'Beer' && cat === 'Hops') return null;
               const titleMap: Record<string, string> = {
                 'Fermentable': t('Fermentables (Malts, Extracts, Sugars)'), 'Honey': t('Honey'), 'Hops': t('Hops'), 'Yeast': t('Yeasts'), 'Additive': t('Additives & Water Chemistry')
               };

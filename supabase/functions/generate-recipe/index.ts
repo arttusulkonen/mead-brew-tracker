@@ -55,16 +55,15 @@ Deno.serve(async (req) => {
       - Batch Size: ${batchSizeLiters || 0} Liters
       - Target Final Gravity (FG): ${targetFg || 1.000}
 
-      # SELECTED INGREDIENTS
+      # SELECTED INGREDIENTS WITH FRONTEND CALCULATED EXACT QUANTITIES
       ${JSON.stringify(ingredients, null, 2)}
 
       TASK:
-      1. Check if the provided ingredients list is physically capable of achieving the requested parameters (e.g., evaluate yeast alcohol tolerance vs Target ABV).
-      2. Evaluate the provided ingredients based on their categories and 'nutrientRole' (Rehydration vs Fermentation).
-      3. Calculate precise dosages for yeast nutrients, hops, and additives based on the Batch Size and Target ABV. Do NOT recalculate the base fermentable weights.
-      4. Generate detailed technological steps strictly following the constraints for the specific Beverage Type.
-      5. CRITICAL TRANSLATION: You MUST generate "title", "description" (inside steps), "aiNote" (inside ingredientQuantities), and "correctionReason" (inside suggestedParameters) strictly in ${targetLanguage}. 
-      6. CRITICAL STRUCTURAL RULE: The "phase" field MUST remain strictly in English ("Preparation", "Mashing", "Boiling", "Fermentation", "Conditioning", "Packaging") regardless of the target language.
+      1. VALIDATE: Calculate the potential ABV of the base fermentable weight in the selected Batch Size. If it contradicts the requested Target ABV or Style (e.g., 5kg honey for 10L Session), set 'isMismatch: true' and write a correctionReason!
+      2. STRICT MATH: For nutrients like Go-Ferm and Fermaid O, USE THE EXACT QUANTITIES from the JSON above in your step descriptions. Do NOT invent standard numbers like "6.25g".
+      3. Generate detailed technological steps strictly following the NO-BOIL constraints for Mead/Cider and TOSNA rules.
+      4. CRITICAL TRANSLATION: You MUST generate "title", "description" (inside steps), "aiNote", and "correctionReason" strictly in ${targetLanguage}. 
+      5. CRITICAL STRUCTURAL RULE: The "phase" field MUST remain strictly in English ("Preparation", "Mashing", "Boiling", "Fermentation", "Conditioning", "Packaging") regardless of the target language.
     `;
 
     const apiKey = Deno.env.get("GEMINI_API_KEY");

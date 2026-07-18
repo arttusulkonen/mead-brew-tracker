@@ -117,13 +117,21 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
               const currentIng = (recipeIngredients || []).find(ing => ing?.id === add?.id);
               const isApplied = currentIng && Math.abs((currentIng.quantity || 0) - targetGrams) < 0.01;
 
+              // Динамическая логика для 2-Step (Session) vs 4-Step (Standard) TOSNA
+              const isSession = (recipeDetails?.abv || 0) < 6.5;
+
               return (
                 <li className="stat-panel__item stat-panel__item--row" key={add.id}>
                   <div className="stat-panel__info stat-panel__info-col">
                     <span className="stat-panel__label stat-panel__label--bold">{add.name}</span>
                     <span className={`stat-panel__subtext stat-panel__subtext--flex ${isRehydration ? 'stat-panel__subtext--success' : 'stat-panel__subtext--muted'}`}>
-                      {isRehydration ? <FaInfoCircle /> : null}
-                      {isRehydration ? t('constants.nutrient_roles.rehydration', 'Before pitching yeast (Rehydration)') : t('constants.nutrient_roles.fermentation', 'During active fermentation (Feeding)')}
+                      <FaInfoCircle />
+                      {isRehydration 
+                        ? t('constants.nutrient_roles.rehydration_hint', 'At 35-40°C. Acclimatize to <10°C delta before pitch.') 
+                        : isSession
+                          ? t('constants.nutrient_roles.fermentation_2step', '2-Step TOSNA: Add at pitch & 24h (Degas first!)')
+                          : t('constants.nutrient_roles.fermentation_4step', '4-Step TOSNA: 24h, 48h, 72h & 1/3 sugar break.')
+                      }
                     </span>
                   </div>
                   <div className="stat-panel__apply-group">

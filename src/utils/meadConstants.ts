@@ -1,14 +1,11 @@
-/*
- * File: src/utils/meadConstants.ts
- * Description: Static constants and configuration arrays for mead styles, sweetness levels, and brewing processes.
- */
+// src/utils/meadConstants.ts
 
 export const MEAD_STYLES = [
   { id: 'traditional', name: 'constants.styles.traditional', boilProtocol: 'No-Boil' },
-  { id: 'session_hopped', name: 'constants.styles.session_hopped', boilProtocol: 'Boil (60m)' },
+  { id: 'session_hopped', name: 'constants.styles.session_hopped', boilProtocol: 'No-Boil' }, // Изменили на No-Boil по современным стандартам
   { id: 'melomel', name: 'constants.styles.melomel', boilProtocol: 'No-Boil' },
   { id: 'metheglin', name: 'constants.styles.metheglin', boilProtocol: 'No-Boil' },
-  { id: 'braggot', name: 'constants.styles.braggot', boilProtocol: 'Boil (60m)' }
+  { id: 'braggot', name: 'constants.styles.braggot', boilProtocol: 'Boil (60m)' } // Брэггот варится из-за солода
 ];
 
 export const SWEETNESS_LEVELS = [
@@ -33,18 +30,22 @@ export const HONEY_TERROIR = [
 ];
 
 export const ADDITIVE_ROLES = [
-  { id: 'hops', name: 'constants.additives.hops', stage: 'Boil/Whirlpool' },
+  { id: 'hops', name: 'constants.additives.hops', stage: 'Active Fermentation (Biotransformation)' },
   { id: 'fruit', name: 'constants.additives.fruit', stage: 'Secondary' },
-  { id: 'spices', name: 'constants.additives.spices', stage: 'Aging' },
+  { id: 'spices', name: 'constants.additives.spices', stage: 'Conditioning / Tincture' },
   { id: 'woods', name: 'constants.additives.woods', stage: 'Aging' },
   { id: 'acids', name: 'constants.additives.acids', stage: 'Bottling' }
 ];
 
+// Обновленные технологические экшены
 export const ACTION_CHIPS = [
-  { id: 'TOSNA_ADDITION', name: 'constants.actions.tosna' },
-  { id: 'DEGASSING', name: 'constants.actions.degassing' },
+  { id: 'ACCLIMATIZATION', name: 'constants.actions.acclimatization' },
   { id: 'AERATION', name: 'constants.actions.aeration' },
+  { id: 'DEGASSING', name: 'constants.actions.degassing' },
+  { id: '2_STEP_TOSNA', name: 'constants.actions.2_step_tosna' },
+  { id: '4_STEP_TOSNA', name: 'constants.actions.4_step_tosna' },
   { id: 'COLD_CRASH', name: 'constants.actions.cold_crash' },
   { id: 'RACKING', name: 'constants.actions.racking' },
+  { id: 'STABILIZATION', name: 'constants.actions.stabilization' }, // Химическая стабилизация (Сорбат/Сульфит)
   { id: 'BOTTLING', name: 'constants.actions.bottling' }
 ];

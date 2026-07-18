@@ -32,8 +32,7 @@ const Inventory: React.FC = () => {
   } = useInventoryStore();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
-  // Стейты редактирования склада
+   
   const [editingStockItem, setEditingStockItem] = useState<PopulatedInventoryItem | null>(null);
   const [editStockQty, setEditStockQty] = useState<number | ''>('');
   const [editStockUnit, setEditStockUnit] = useState<UnitType>('g');
