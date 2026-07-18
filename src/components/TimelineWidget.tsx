@@ -11,12 +11,20 @@ interface TimelineWidgetProps {
   sessionId: string;
   steps: any[];
   startDate: string;
+  onPhaseAction?: (phase: string) => void;
 }
 
 const VALID_PHASES: StepPhase[] = ['Preparation', 'Mashing', 'Boiling', 'Fermentation', 'Conditioning', 'Packaging'];
 const VALID_UNITS: TimeUnit[] = ['minutes', 'days'];
 
-export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessionId, steps, startDate }) => {
+// Функция для безопасного маппинга фаз (Conditioning -> aging)
+const mapPhaseToTranslationKey = (phase: string): string => {
+  const p = phase?.toLowerCase() || 'preparation';
+  if (p === 'conditioning') return 'constants.step_phases.aging';
+  return `constants.step_phases.${p}`;
+};
+
+export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessionId, steps, startDate, onPhaseAction }) => {
   const { t } = useTranslation();
   const { updateSteps, addLogToSession } = useSessionStore();
 
@@ -58,6 +66,10 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
           const elapsed = Math.floor((new Date(now).getTime() - new Date(s.startedAt).getTime()) / 1000);
           return { ...s, isActive: false, startedAt: null, accumulatedSeconds: (s.accumulatedSeconds || 0) + elapsed };
         } else {
+          // Вызываем хук, если этап запускается (для старта варки)
+          if (!s.isActive && onPhaseAction && s.phase) {
+             onPhaseAction(s.phase);
+          }
           return { ...s, isActive: true, startedAt: now };
         }
       } else if (s.isActive) {
@@ -140,7 +152,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
   };
 
   const deleteStep = async (stepId: string) => {
-    if (!window.confirm(t('Are you sure you want to delete this step?'))) return;
+    if (!window.confirm(t('Are you sure you want to delete this step?', 'Вы уверены, что хотите удалить этот шаг?'))) return;
     const updatedSteps = steps.filter(s => s.id !== stepId).map((s, idx) => ({ ...s, stepNumber: idx + 1 }));
     await saveSteps(updatedSteps);
   };
@@ -204,7 +216,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
                 >
                   {VALID_PHASES.map(phase => (
                     <option key={phase} value={phase}>
-                      {t(`constants.step_phases.${phase.toLowerCase()}`, phase)}
+                      {t(mapPhaseToTranslationKey(phase), phase) as string}
                     </option>
                   ))}
                 </select>
@@ -233,7 +245,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
                       >
                         {VALID_UNITS.map(unit => (
                            <option key={unit} value={unit}>
-                             {t(`constants.units.${unit.toLowerCase()}`, unit)}
+                             {t(`constants.units.${unit.toLowerCase()}`, unit) as string}
                            </option>
                         ))}
                       </select>
@@ -269,7 +281,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
           
           let targetText = '';
           if (step.durationValue > 0) {
-            targetText = `${step.durationValue} ${t(`constants.units.${step.durationUnit.toLowerCase()}`, step.durationUnit)}`;
+            targetText = `${step.durationValue} ${t(`constants.units.${step.durationUnit.toLowerCase()}`, step.durationUnit) as string}`;
           }
 
           let progressText = '';
@@ -301,7 +313,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
                   >
                     {VALID_PHASES.map(phase => (
                       <option key={phase} value={phase}>
-                        {t(`constants.step_phases.${phase.toLowerCase()}`, phase)}
+                        {t(mapPhaseToTranslationKey(phase), phase) as string}
                       </option>
                     ))}
                   </select>
@@ -330,7 +342,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
                         >
                           {VALID_UNITS.map(unit => (
                             <option key={unit} value={unit}>
-                              {t(`constants.units.${unit.toLowerCase()}`, unit)}
+                              {t(`constants.units.${unit.toLowerCase()}`, unit) as string}
                             </option>
                           ))}
                         </select>
@@ -379,15 +391,17 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
               <div className="timeline-item__content">
                 <div className="timeline-item__header">
                   <div className="timeline-item__title-group">
-                    <span className="timeline-item__phase">{String(t(`constants.step_phases.${step.phase.toLowerCase()}`, step.phase))}</span>
+                    <span className="timeline-item__phase">
+                      {t(mapPhaseToTranslationKey(step.phase), step.phase) as string}
+                    </span>
                     <strong className="timeline-item__title">{step.title}</strong>
                   </div>
                   <div className="timeline-item__target">
                     {step.targetTempC !== null && step.targetTempC !== undefined && <span className="timeline-item__temp">🌡 {step.targetTempC}°C</span>}
                     {targetText && <span className="timeline-item__duration">⏱ {targetText}</span>}
                     <div className="timeline-item__context-actions">
-                      <button type="button" className="timeline-item__btn-icon" onClick={() => startEditStep(step)} title={t('Edit Step')}><FaEdit /></button>
-                      <button type="button" className="timeline-item__btn-icon timeline-item__btn-icon--danger" onClick={() => deleteStep(step.id)} title={t('Delete Step')}><FaTrash /></button>
+                      <button type="button" className="timeline-item__btn-icon" onClick={() => startEditStep(step)} title={t('Edit Step')} aria-label={t('Edit Step')}><FaEdit /></button>
+                      <button type="button" className="timeline-item__btn-icon timeline-item__btn-icon--danger" onClick={() => deleteStep(step.id)} title={t('Delete Step')} aria-label={t('Delete Step')}><FaTrash /></button>
                     </div>
                   </div>
                 </div>
@@ -418,12 +432,12 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
                     <input 
                       type="text" 
                       className="timeline-item__quick-input"
-                      placeholder={t('Add a quick note...')} 
+                      placeholder={t('Add a quick note...', 'Добавить быструю заметку...')} 
                       value={quickNoteInputs[step.id] || ''}
                       onChange={(e) => setQuickNoteInputs(prev => ({ ...prev, [step.id]: e.target.value }))}
                       onKeyDown={(e) => e.key === 'Enter' && handleQuickNoteSubmit(step.id)}
                     />
-                    <button type="button" className="timeline-item__quick-btn" onClick={() => handleQuickNoteSubmit(step.id)} disabled={!quickNoteInputs[step.id]?.trim()}>
+                    <button type="button" className="timeline-item__quick-btn" onClick={() => handleQuickNoteSubmit(step.id)} disabled={!quickNoteInputs[step.id]?.trim()} aria-label={t('Save Note')}>
                       <FaCommentDots />
                     </button>
                   </div>

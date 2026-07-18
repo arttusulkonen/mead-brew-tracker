@@ -38,7 +38,6 @@
     color: var(--text-secondary);
   }
 
-  // --- Сетка Layout ---
   &__layout {
     display: grid;
     grid-template-columns: 1fr;
@@ -46,7 +45,6 @@
     align-items: start;
 
     @media (min-width: $breakpoint-lg) {
-      // Правая колонка под характеристики и кнопку Старт
       grid-template-columns: 2fr 1fr; 
     }
   }

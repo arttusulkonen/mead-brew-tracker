@@ -71,8 +71,7 @@
     }
   }
 
-  &__col-main,
-  &__col-side {
+  &__column {
     display: flex;
     flex-direction: column;
     gap: 24px;

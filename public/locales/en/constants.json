@@ -63,6 +63,8 @@
   "constants.units.gal": "gal",
   "constants.units.ppm": "ppm",
   "constants.units.unit": "unit",
+  "constants.units.minutes": "minutes",
+  "constants.units.days": "days",
 
   "constants.styles.traditional": "Traditional Mead",
   "constants.styles.session_hopped": "Session Hopped Mead",

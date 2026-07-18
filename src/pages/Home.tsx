@@ -1,3 +1,4 @@
+// src/pages/Home.tsx
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaArrowRight, FaPlayCircle } from 'react-icons/fa';
@@ -5,6 +6,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useRecipeStore } from '../store/useRecipeStore';
 import { useSessionStore } from '../store/useSessionStore';
+
+const getLegacyStatusKey = (status: string) => {
+  const map: Record<string, string> = {
+    'Brew Day': 'planned',
+    'Fermentation': 'fermenting',
+    'Conditioning': 'aging',
+    'Bottled': 'completed',
+    'Completed': 'completed'
+  };
+  return map[status] || 'planned';
+};
 
 const Home: React.FC = () => {
   const { t } = useTranslation();
@@ -28,7 +40,10 @@ const Home: React.FC = () => {
   }, [activeBreweryId, fetchRecipes, fetchSessions]);
 
   const recentRecipes = (recipes || []).slice(0, 3);
-  const activeSessions = (sessions || []).filter(s => ['planned', 'fermenting', 'aging'].includes(s?.status || ''));
+  
+  const activeSessions = (sessions || []).filter(s => 
+    ['Brew Day', 'Fermentation', 'Conditioning'].includes(s?.status || '')
+  );
 
   const getStepDuration = (step: any) => {
     let total = step.accumulatedSeconds || 0;
@@ -73,6 +88,7 @@ const Home: React.FC = () => {
             <div className="home-card__list">
               {activeSessions.map(session => {
                 const activeStep = session.sessionSteps?.find((s: any) => s.isActive);
+                const rawStatus = session.status || 'Brew Day';
                 
                 return (
                   <div 
@@ -90,8 +106,8 @@ const Home: React.FC = () => {
                   >
                     <div className="brew-item__header">
                       <h3 className="brew-item__title">{session.recipeName}</h3>
-                      <span className="brew-item__badge" data-status={session.status}>
-                        {t(session.status.charAt(0).toUpperCase() + session.status.slice(1))}
+                      <span className="brew-item__badge" data-status={getLegacyStatusKey(rawStatus)}>
+                        {t(`constants.status.${rawStatus.toLowerCase().replace(' ', '_')}`, rawStatus) as string}
                       </span>
                     </div>
                     
@@ -149,7 +165,7 @@ const Home: React.FC = () => {
                   <h3 className="recipe-item__title">{recipe.name}</h3>
                   <div className="recipe-item__meta">
                     <span className="recipe-item__style">{t(recipe.targetStyle)}</span>
-                    <span className="recipe-item__abv">{recipe.targetAbv?.toFixed(1)}% ABV</span>
+                    <span className="recipe-item__abv">{(recipe.targetAbv || 0).toFixed(1)}% ABV</span>
                   </div>
                 </Link>
               ))}
