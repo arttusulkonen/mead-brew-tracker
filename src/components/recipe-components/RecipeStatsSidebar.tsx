@@ -120,7 +120,7 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
               const isRehydration = add?.rule?.includes('Rehydration');
               const isSession = (recipeDetails?.abv || 0) < 6.5;
 
-              let hintText = '';
+              let hintText: string;
               let isHintSuccess = false;
 
               if (add.type === 'Yeast') {
@@ -140,7 +140,6 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
                     <span className="stat-panel__label stat-panel__label--bold">{add.name}</span>
                     <span className={`stat-panel__subtext stat-panel__subtext--flex ${isHintSuccess ? 'stat-panel__subtext--success' : 'stat-panel__subtext--muted'}`}>
                       <FaInfoCircle />
-                      {/* ИСПРАВЛЕНИЕ: Теперь переменная hintText выводится здесь */}
                       {hintText}
                     </span>
                   </div>
