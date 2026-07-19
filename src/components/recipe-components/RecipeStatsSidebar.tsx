@@ -12,6 +12,7 @@ interface DynamicAdditive {
   name: string;
   totalGrams: number;
   rule: string;
+  type: 'Yeast' | 'Nutrient' | 'Additive';
 }
 
 export interface RecipeDetailsStats {
@@ -109,29 +110,38 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
 
       {(recipeDetails?.dynamicAdditives || []).length > 0 && (
         <div className="stat-panel">
-          <h3 className="stat-panel__title">{t('Smart Additive Calculator')}</h3>
+          <h3 className="stat-panel__title">{t('Smart Scaling Calculator')}</h3>
           <ul className="stat-panel__list stat-panel__list--stacked">
             {(recipeDetails?.dynamicAdditives || []).map((add) => {
-              const isRehydration = add?.rule?.includes('Rehydration');
               const targetGrams = parseFloat((add?.totalGrams || 0).toFixed(1));
               const currentIng = (recipeIngredients || []).find(ing => ing?.id === add?.id);
               const isApplied = currentIng && Math.abs((currentIng.quantity || 0) - targetGrams) < 0.01;
 
-              // Динамическая логика для 2-Step (Session) vs 4-Step (Standard) TOSNA
+              const isRehydration = add?.rule?.includes('Rehydration');
               const isSession = (recipeDetails?.abv || 0) < 6.5;
+
+              let hintText = '';
+              let isHintSuccess = false;
+
+              if (add.type === 'Yeast') {
+                hintText = t('Pitch Rate', 'Pitch Rate: ') + add.rule;
+              } else if (isRehydration) {
+                hintText = t('constants.nutrient_roles.rehydration_hint', 'At 35-40°C. Acclimatize to <10°C delta before pitch.');
+                isHintSuccess = true;
+              } else {
+                hintText = isSession
+                  ? t('constants.nutrient_roles.fermentation_2step', '2-Step TOSNA: Add at pitch & 24h (Degas first!)')
+                  : t('constants.nutrient_roles.fermentation_4step', '4-Step TOSNA: 24h, 48h, 72h & 1/3 sugar break.');
+              }
 
               return (
                 <li className="stat-panel__item stat-panel__item--row" key={add.id}>
                   <div className="stat-panel__info stat-panel__info-col">
                     <span className="stat-panel__label stat-panel__label--bold">{add.name}</span>
-                    <span className={`stat-panel__subtext stat-panel__subtext--flex ${isRehydration ? 'stat-panel__subtext--success' : 'stat-panel__subtext--muted'}`}>
+                    <span className={`stat-panel__subtext stat-panel__subtext--flex ${isHintSuccess ? 'stat-panel__subtext--success' : 'stat-panel__subtext--muted'}`}>
                       <FaInfoCircle />
-                      {isRehydration 
-                        ? t('constants.nutrient_roles.rehydration_hint', 'At 35-40°C. Acclimatize to <10°C delta before pitch.') 
-                        : isSession
-                          ? t('constants.nutrient_roles.fermentation_2step', '2-Step TOSNA: Add at pitch & 24h (Degas first!)')
-                          : t('constants.nutrient_roles.fermentation_4step', '4-Step TOSNA: 24h, 48h, 72h & 1/3 sugar break.')
-                      }
+                      {/* ИСПРАВЛЕНИЕ: Теперь переменная hintText выводится здесь */}
+                      {hintText}
                     </span>
                   </div>
                   <div className="stat-panel__apply-group">

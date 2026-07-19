@@ -77,7 +77,7 @@ const Recipes: React.FC = () => {
     let yeastNitrogenDemand: string = 'Medium';
     let totalWeightedBrix = 0;
     let customNutrientName = '';
-    const dynamicAdditives: Array<{ id: string; name: string; totalGrams: number; rule: string }> = [];
+    const dynamicAdditives: Array<{ id: string; name: string; totalGrams: number; rule: string; type: 'Yeast' | 'Nutrient' | 'Additive' }> = [];
 
     (state.recipeIngredients || []).forEach(item => {
       if (!item) return;
@@ -100,6 +100,20 @@ const Recipes: React.FC = () => {
       } else if (item.category === 'Yeast') {
         yeastAddedGrams += item.quantity || 0;
         if (item.nitrogenDemand) yeastNitrogenDemand = item.nitrogenDemand;
+        
+        const recommendedYeastGrams = item.dosagePer10Liters 
+          ? (state.batchSizeLiters / 10) * item.dosagePer10Liters
+          : state.batchSizeLiters * 0.5; 
+
+        if (recommendedYeastGrams > 0) {
+          dynamicAdditives.push({ 
+            id: item.id, 
+            name: item.name, 
+            totalGrams: recommendedYeastGrams, 
+            rule: item.dosagePer10Liters ? `${item.dosagePer10Liters}g / 10L` : 'Standard 0.5g / 1L',
+            type: 'Yeast'
+          });
+        }
       }
     });
 
@@ -120,8 +134,13 @@ const Recipes: React.FC = () => {
       }
     });
 
+    // Для TOSNA нам нужно знать ЦЕЛЕВОЙ вес дрожжей, а не тот, который сейчас введен руками, 
+    // чтобы при изменении объема Go-Ferm пересчитывался правильно!
+    const targetYeastObj = dynamicAdditives.find(d => d.type === 'Yeast');
+    const targetYeastGrams = targetYeastObj ? targetYeastObj.totalGrams : yeastAddedGrams;
+
     let tosnaData = null;
-    if (state.beverageType === 'Mead' && yeastAddedGrams > 0 && estimatedOg > 1.000) {
+    if (state.beverageType === 'Mead' && targetYeastGrams > 0 && estimatedOg > 1.000) {
       let nFactor = 0.90;
       if (yeastNitrogenDemand === 'Low') nFactor = 0.75;
       else if (yeastNitrogenDemand === 'High' || yeastNitrogenDemand === 'Very High') nFactor = 1.25;
@@ -135,15 +154,16 @@ const Recipes: React.FC = () => {
 
       if (item.additiveType === 'Nutrient' && tosnaData) {
         if (item.nutrientRole === 'Rehydration' || (!item.nutrientRole && item.name?.toLowerCase().includes('go-ferm'))) {
-          calculatedGrams = tosnaData.goFermGrams;
+          // ИСПОЛЬЗУЕМ ЦЕЛЕВОЙ ВЕС ДРОЖЖЕЙ, а не текущий
+          calculatedGrams = targetYeastGrams * 1.25; 
           ruleApplied = 'TOSNA 3.0: Rehydration';
         } else if (item.nutrientRole === 'Fermentation' || !item.nutrientRole) {
           calculatedGrams = tosnaData.totalFermaidOGrams;
           ruleApplied = 'TOSNA 3.0: Total Fermentation Nutrient';
           if (!customNutrientName) customNutrientName = item.name;
         }
-      } else if (item.dosagePerGramYeast && yeastAddedGrams > 0) {
-        calculatedGrams = yeastAddedGrams * item.dosagePerGramYeast;
+      } else if (item.dosagePerGramYeast && targetYeastGrams > 0) {
+        calculatedGrams = targetYeastGrams * item.dosagePerGramYeast;
         ruleApplied = `${item.dosagePerGramYeast}g / 1g Yeast`;
       } else if (item.dosagePer10Liters && state.batchSizeLiters > 0) {
         calculatedGrams = (state.batchSizeLiters / 10) * item.dosagePer10Liters;
@@ -152,7 +172,7 @@ const Recipes: React.FC = () => {
       }
 
       if (calculatedGrams > 0) {
-        dynamicAdditives.push({ id: item.id, name: item.name, totalGrams: calculatedGrams, rule: ruleApplied });
+        dynamicAdditives.push({ id: item.id, name: item.name, totalGrams: calculatedGrams, rule: ruleApplied, type: 'Nutrient' });
       }
     });
 
@@ -200,9 +220,9 @@ const Recipes: React.FC = () => {
     }
   }, [state.beverageType, state.wizardStyle, t]);
 
-  // ИСПРАВЛЕНИЕ: Вычисляем editingIngredientData ДО условий выхода
   const editingIngredientData = useMemo(() => {
-    return editingIngredientId ? state.recipeIngredients?.find(i => i.id === editingIngredientId) : undefined;
+    const found = editingIngredientId ? state.recipeIngredients?.find(i => i.id === editingIngredientId) : undefined;
+    return found as unknown as Partial<EditedIngredientData> | undefined;
   }, [editingIngredientId, state.recipeIngredients]);
 
   const handleAutoCalculateHoney = () => {
