@@ -1,6 +1,6 @@
 // src/components/TosnaTracker.tsx
 import { calculateOneThirdSugarBreak } from '@mead-tracker/math';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaLock, FaUnlock } from 'react-icons/fa';
 import type { BrewSession } from '../types/session';
@@ -18,9 +18,45 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
   const [inputNotes, setInputNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const tosna = session?.tosnaSchedule;
+  const originalTosna = session?.tosnaSchedule;
   const fermentationStart = session?.pitchTimestamp;
   const isSessionEnded = session?.status === 'Completed' || session?.status === 'Conditioning';
+
+  // --- УМНЫЙ АДАПТЕР ГРАФИКА (Центр Истины) ---
+  const tosna = useMemo(() => {
+    if (!originalTosna) return null;
+
+    const currentOg = Number(session?.actualOg || session?.targetOg || 1.000);
+    
+    // Если плотность высокая (Standard/Sack >= 1.050), оставляем оригинальные 4 шага
+    if (currentOg >= 1.050) return originalTosna;
+
+    // Если это Session Mead (OG < 1.050), ПРИНУДИТЕЛЬНО сжимаем график до 2 шагов
+    const originalAdditions = originalTosna.additions || [];
+    const totalNutrientGrams = (originalTosna.dosePerAdditionGrams || 0) * originalAdditions.length;
+    const halfDose = parseFloat((totalNutrientGrams / 2).toFixed(1));
+
+    const sessionAdditions = [
+      {
+        id: originalAdditions[0]?.id || 'session-pitch-step',
+        targetHours: 0,
+        isCompleted: originalAdditions[0]?.isCompleted || false,
+        isOneThirdBreak: false
+      },
+      {
+        id: originalAdditions[1]?.id || 'session-24h-step',
+        targetHours: 24,
+        isCompleted: originalAdditions[1]?.isCompleted || false,
+        isOneThirdBreak: false
+      }
+    ];
+
+    return {
+      ...originalTosna,
+      dosePerAdditionGrams: halfDose,
+      additions: sessionAdditions
+    };
+  }, [originalTosna, session?.actualOg, session?.targetOg]);
 
   useEffect(() => {
     if (!fermentationStart) return;
@@ -97,8 +133,15 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
           if (!addition) return null;
           
           const targetSeconds = (addition.targetHours || 0) * 3600;
-          const isDue = addition.isOneThirdBreak || elapsedSeconds >= targetSeconds;
-          const isOverdue = fermentationStart && !addition.isCompleted && !addition.isOneThirdBreak && elapsedSeconds >= targetSeconds;
+          
+          // ШАГ 1: Этап доступен для внесения (Due), если текущее время больше или равно целевому
+          const isDue = elapsedSeconds >= targetSeconds;
+          
+          // ШАГ 2: БИОТЕХНОЛОГИЧЕСКИЙ БУФЕР (12 часов = 43200 секунд)
+          // Мы считаем этап "ПРОСРОЧЕННЫМ", только если прошло больше 12 часов от целевого времени
+          const GRACE_PERIOD_SEC = 12 * 3600; 
+          const isOverdue = fermentationStart && !addition.isCompleted && !addition.isOneThirdBreak && elapsedSeconds > (targetSeconds + GRACE_PERIOD_SEC);
+          
           const isExpanded = activeAdditionId === addition.id;
           
           let timeStatus = '';
@@ -110,18 +153,28 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
               timeStatus = t('Opens in {{h}}h {{m}}m', { h: rh, m: rm, defaultValue: `Opens in ${rh}h ${rm}m` });
             }
           }
+
+          // Умное переименование карточек
+          let stepTitle = addition.isOneThirdBreak 
+            ? t('1/3 Sugar Break') 
+            : t('Addition {{num}} ({{hours}}h)', { num: index + 1, hours: addition.targetHours || 0 });
+          
+          if (addition.targetHours === 0) {
+            stepTitle = t('Initial Feed (0h / Pitch)', 'Стартовое питание (Засев)');
+          } else if (addition.targetHours === 24 && (tosna.additions || []).length === 2) {
+            stepTitle = t('Final Feed (24h)', 'Финальное питание (24ч)');
+          }
           
           return (
             <div 
               key={addition.id} 
-              className={`tosna-widget__item ${isOverdue ? 'tosna-widget__item--overdue' : ''} ${addition.isCompleted ? 'tosna-widget__item--completed' : ''} ${isDue && !addition.isCompleted ? 'tosna-widget__item--due-now' : ''}`}
+              // Если время подошло (isDue), но еще не просрочено, подсвечиваем карточку приятным цветом
+              className={`tosna-widget__item ${isOverdue ? 'tosna-widget__item--overdue' : ''} ${addition.isCompleted ? 'tosna-widget__item--completed' : ''} ${isDue && !addition.isCompleted && !isOverdue ? 'tosna-widget__item--due-now' : ''}`}
             >
               <div className="tosna-widget__info tosna-widget__info--flex">
                 <div className="tosna-widget__text-content">
                   <strong className={`tosna-widget__item-title ${addition.isCompleted ? 'tosna-widget__item-title--completed' : ''}`}>
-                    {addition.isOneThirdBreak 
-                      ? t('1/3 Sugar Break') 
-                      : t('Addition {{num}} ({{hours}}h)', { num: index + 1, hours: addition.targetHours || 0 })}
+                    {stepTitle}
                   </strong>
                   
                   <span className="tosna-widget__desc tosna-widget__desc--muted">
@@ -137,6 +190,11 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
                   )}
 
                   {isOverdue && <span className="badge badge--danger tosna-widget__badge-overdue">{t('OVERDUE')}</span>}
+                  
+                  {/* Добавляем бейдж "Пора вносить", если время подошло, но еще не просрочено */}
+                  {isDue && !isOverdue && !addition.isCompleted && (
+                    <span className="badge badge--primary tosna-widget__badge-due">{t('DUE NOW', 'ПОРА ВНОСИТЬ')}</span>
+                  )}
                 </div>
 
                 {!addition.isCompleted && !isExpanded && fermentationStart && !isSessionEnded && (

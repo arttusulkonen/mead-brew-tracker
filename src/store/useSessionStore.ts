@@ -17,7 +17,8 @@ interface SessionState {
   updateSteps: (breweryId: string | null | undefined, sessionId: string | null | undefined, newSteps: RecipeStep[]) => Promise<void>;
   addLogToSession: (breweryId: string | null | undefined, sessionId: string | null | undefined, newLog: BrewLog) => Promise<void>;
   updateTosnaSchedule: (breweryId: string | null | undefined, sessionId: string | null | undefined, updatedAdditions: TosnaAddition[]) => Promise<void>;
-  splitBrewSession: (payload: Record<string, unknown>) => Promise<void>;
+  // Строго типизируем payload для сплит-батчинга
+  splitBrewSession: (payload: { breweryId: string, parentSessionId: string, splits: { volumeLiters: number; namePostfix: string }[] }) => Promise<void>;
   updateSessionStatus: (breweryId: string | null | undefined, sessionId: string | null | undefined, newStatus: BrewSessionStage, actualOg?: number) => Promise<void>;
   deleteSession: (breweryId: string | null | undefined, sessionId: string | null | undefined) => Promise<void>;
   analyzeBrewSession: (breweryId: string | null | undefined, sessionId: string, locale: string) => Promise<void>;
@@ -328,9 +329,106 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 
-  splitBrewSession: async () => {
-    set({ error: 'Split Batch functionality is not currently available.' });
-    return;
+  // === МАГИЯ SPLIT BATCH ===
+  splitBrewSession: async ({ breweryId, parentSessionId, splits }) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // 1. Берем оригинальную сессию и рецепт
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('brew_sessions')
+        .select('*, recipes(*)')
+        .eq('id', parentSessionId)
+        .single();
+        
+      if (sessionError) throw sessionError;
+      
+      const originalRecipe = sessionData.recipes;
+
+      // 2. Для каждого сплита создаем Форк Рецепта и Новую Сессию
+      for (const split of splits) {
+        
+        // Создаем форк рецепта (родитель = оригинальный рецепт)
+        const { data: newRecipeData, error: recipeError } = await supabase
+          .from('recipes')
+          .insert([{
+            brewery_id: breweryId,
+            parent_recipe_id: originalRecipe.id, // СВЯЗЫВАЕМ С ОРИГИНАЛОМ!
+            name: `${originalRecipe.name} (${split.namePostfix})`,
+            beverage_type: originalRecipe.beverage_type,
+            target_style: originalRecipe.target_style,
+            expected_batch_size_liters: split.volumeLiters,
+            target_original_gravity: originalRecipe.target_original_gravity,
+            target_final_gravity: originalRecipe.target_final_gravity,
+            target_abv: originalRecipe.target_abv,
+            ingredients: originalRecipe.ingredients,
+            steps: originalRecipe.steps,
+            created_by: user.id
+          }])
+          .select()
+          .single();
+
+        if (recipeError) throw recipeError;
+
+        // Создаем дочернюю сессию
+        const { data: newSessionData, error: newSessionError } = await supabase
+          .from('brew_sessions')
+          .insert([{
+            recipe_id: newRecipeData.id,
+            recipe_name: newRecipeData.name,
+            beverage_type: newRecipeData.beverage_type,
+            brewery_id: breweryId,
+            batch_size_liters: split.volumeLiters,
+            actual_batch_size_liters: split.volumeLiters,
+            status: sessionData.status, // Оставляем статус (например, Fermentation или Conditioning)
+            pitch_timestamp: sessionData.pitch_timestamp, // Сохраняем время старта брожения!
+            actual_original_gravity: sessionData.actual_original_gravity,
+            session_steps: sessionData.session_steps,
+            session_ingredients: sessionData.session_ingredients,
+            tosna_schedule: sessionData.tosna_schedule,
+            created_by: user.id
+          }])
+          .select()
+          .single();
+
+        if (newSessionError) throw newSessionError;
+
+        // Копируем все логи, чтобы на графике была полная история!
+        const { data: originalLogs } = await supabase
+          .from('daily_fermentation_logs')
+          .select('*')
+          .eq('session_id', parentSessionId);
+          
+        if (originalLogs && originalLogs.length > 0) {
+          const logsToInsert = originalLogs.map((log: any) => ({
+            session_id: newSessionData.id,
+            logged_at: log.logged_at,
+            gravity_reading: log.gravity_reading,
+            ph_reading: log.ph_reading,
+            liquid_temperature_c: log.liquid_temperature_c,
+            notes: log.notes
+          }));
+          await supabase.from('daily_fermentation_logs').insert(logsToInsert);
+        }
+      }
+
+      // 3. Закрываем оригинальную сессию (помечаем как разделенную)
+      await supabase
+        .from('brew_sessions')
+        .update({ 
+          is_split: true, 
+          status: 'completed', // Больше мы её не варим, она разделилась
+          completed_date: new Date().toISOString()
+        })
+        .eq('id', parentSessionId);
+
+      set({ isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
   },
 
   deleteSession: async (breweryId, sessionId) => {

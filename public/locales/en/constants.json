@@ -34,6 +34,7 @@
   "constants.additive_types.clarifier": "Clarifier",
   "constants.additive_types.stabilizer": "Stabilizer",
   "constants.additive_types.acid": "Acid",
+  "constants.additive_types.sweetener": "Sweetener",
 
   "constants.beverage_types.beer": "Beer",
   "constants.beverage_types.mead": "Mead",

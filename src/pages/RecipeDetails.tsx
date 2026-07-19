@@ -154,6 +154,47 @@ const RecipeDetails: React.FC = () => {
             </ul>
           </section>
 
+          {(currentRecipe as any).forks && (currentRecipe as any).forks.length > 0 && (
+            <section className="recipe-details__section">
+              <h2 className="recipe-details__section-title">
+                {t('Recipe Variations')} 
+                <span className="badge badge--primary" style={{ marginLeft: '8px' }}>
+                  {(currentRecipe as any).forks.length}
+                </span>
+              </h2>
+              <p className="recipe-details__empty-text" style={{ marginBottom: '16px', fontSize: '14px' }}>
+                {t('These recipes were created as split batches or modifications of this original recipe.')}
+              </p>
+              <div className="recipes-grid">
+                {(currentRecipe as any).forks.map((fork: any) => (
+                  <div 
+                    key={fork.id} 
+                    className="recipe-card recipe-card--interactive" 
+                    onClick={() => {
+                      navigate(`/recipes/${fork.id}`);
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="recipe-card__header">
+                      <h3 className="recipe-card__title" style={{ fontSize: '16px' }}>{fork.name}</h3>
+                      <span className="recipe-card__style">{fork.target_style}</span>
+                    </div>
+                    <div className="recipe-card__stats">
+                      <div className="recipe-card__stat">
+                        <span className="recipe-card__stat-label">{t('ABV')}</span>
+                        <span className="recipe-card__stat-value">{Number(fork.target_abv || 0).toFixed(1)}%</span>
+                      </div>
+                      <div className="recipe-card__stat">
+                        <span className="recipe-card__stat-label">{t('OG')}</span>
+                        <span className="recipe-card__stat-value">{Number(fork.target_original_gravity || 0).toFixed(3)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="recipe-details__section">
             <h2 className="recipe-details__section-title">{t('Brewing Steps')}</h2>
             <ol className="recipe-details__step-list">
@@ -165,7 +206,15 @@ const RecipeDetails: React.FC = () => {
                       {t(`constants.step_phases.${step.phase?.toLowerCase() || 'preparation'}`, step.phase || 'Preparation') as string}
                     </span>
                   </div>
-                  <p className="recipe-details__step-desc">{step.description}</p>
+                  
+                  {/* ИЗМЕНЕНИЕ ЗДЕСЬ: Добавлено style={{ whiteSpace: 'pre-wrap' }} чтобы включить абзацы */}
+                  <div 
+                    className="recipe-details__step-desc" 
+                    style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', color: 'var(--text-secondary)' }}
+                  >
+                    {step.description}
+                  </div>
+                  
                   <div className="recipe-details__step-meta">
                     <span className="recipe-details__step-duration">
                       {step.durationValue || 0} {t(`constants.units.${step.durationUnit?.toLowerCase() || 'minutes'}`, step.durationUnit) as string}
@@ -228,34 +277,57 @@ const RecipeDetails: React.FC = () => {
             </ul>
           </div>
 
-          {selectedRecipeTosna && (
-            <div className="stat-panel">
-              <h3 className="stat-panel__title">{t('TOSNA 3.0 Schedule')}</h3>
-              <ul className="stat-panel__list stat-panel__list--stacked">
-                <li className="stat-panel__item stat-panel__item--row">
-                  <span className="stat-panel__label">{t('Addition 1')} ({t('24h')})</span>
-                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams || 0}g</span>
-                </li>
-                <li className="stat-panel__item stat-panel__item--row">
-                  <span className="stat-panel__label">{t('Addition 2')} ({t('48h')})</span>
-                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams || 0}g</span>
-                </li>
-                <li className="stat-panel__item stat-panel__item--row">
-                  <span className="stat-panel__label">{t('Addition 3')} ({t('72h')})</span>
-                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams || 0}g</span>
-                </li>
-                <li className="stat-panel__item stat-panel__item--row">
-                  <span className="stat-panel__label">{t('Addition 4')} ({t('1/3 Sugar Break')})</span>
-                  <span className="stat-panel__value">{selectedRecipeTosna.dosePerAdditionGrams || 0}g</span>
-                </li>
-              </ul>
-              <div className="stat-panel__footer">
-                 <span className="stat-panel__subtext">
-                   {t('Target SG for final addition')}: <strong>{calculateOneThirdSugarBreak(currentRecipe.targetOriginalGravity || 1.000, currentRecipe.targetFinalGravity || 1.000).toFixed(3)}</strong>
-                 </span>
+          {selectedRecipeTosna && (() => {
+            const isSession = (currentRecipe.targetOriginalGravity || 1.000) < 1.050;
+            const totalFermaid = selectedRecipeTosna.totalFermaidOGrams || 0;
+            const dose = isSession ? (totalFermaid / 2).toFixed(1) : (totalFermaid / 4).toFixed(1);
+
+            return (
+              <div className="stat-panel">
+                <h3 className="stat-panel__title">{t('TOSNA 3.0 Schedule')}</h3>
+                <ul className="stat-panel__list stat-panel__list--stacked">
+                  {isSession ? (
+                    <>
+                      <li className="stat-panel__item stat-panel__item--row">
+                        <span className="stat-panel__label">{t('Initial Feed', 'Стартовое питание')} ({t('0h')})</span>
+                        <span className="stat-panel__value">{dose}g</span>
+                      </li>
+                      <li className="stat-panel__item stat-panel__item--row">
+                        <span className="stat-panel__label">{t('Final Feed', 'Финальное питание')} ({t('24h')})</span>
+                        <span className="stat-panel__value">{dose}g</span>
+                      </li>
+                    </>
+                  ) : (
+                    <>
+                      <li className="stat-panel__item stat-panel__item--row">
+                        <span className="stat-panel__label">{t('Addition 1')} ({t('24h')})</span>
+                        <span className="stat-panel__value">{dose}g</span>
+                      </li>
+                      <li className="stat-panel__item stat-panel__item--row">
+                        <span className="stat-panel__label">{t('Addition 2')} ({t('48h')})</span>
+                        <span className="stat-panel__value">{dose}g</span>
+                      </li>
+                      <li className="stat-panel__item stat-panel__item--row">
+                        <span className="stat-panel__label">{t('Addition 3')} ({t('72h')})</span>
+                        <span className="stat-panel__value">{dose}g</span>
+                      </li>
+                      <li className="stat-panel__item stat-panel__item--row">
+                        <span className="stat-panel__label">{t('Addition 4')} ({t('1/3 Sugar Break')})</span>
+                        <span className="stat-panel__value">{dose}g</span>
+                      </li>
+                    </>
+                  )}
+                </ul>
+                {!isSession && (
+                  <div className="stat-panel__footer">
+                    <span className="stat-panel__subtext">
+                      {t('Target SG for final addition')}: <strong>{calculateOneThirdSugarBreak(currentRecipe.targetOriginalGravity || 1.000, currentRecipe.targetFinalGravity || 1.000).toFixed(3)}</strong>
+                    </span>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
         </aside>
       </div>
     </div>

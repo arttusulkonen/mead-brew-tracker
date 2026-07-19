@@ -31,11 +31,10 @@
   }
 
   &__header {
-    display: flex;
-    flex-wrap: wrap;
-    gap: $spacing-lg;
-    align-items: flex-start;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    align-items: center;
     padding-bottom: $spacing-lg;
     margin-bottom: $spacing-xl;
     border-bottom: 1px solid var(--border-color);
@@ -63,6 +62,7 @@
     flex-wrap: wrap;
     gap: $spacing-sm;
     align-items: center;
+    justify-self: end;
   }
 
   &__btn-primary {

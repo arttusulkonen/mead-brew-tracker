@@ -20,6 +20,7 @@ export interface RecipeState {
 interface RecipeRow {
   id: string;
   brewery_id: string;
+  parent_recipe_id?: string | null;
   name: string;
   beverage_type: BeverageType;
   target_style: string;
@@ -40,6 +41,7 @@ interface RecipeRow {
 const mapRowToRecipe = (data: RecipeRow): Recipe => ({
   id: data.id,
   breweryId: data.brewery_id,
+  parentRecipeId: data.parent_recipe_id,
   name: data.name,
   beverageType: data.beverage_type,
   targetStyle: data.target_style,
@@ -95,7 +97,7 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       if (error) throw error;
       
       const formattedRecipes = (data || []).map((row: any) => {
-        // Подсчет статистики варок (Golden Batch)
+        // Подсчет статистики варок
         const sessions = row.brew_sessions || [];
         const completedSessions = sessions.filter((s: any) => s.status === 'completed');
         const scores = completedSessions.map((s: any) => s.ai_score).filter((v: any) => typeof v === 'number');
@@ -131,6 +133,7 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
         .from('recipes')
         .insert([{
           brewery_id: recipeData.breweryId,
+          parent_recipe_id: recipeData.parentRecipeId || null,
           name: recipeData.name,
           beverage_type: recipeData.beverageType,
           target_style: recipeData.targetStyle,
@@ -169,6 +172,7 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
         .from('recipes')
         .update({
           brewery_id: recipeData.breweryId,
+          parent_recipe_id: recipeData.parentRecipeId || null,
           name: recipeData.name,
           beverage_type: recipeData.beverageType,
           target_style: recipeData.targetStyle,
@@ -194,6 +198,11 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       await get().fetchRecipes(recipeData.breweryId);
 
       const formatted = mapRowToRecipe(data[0] as RecipeRow);
+      
+      // Сохраняем загруженные ранее форки, чтобы они не исчезли при апдейте стейта
+      const existingForks = get().currentRecipe?.forks || [];
+      formatted.forks = existingForks;
+
       set(state => ({
         currentRecipe: state.currentRecipe?.id === recipeId ? formatted : state.currentRecipe,
       }));
@@ -217,6 +226,7 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id;
 
+      // 1. Загружаем сам рецепт со статистикой
       const { data, error } = await supabase
         .from('recipes')
         .select(`
@@ -236,6 +246,12 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       if (error) throw error;
       
       if (data) {
+        // 2. ЗАГРУЖАЕМ ВАРИАЦИИ (FORKS) ЭТОГО РЕЦЕПТА
+        const { data: forksData } = await supabase
+          .from('recipes')
+          .select('id, name, target_style, target_abv, target_original_gravity')
+          .eq('parent_recipe_id', recipeId);
+
         const row = data as any;
         
         const sessions = row.brew_sessions || [];
@@ -255,6 +271,9 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
         (mapped as any).avgUserRating = avgUserRating;
         (mapped as any).totalUserRatings = totalUserRatings;
         (mapped as any).currentUserRating = currentUserRating;
+        
+        // Прикрепляем найденные форки
+        mapped.forks = forksData || [];
 
         set({ currentRecipe: mapped, isLoading: false });
       }

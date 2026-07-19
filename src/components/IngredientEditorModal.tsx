@@ -65,6 +65,7 @@ interface IngredientEditorModalProps {
   initialAdditiveType?: string;
   onIngredientCreated?: (ingredient: any) => void;
   mode?: 'recipe' | 'inventory';
+  initialData?: Partial<EditedIngredientData>; // ДОБАВЛЕНО: для редактирования существующих ингредиентов
 }
 
 const ALL_CATEGORIES: IngredientCategory[] = [
@@ -82,6 +83,7 @@ const HOPS_FORMS = ['Pellet', 'Whole', 'Extract'];
 const YEAST_FORMS = ['Dry', 'Liquid'];
 const FERMENTABLE_TYPES = ['Grain', 'Extract', 'Sugar', 'Honey', 'Fruit'];
 
+// ИНТЕГРАЦИЯ НОВОГО ТИПА СТАДИИ ПО УМОЛЧАНИЮ
 const SUGGESTED_STAGE_BY_ADDITIVE_TYPE: Partial<Record<AdditiveType, string>> =
   {
     Fruit: 'Secondary',
@@ -89,6 +91,7 @@ const SUGGESTED_STAGE_BY_ADDITIVE_TYPE: Partial<Record<AdditiveType, string>> =
     Acid: 'Bottling',
     Clarifier: 'Aging',
     Stabilizer: 'Bottling',
+    Sweetener: 'Bottling', // <-- Подсластители (Декстроза, Эритрит) обычно вносятся при розливе
   };
 
 const normalizeString = (str: string) =>
@@ -104,6 +107,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
   initialAdditiveType = '',
   onIngredientCreated,
   mode = 'recipe',
+  initialData, // Принимаем данные для редактирования
 }) => {
   const { t } = useTranslation();
   const { activeBrewery } = useBreweryStore();
@@ -208,10 +212,20 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
     }
   }, [isOpen, activeBrewery?.id, fetchGlobalIngredients, fetchInventory]);
 
+  // ОБНОВЛЕНО: Подгружаем initialData, если открыли на редактирование
   useEffect(() => {
     if (isOpen) {
-      setFormData(buildDefaults(category));
-      setShowSuggestions(!!initialQuery);
+      if (initialData) {
+        setFormData({
+          ...buildDefaults(initialData.category || category), // Заполняем дефолтами для подстраховки
+          ...initialData, // Переписываем реальными данными
+          globalIngredientId: initialData.globalIngredientId || null,
+        } as EditedIngredientData);
+        setShowSuggestions(false); // Не показываем автокомплит при редактировании
+      } else {
+        setFormData(buildDefaults(category));
+        setShowSuggestions(!!initialQuery);
+      }
       setSaveToStock(mode === 'inventory');
       setStockQuantity('');
       setStockUnit('kg');
@@ -219,7 +233,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
       setCostPerBaseUnit(0);
       setCurrency('€');
     }
-  }, [isOpen, category, initialQuery, initialAdditiveType, mode]);
+  }, [isOpen, category, initialQuery, initialAdditiveType, mode, initialData]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -428,8 +442,8 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
       ingredientId,
       quantityOnHand: Number(stockQuantity),
       unit: stockUnit,
-      costPerBaseUnit, // СОХРАНЯЕМ В БД
-      currency, // СОХРАНЯЕМ В БД
+      costPerBaseUnit,
+      currency, 
     });
   };
 
@@ -463,13 +477,18 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Динамический заголовок в зависимости от того, редактируем мы или добавляем
+  const modalTitle = initialData 
+    ? t('Edit Ingredient', 'Редактировать ингредиент')
+    : mode === 'inventory' 
+      ? t('Add to Inventory') 
+      : t('Add Ingredient');
+
   return (
     <div className='editor-modal-overlay' onMouseDown={onClose}>
       <div className='editor-modal' onMouseDown={(e) => e.stopPropagation()}>
         <div className='editor-modal__header'>
-          <h2>
-            {mode === 'inventory' ? t('Add to Inventory') : t('Add Ingredient')}
-          </h2>
+          <h2>{modalTitle}</h2>
           <button
             type='button'
             className='btn-secondary'
@@ -489,6 +508,8 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
               onChange={(e) =>
                 handleCategoryChange(e.target.value as IngredientCategory)
               }
+              // Если редактируем, лучше не давать менять категорию, чтобы не сломать тип
+              disabled={!!initialData}
             >
               {ALL_CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
@@ -600,7 +621,6 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
               </div>
             </div>
 
-            {/* ХМЕЛЬ (ОБНОВЛЕННЫЙ БЛОК) */}
             {formData.category === 'Hops' && (
               <>
                 <div className='form-field'>
@@ -675,7 +695,6 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                         onChange={(e) => {
                           const selectedStage = e.target.value;
                           handleChange('additionStage', selectedStage);
-                          // Если выбрали сухое охмеление, время кипячения нам точно не нужно
                           if (selectedStage === 'Dry Hop') {
                             handleChange('boilTimeMinutes', 0);
                           }
@@ -1425,9 +1444,11 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                 ? t('Saving...')
                 : mode === 'inventory'
                   ? t('Add to Inventory')
-                  : saveToStock
-                    ? t('Save to Recipe & Stock')
-                    : t('Save to Recipe')}
+                  : initialData
+                    ? t('Save Changes')
+                    : saveToStock
+                      ? t('Save to Recipe & Stock')
+                      : t('Save to Recipe')}
             </button>
           </div>
         </form>

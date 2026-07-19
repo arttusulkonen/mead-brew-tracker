@@ -7,7 +7,7 @@ export type IngredientCategory = typeof INGREDIENT_CATEGORIES[number];
 export const UNIT_TYPES = ['g', 'kg', 'L', 'ml', 'oz', 'lb', 'gal', 'ppm', 'unit'] as const;
 export type UnitType = typeof UNIT_TYPES[number];
 
-export const ADDITIVE_TYPES = ['Nutrient', 'Spice', 'Fruit', 'Clarifier', 'Stabilizer', 'Acid'] as const;
+export const ADDITIVE_TYPES = ['Nutrient', 'Spice', 'Fruit', 'Clarifier', 'Stabilizer', 'Acid', 'Sweetener'] as const;
 export type AdditiveType = typeof ADDITIVE_TYPES[number];
 
 export interface BaseIngredient {

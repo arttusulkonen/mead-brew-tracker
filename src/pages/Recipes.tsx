@@ -47,7 +47,7 @@ const Recipes: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { activeBrewery } = useBreweryStore();
   const navigate = useNavigate();
-  // ИСПРАВЛЕНИЕ: Достаем fetchRecipes из стора
+  
   const { recipes, saveRecipe, updateRecipe, fetchRecipes, isLoading: isRecipesLoading } = useRecipeStore();
 
   const state = useRecipeBuilderState();
@@ -55,7 +55,9 @@ const Recipes: React.FC = () => {
   const [aiProposedSteps, setAiProposedSteps] = useState<RecipeStepEntry[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // ИСПРАВЛЕНИЕ: Автоматически подтягиваем рецепты, если зашли напрямую на страницу
+  // Состояние для редактирования (линковки) ингредиента
+  const [editingIngredientId, setEditingIngredientId] = useState<string | null>(null);
+
   useEffect(() => {
     if (activeBrewery?.id) {
       fetchRecipes(activeBrewery.id);
@@ -197,6 +199,11 @@ const Recipes: React.FC = () => {
       default: return null;
     }
   }, [state.beverageType, state.wizardStyle, t]);
+
+  // ИСПРАВЛЕНИЕ: Вычисляем editingIngredientData ДО условий выхода
+  const editingIngredientData = useMemo(() => {
+    return editingIngredientId ? state.recipeIngredients?.find(i => i.id === editingIngredientId) : undefined;
+  }, [editingIngredientId, state.recipeIngredients]);
 
   const handleAutoCalculateHoney = () => {
     const targetEntry = (state.recipeIngredients || []).find(i => i?.category === 'Fermentable' || i?.category === 'Honey');
@@ -359,6 +366,7 @@ const Recipes: React.FC = () => {
     }
   };
 
+  // УСЛОВИЯ РАННЕГО ВЫХОДА (ТЕПЕРЬ ПОСЛЕ ВСЕХ ХУКОВ)
   if (!activeBrewery) {
     return (
       <div className="recipe-lab">
@@ -378,10 +386,19 @@ const Recipes: React.FC = () => {
       {state.activeIngredientCategory && (
         <IngredientEditorModal
           isOpen={true}
-          onClose={() => state.setActiveIngredientCategory(null)}
-          onSave={(data: EditedIngredientData) => {
-            state.setRecipeIngredients(prev => [...(prev || []), { id: crypto.randomUUID(), ...data, showNote: !!data.note } as unknown as RecipeIngredientEntry]);
+          initialData={editingIngredientData}
+          onClose={() => {
             state.setActiveIngredientCategory(null);
+            setEditingIngredientId(null);
+          }}
+          onSave={(data: EditedIngredientData) => {
+            if (editingIngredientId) {
+              state.updateIngredient(editingIngredientId, { ...data, showNote: !!data.note });
+            } else {
+              state.setRecipeIngredients(prev => [...(prev || []), { id: crypto.randomUUID(), ...data, showNote: !!data.note } as unknown as RecipeIngredientEntry]);
+            }
+            state.setActiveIngredientCategory(null);
+            setEditingIngredientId(null);
           }}
           catalog={state.globalCatalog || []}
           category={state.activeIngredientCategory}
@@ -441,7 +458,16 @@ const Recipes: React.FC = () => {
                 <IngredientGroup
                   key={cat} category={cat} title={titleMap[cat]} beverageType={state.beverageType}
                   recipeIngredients={state.recipeIngredients || []} aiProposedIngredients={aiProposedIngredients || []}
-                  isSaving={state.isSaving} onOpenModal={state.openIngredientModal} onUpdateIngredient={state.updateIngredient}
+                  isSaving={state.isSaving} 
+                  onOpenModal={state.openIngredientModal} 
+                  onUpdateIngredient={state.updateIngredient}
+                  onEditIngredient={(id) => {
+                    const ing = state.recipeIngredients?.find(i => i.id === id);
+                    if (ing) {
+                      setEditingIngredientId(id);
+                      state.setActiveIngredientCategory(ing.category);
+                    }
+                  }}
                   onRemoveIngredient={(id) => state.handleRemoveIngredient(id, (id) => setAiProposedIngredients(prev => (prev || []).filter(p => p.ingredientId !== id)))}
                   onAcceptProposal={(proposal) => {
                     state.updateIngredient(proposal.ingredientId, { quantity: proposal.suggestedQuantityGrams, note: proposal.aiNote, showNote: !!proposal.aiNote });
