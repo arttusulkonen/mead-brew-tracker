@@ -122,7 +122,7 @@ export const calculateRecipeStats = ({
 
     if (item.additiveType === 'Nutrient' && tosnaData) {
       if (item.nutrientRole === 'Rehydration' || (!item.nutrientRole && item.name?.toLowerCase().includes('go-ferm'))) {
-        calculatedGrams = targetYeastGrams * 1.25; 
+        calculatedGrams = tosnaData.goFermGrams || (targetYeastGrams * 1.25); 
         ruleApplied = 'TOSNA 3.0: Rehydration';
       } else if (item.nutrientRole === 'Fermentation' || !item.nutrientRole) {
         calculatedGrams = tosnaData.totalFermaidOGrams;

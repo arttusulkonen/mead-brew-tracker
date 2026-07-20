@@ -86,14 +86,14 @@ const YEAST_FORMS = ['Dry', 'Liquid'];
 const FERMENTABLE_TYPES = ['Grain', 'Extract', 'Sugar', 'Honey', 'Fruit'];
 const SWEETENER_TYPES = ['Erythritol', 'Dextrose', 'Lactose', 'Sucralose', 'Stevia', 'Other'];
 
-const SUGGESTED_STAGE_BY_ADDITIVE_TYPE: Partial<Record<AdditiveType, string>> = {
-  Fruit: 'Secondary',
-  Spice: 'Aging',
-  Acid: 'Bottling',
-  Clarifier: 'Aging',
-  Stabilizer: 'Bottling',
-  Sweetener: 'Bottling',
-};
+const STAGE_OPTIONS = [
+  { value: 'Preparation', labelKey: 'constants.step_phases.preparation' },
+  { value: 'Mashing', labelKey: 'constants.step_phases.mashing' },
+  { value: 'Boil', labelKey: 'constants.step_phases.boiling' },
+  { value: 'Primary', labelKey: 'constants.step_phases.fermentation' },
+  { value: 'Secondary', labelKey: 'constants.step_phases.aging' },
+  { value: 'Bottling', labelKey: 'constants.actions.bottling' }
+];
 
 const normalizeString = (str: string) => (str || '').toLowerCase().replace(/ё/g, 'е');
 
@@ -140,7 +140,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
           alphaAcidPct: 5,
           alphaAcidPctMin: 5,
           boilTimeMinutes: 60,
-          additionStage: '',
+          additionStage: 'Boil',
         }
       : {}),
     ...(targetCategory === 'Fermentable'
@@ -165,9 +165,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
       ? {
           additiveType: validInitialAdditiveType || 'Nutrient',
           nutrientRole: 'Fermentation',
-          additionStage: validInitialAdditiveType
-            ? SUGGESTED_STAGE_BY_ADDITIVE_TYPE[validInitialAdditiveType] || ''
-            : '',
+          additionStage: '',
           form: validInitialAdditiveType === 'Sweetener' ? 'Erythritol' : undefined,
         }
       : {}),
@@ -394,7 +392,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
         if (formData.additionStage) baseData.additionStage = formData.additionStage;
       } else if (formData.category === 'Additive') {
         baseData.additiveType = formData.additiveType ?? 'Nutrient';
-        if (formData.form) baseData.form = formData.form; 
+        if (formData.form) baseData.form = formData.form;
         
         if (formData.additiveType === 'Nutrient' && formData.nutrientRole) {
           baseData.nutrientRole = formData.nutrientRole;
@@ -459,7 +457,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
   if (!isOpen) return null;
 
   const modalTitle = initialData 
-    ? t('Edit Ingredient', 'Edit Ingredient')
+    ? t('Edit Ingredient')
     : mode === 'inventory' 
       ? t('Add to Inventory') 
       : t('Add Ingredient');
@@ -485,7 +483,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
             >
               {ALL_CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
-                  {t(`constants.categories.${cat.toLowerCase().replace(' ', '_')}`, cat)}
+                  {t(`constants.categories.${cat.toLowerCase().replace(' ', '_')}`)}
                 </option>
               ))}
             </select>
@@ -514,7 +512,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                     <li key={ing.id} className='autocomplete__item' onClick={() => handleSelectSuggestion(ing)}>
                       <span className='autocomplete__item-title'>
                         {ing.name}
-                        {ing.inStockQty > 0 && ` (${ing.inStockQty} ${t(`constants.units.${ing.inStockUnit.toLowerCase()}`, ing.inStockUnit)})`}
+                        {ing.inStockQty > 0 && ` (${ing.inStockQty} ${t(`constants.units.${ing.inStockUnit.toLowerCase()}`)})`}
                       </span>
                       <span className='autocomplete__item-meta'>
                         {formData.category === 'Hops' && `${t('Alpha')}: ${(ing as any).alphaAcidPct ?? 0}% | ${(ing as any).form || ''}`}
@@ -559,12 +557,12 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                     onChange={(e) => setStockUnit(e.target.value as UnitType)}
                   >
                     {UNIT_TYPES.map((u) => (
-                      <option key={u} value={u}>{t(`constants.units.${u.toLowerCase()}`, u)}</option>
+                      <option key={u} value={u}>{t(`constants.units.${u.toLowerCase()}`)}</option>
                     ))}
                   </select>
                 )}
                 {mode === 'recipe' && (
-                  <span className='form-field__unit-label'>{t('constants.units.g', 'g')}</span>
+                  <span className='form-field__unit-label'>{t('constants.units.g')}</span>
                 )}
               </div>
             </div>
@@ -575,7 +573,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                   <label className='form-field__label'>{t('Form')}</label>
                   <select className='form-field__select' value={formData.form ?? 'Pellet'} onChange={(e) => handleChange('form', e.target.value)}>
                     {HOPS_FORMS.map((form) => (
-                      <option key={form} value={form}>{t(`constants.hops_forms.${form.toLowerCase().replace(' ', '_')}`, form)}</option>
+                      <option key={form} value={form}>{t(`constants.hops_forms.${form.toLowerCase().replace(' ', '_')}`)}</option>
                     ))}
                   </select>
                 </div>
@@ -606,9 +604,9 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                           if (selectedStage === 'Dry Hop') handleChange('boilTimeMinutes', 0);
                         }}
                       >
-                        <option value='Boil'>{t('Boil')}</option>
-                        <option value='Whirlpool'>{t('Whirlpool / Flameout')}</option>
-                        <option value='Dry Hop'>{t('Dry Hop')}</option>
+                        <option value='Boil'>{t('constants.step_phases.boiling')}</option>
+                        <option value='Whirlpool'>{t('constants.actions.whirlpool')}</option>
+                        <option value='Dry Hop'>{t('constants.actions.dry_hop')}</option>
                       </select>
                     </div>
                     <div className='form-field'>
@@ -634,7 +632,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                   <label className='form-field__label'>{t('Type')}</label>
                   <select className='form-field__select' value={formData.form ?? 'Grain'} onChange={(e) => handleChange('form', e.target.value)}>
                     {FERMENTABLE_TYPES.map((type) => (
-                      <option key={type} value={type}>{t(`constants.fermentable_types.${type.toLowerCase()}`, type)}</option>
+                      <option key={type} value={type}>{t(`constants.fermentable_types.${type.toLowerCase()}`)}</option>
                     ))}
                   </select>
                 </div>
@@ -683,7 +681,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                   <label className='form-field__label'>{t('Form')}</label>
                   <select className='form-field__select' value={formData.form ?? 'Dry'} onChange={(e) => handleChange('form', e.target.value)}>
                     {YEAST_FORMS.map((form) => (
-                      <option key={form} value={form}>{t(`constants.yeast_forms.${form.toLowerCase()}`, form)}</option>
+                      <option key={form} value={form}>{t(`constants.yeast_forms.${form.toLowerCase()}`)}</option>
                     ))}
                   </select>
                 </div>
@@ -719,7 +717,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                   <label className='form-field__label'>{t('Nitrogen Demand')}</label>
                   <select className='form-field__select' value={formData.nitrogenDemand ?? 'Medium'} onChange={(e) => handleChange('nitrogenDemand', e.target.value)}>
                     {NITROGEN_LEVELS.map((level) => (
-                      <option key={level} value={level}>{t(`constants.nitrogen_demand.${level.toLowerCase().replace(' ', '_')}`, level)}</option>
+                      <option key={level} value={level}>{t(`constants.nitrogen_demand.${level.toLowerCase().replace(' ', '_')}`)}</option>
                     ))}
                   </select>
                 </div>
@@ -755,21 +753,21 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                     }}
                   >
                     {ADDITIVE_TYPES.map((type) => (
-                      <option key={type} value={type}>{t(`constants.additive_types.${type.toLowerCase()}`, type)}</option>
+                      <option key={type} value={type}>{t(`constants.additive_types.${type.toLowerCase()}`)}</option>
                     ))}
                   </select>
                 </div>
 
                 {formData.additiveType === 'Sweetener' && (
                   <div className='form-field'>
-                    <label className='form-field__label'>{t('Sweetener Type', 'Тип подсластителя')}</label>
+                    <label className='form-field__label'>{t('Sweetener Type')}</label>
                     <select
                       className='form-field__select'
                       value={formData.form ?? 'Other'}
                       onChange={(e) => handleChange('form', e.target.value)}
                     >
                       {SWEETENER_TYPES.map((type) => (
-                        <option key={type} value={type}>{t(`constants.sweetener_types.${type.toLowerCase()}`, type)}</option>
+                        <option key={type} value={type}>{t(`constants.sweetener_types.${type.toLowerCase()}`)}</option>
                       ))}
                     </select>
                   </div>
@@ -799,13 +797,16 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                       {t('Addition Stage')}
                       <FaInfoCircle className='icon-info' title={t('When to add: Primary, Secondary, Bottling, Rehydration...')} />
                     </label>
-                    <input
-                      type='text'
-                      className='form-field__input'
-                      value={formData.additionStage ?? ''}
+                    <select
+                      className='form-field__select'
+                      value={formData.additionStage || ''}
                       onChange={(e) => handleChange('additionStage', e.target.value)}
-                      placeholder={t('e.g. Boil, Secondary, Aging, Bottling')}
-                    />
+                    >
+                      <option value=''>{t('Select Stage...')}</option>
+                      {STAGE_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
+                      ))}
+                    </select>
                   </div>
                 )}
 
@@ -945,7 +946,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                         <label className='form-field__label'>{t('Unit')}</label>
                         <select className='form-field__select' value={stockUnit || 'kg'} onChange={(e) => setStockUnit(e.target.value as UnitType)}>
                           {UNIT_TYPES.map((u) => (
-                            <option key={u} value={u}>{t(`constants.units.${u.toLowerCase()}`, u)}</option>
+                            <option key={u} value={u}>{t(`constants.units.${u.toLowerCase()}`)}</option>
                           ))}
                         </select>
                       </div>

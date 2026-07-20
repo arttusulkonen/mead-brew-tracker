@@ -1,3 +1,4 @@
+// src/components/TosnaTracker.tsx
 import { calculateOneThirdSugarBreak } from '@mead-tracker/math';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -142,18 +143,19 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
               const remaining = targetSeconds - elapsedSeconds;
               const rh = Math.floor(remaining / 3600);
               const rm = Math.floor((remaining % 3600) / 60);
-              timeStatus = t('Opens in {{h}}h {{m}}m', { h: rh, m: rm, defaultValue: `Opens in ${rh}h ${rm}m` });
+              timeStatus = t('Opens in {{h}}h {{m}}m', { h: rh, m: rm });
             }
           }
 
-          let stepTitle = addition.isOneThirdBreak 
-            ? t('1/3 Sugar Break') 
-            : t('Addition {{num}} ({{hours}}h)', { num: index + 1, hours: addition.targetHours || 0 });
-          
-          if (addition.targetHours === 0) {
-            stepTitle = t('Initial Feed (0h / Pitch)', 'Initial Feed (Pitch)');
-          } else if (addition.targetHours === 24 && (tosna.additions || []).length === 2) {
-            stepTitle = t('Final Feed (24h)', 'Final Feed (24h)');
+          let stepTitle: string | undefined;
+          if (addition.isOneThirdBreak) {
+            stepTitle = t('1/3 Sugar Break');
+          } else if (addition.targetHours === 0) {
+            stepTitle = t('Initial Feed (0h / Pitch)');
+          } else if (addition.targetHours === 24 && (tosna.additions || []).length === 2 && !addition.isOneThirdBreak) {
+            stepTitle = t('Final Feed (24h)');
+          } else {
+            stepTitle = t('Addition {{num}} ({{hours}}h)', { num: index + 1, hours: addition.targetHours || 0 });
           }
           
           return (

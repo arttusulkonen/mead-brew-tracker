@@ -16,7 +16,7 @@ interface RecipeStatsSidebarProps {
   isAbvMismatch: boolean;
   targetStyle: string;
   updateIngredient: (id: string, updates: Partial<RecipeIngredientEntry>) => void;
-  onAddVirtualIngredient: (id: string, name: string, quantity: number, type: string, formKey?: string) => void; 
+  onAddVirtualIngredient: (id: string, name: string, quantity: number, type: string, formKey?: string) => void;
   handleSaveRecipe: () => void;
   isSaving: boolean;
   recipeName: string;
@@ -108,15 +108,15 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
               let isHintSuccess = false;
 
               if (add.id === 'virtual-erythritol' || add.name.toLowerCase().includes('эритрит')) {
-                hintText = t('Adds body and safe sweetness without restarting fermentation.');
+                hintText = t('constants.additive_hints.erythritol');
                 isHintSuccess = true;
               } else if (add.id === 'virtual-dextrose' || add.name.toLowerCase().includes('декстроза')) {
-                hintText = t('Boil into a syrup, cool down, and add before bottling.');
+                hintText = t('constants.additive_hints.dextrose');
                 isHintSuccess = true;
               } else if (add.type === 'Yeast') {
                 hintText = `${t('Pitch Rate')}: ${add.rule}`;
               } else if (isRehydration) {
-                hintText = t('constants.nutrient_roles.rehydration_hint', 'At 35-40°C. Acclimatize to <10°C delta before pitch.');
+                hintText = t('constants.nutrient_roles.rehydration_hint');
                 isHintSuccess = true;
               } else {
                 hintText = isSession
@@ -143,8 +143,8 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
                           updateIngredient(add.id, { quantity: targetGrams });
                         } else {
                           let formKey: string | undefined;
-                          if (add.id === 'virtual-erythritol') formKey = 'Erythritol';
-                          if (add.id === 'virtual-dextrose') formKey = 'Dextrose';
+                          if (add.id === 'virtual-erythritol' || add.name.toLowerCase().includes('эритрит')) formKey = 'Erythritol';
+                          if (add.id === 'virtual-dextrose' || add.name.toLowerCase().includes('декстроза')) formKey = 'Dextrose';
                           onAddVirtualIngredient(add.id, add.name, targetGrams, add.type, formKey);
                         }
                       }}

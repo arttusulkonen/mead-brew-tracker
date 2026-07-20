@@ -19,6 +19,7 @@ import { CoreParametersSection } from '../components/recipe-components/CoreParam
 import { IngredientFormulationSection } from '../components/recipe-components/IngredientFormulationSection';
 import { IngredientGroup } from '../components/recipe-components/IngredientGroup';
 import { MeadWizardSection } from '../components/recipe-components/MeadWizardSection';
+import { RecipeFaqWidget } from '../components/recipe-components/RecipeFaqWidget';
 import { RecipeListView } from '../components/recipe-components/RecipeListView';
 import { RecipeStatsSidebar } from '../components/recipe-components/RecipeStatsSidebar';
 import type { AiIngredientProposal, RecipeIngredientEntry, RecipeStepEntry } from '../components/recipe-components/types';
@@ -112,10 +113,10 @@ const Recipes: React.FC = () => {
   const meadIngredientHint = useMemo(() => {
     if (state.beverageType !== 'Mead') return null;
     switch (state.wizardStyle) {
-      case 'traditional': return { category: 'Honey' as IngredientCategory, label: t('Honey') };
+      case 'traditional': return { category: 'Honey' as IngredientCategory, label: t('constants.categories.honey') };
       case 'melomel': return { category: 'Additive' as IngredientCategory, additiveType: 'Fruit' as AdditiveType, label: t('constants.additive_types.fruit') };
       case 'metheglin': return { category: 'Additive' as IngredientCategory, additiveType: 'Spice' as AdditiveType, label: t('constants.additive_types.spice') };
-      case 'session_hopped': case 'braggot': return { category: 'Hops' as IngredientCategory, label: t('Hops') };
+      case 'session_hopped': case 'braggot': return { category: 'Hops' as IngredientCategory, label: t('constants.categories.hops') };
       default: return null;
     }
   }, [state.beverageType, state.wizardStyle, t]);
@@ -164,15 +165,15 @@ const Recipes: React.FC = () => {
 
   const handleAddVirtualIngredient = (id: string, name: string, quantity: number, type: string, formKey?: string) => {
     const newIng = {
-      id: crypto.randomUUID(),
+      id: id,
       globalIngredientId: null,
       name,
       category: type === 'Yeast' ? 'Yeast' : 'Additive',
       quantity,
-      additiveType: name.includes('Erythritol') || name.includes('Эритрит') ? 'Sweetener' : 'Other',
-      form: formKey, // СОХРАНЯЕМ КЛЮЧ!
-      additionStage: t('Bottling', 'Bottling'), // ИСПОЛЬЗУЕМ ПЕРЕВОД
-      note: t('Added by Smart Calculator'),
+      additiveType: formKey ? 'Sweetener' : 'Other',
+      form: formKey,
+      additionStage: t('constants.actions.bottling'),
+      note: t('constants.notes.added_by_calculator'),
       showNote: false
     } as unknown as RecipeIngredientEntry;
     
@@ -392,7 +393,7 @@ const Recipes: React.FC = () => {
           <IngredientFormulationSection targetAutoAbv={state.targetAutoAbv} setTargetAutoAbv={state.setTargetAutoAbv} handleAutoCalculateHoney={handleAutoCalculateHoney}>
             {(['Fermentable', 'Honey', 'Hops', 'Yeast', 'Additive'] as IngredientCategory[]).map(cat => {
               const titleMap: Record<string, string> = {
-                'Fermentable': t('Fermentables (Malts, Extracts, Sugars)'), 'Honey': t('Honey'), 'Hops': t('Hops'), 'Yeast': t('Yeasts'), 'Additive': t('Additives & Water Chemistry')
+                'Fermentable': t('constants.categories.fermentable'), 'Honey': t('constants.categories.honey'), 'Hops': t('constants.categories.hops'), 'Yeast': t('constants.categories.yeast'), 'Additive': t('constants.categories.additive')
               };
               return (
                 <IngredientGroup
@@ -425,6 +426,15 @@ const Recipes: React.FC = () => {
             onAcceptAllAiSteps={() => { state.setRecipeSteps((aiProposedSteps || []).map(s => ({ ...s, isExpanded: false }))); setAiProposedSteps([]); }}
             onRejectAllAiSteps={() => setAiProposedSteps([])} setAiProposedSteps={setAiProposedSteps}
           />
+
+          <RecipeFaqWidget 
+            beverageType={state.beverageType}
+            isSafeBacksweetening={state.isSafeBacksweetening}
+            isColdCrashEnabled={state.isColdCrashEnabled}
+            batchSizeLiters={state.batchSizeLiters}
+            wizardSweetness={state.wizardSweetness}
+          />
+
         </main>
 
         <RecipeStatsSidebar
