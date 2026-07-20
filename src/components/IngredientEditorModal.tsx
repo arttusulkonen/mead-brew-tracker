@@ -65,7 +65,7 @@ interface IngredientEditorModalProps {
   initialAdditiveType?: string;
   onIngredientCreated?: (ingredient: any) => void;
   mode?: 'recipe' | 'inventory';
-  initialData?: Partial<EditedIngredientData>; // ДОБАВЛЕНО: для редактирования существующих ингредиентов
+  initialData?: Partial<EditedIngredientData>;
 }
 
 const ALL_CATEGORIES: IngredientCategory[] = [
@@ -76,26 +76,25 @@ const ALL_CATEGORIES: IngredientCategory[] = [
   'Additive',
   'Water Profile',
 ];
-const NITROGEN_LEVELS: Array<
-  NonNullable<EditedIngredientData['nitrogenDemand']>
-> = ['Low', 'Medium', 'High', 'Very High'];
+
+const NITROGEN_LEVELS: Array<NonNullable<EditedIngredientData['nitrogenDemand']>> = [
+  'Low', 'Medium', 'High', 'Very High'
+];
+
 const HOPS_FORMS = ['Pellet', 'Whole', 'Extract'];
 const YEAST_FORMS = ['Dry', 'Liquid'];
 const FERMENTABLE_TYPES = ['Grain', 'Extract', 'Sugar', 'Honey', 'Fruit'];
 
-// ИНТЕГРАЦИЯ НОВОГО ТИПА СТАДИИ ПО УМОЛЧАНИЮ
-const SUGGESTED_STAGE_BY_ADDITIVE_TYPE: Partial<Record<AdditiveType, string>> =
-  {
-    Fruit: 'Secondary',
-    Spice: 'Aging',
-    Acid: 'Bottling',
-    Clarifier: 'Aging',
-    Stabilizer: 'Bottling',
-    Sweetener: 'Bottling', // <-- Подсластители (Декстроза, Эритрит) обычно вносятся при розливе
-  };
+const SUGGESTED_STAGE_BY_ADDITIVE_TYPE: Partial<Record<AdditiveType, string>> = {
+  Fruit: 'Secondary',
+  Spice: 'Aging',
+  Acid: 'Bottling',
+  Clarifier: 'Aging',
+  Stabilizer: 'Bottling',
+  Sweetener: 'Bottling',
+};
 
-const normalizeString = (str: string) =>
-  (str || '').toLowerCase().replace(/ё/g, 'е');
+const normalizeString = (str: string) => (str || '').toLowerCase().replace(/ё/g, 'е');
 
 export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
   isOpen,
@@ -107,7 +106,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
   initialAdditiveType = '',
   onIngredientCreated,
   mode = 'recipe',
-  initialData, // Принимаем данные для редактирования
+  initialData,
 }) => {
   const { t } = useTranslation();
   const { activeBrewery } = useBreweryStore();
@@ -120,15 +119,11 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
     fetchInventory,
   } = useInventoryStore();
 
-  const validInitialAdditiveType = (
-    ADDITIVE_TYPES as readonly string[]
-  ).includes(initialAdditiveType)
+  const validInitialAdditiveType = (ADDITIVE_TYPES as readonly string[]).includes(initialAdditiveType)
     ? (initialAdditiveType as AdditiveType)
     : undefined;
 
-  const buildDefaults = (
-    targetCategory: IngredientCategory,
-  ): EditedIngredientData => ({
+  const buildDefaults = (targetCategory: IngredientCategory): EditedIngredientData => ({
     globalIngredientId: null,
     name: initialQuery,
     category: targetCategory,
@@ -186,20 +181,16 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
       : {}),
   });
 
-  const [formData, setFormData] = useState<EditedIngredientData>(
-    buildDefaults(category),
-  );
+  const [formData, setFormData] = useState<EditedIngredientData>(buildDefaults(category));
   const [showSuggestions, setShowSuggestions] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Стейт инвентаря
   const [saveToStock, setSaveToStock] = useState(mode === 'inventory');
   const [stockQuantity, setStockQuantity] = useState<number | ''>('');
   const [stockUnit, setStockUnit] = useState<UnitType>('kg');
   const [isPersistingToStock, setIsPersistingToStock] = useState(false);
   const [stockError, setStockError] = useState<string>('');
 
-  // Стейт стоимости
   const [costPerBaseUnit, setCostPerBaseUnit] = useState<number>(0);
   const [currency, setCurrency] = useState<string>('€');
 
@@ -212,16 +203,15 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
     }
   }, [isOpen, activeBrewery?.id, fetchGlobalIngredients, fetchInventory]);
 
-  // ОБНОВЛЕНО: Подгружаем initialData, если открыли на редактирование
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
         setFormData({
-          ...buildDefaults(initialData.category || category), // Заполняем дефолтами для подстраховки
-          ...initialData, // Переписываем реальными данными
+          ...buildDefaults(initialData.category || category),
+          ...initialData,
           globalIngredientId: initialData.globalIngredientId || null,
         } as EditedIngredientData);
-        setShowSuggestions(false); // Не показываем автокомплит при редактировании
+        setShowSuggestions(false);
       } else {
         setFormData(buildDefaults(category));
         setShowSuggestions(!!initialQuery);
@@ -237,10 +227,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(event.target as Node)
-      ) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
       }
     }
@@ -277,9 +264,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
     }
 
     const enhanced = filtered.map((ing) => {
-      const stockItem = (inventory || []).find(
-        (inv) => inv.ingredientId === ing.id,
-      );
+      const stockItem = (inventory || []).find((inv) => inv.ingredientId === ing.id);
       return {
         ...ing,
         inStockQty: stockItem?.quantityOnHand || 0,
@@ -312,8 +297,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
       alphaAcidPct: ing.alphaAcidPct ?? prev.alphaAcidPct,
       alphaAcidPctMin: ing.alphaAcidPctMin ?? prev.alphaAcidPctMin,
       alcoholTolerancePct: ing.alcoholTolerancePct ?? prev.alcoholTolerancePct,
-      alcoholTolerancePctMin:
-        ing.alcoholTolerancePctMin ?? prev.alcoholTolerancePctMin,
+      alcoholTolerancePctMin: ing.alcoholTolerancePctMin ?? prev.alcoholTolerancePctMin,
       attenuationPct: ing.attenuationPct ?? prev.attenuationPct,
       attenuationPctMin: ing.attenuationPctMin ?? prev.attenuationPctMin,
       tempMinC: ing.tempMinC ?? prev.tempMinC,
@@ -322,13 +306,11 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
       additiveType: ing.additiveType ?? prev.additiveType,
       nutrientRole: ing.nutrientRole ?? prev.nutrientRole,
       additionStage: ing.additionStage ?? prev.additionStage,
-      yanValuePerGramPerLiter:
-        ing.yanValuePerGramPerLiter ?? prev.yanValuePerGramPerLiter,
+      yanValuePerGramPerLiter: ing.yanValuePerGramPerLiter ?? prev.yanValuePerGramPerLiter,
       dosagePerGramYeast: ing.dosagePerGramYeast ?? prev.dosagePerGramYeast,
       dosagePer10Liters: ing.dosagePer10Liters ?? prev.dosagePer10Liters,
       moistureContentPct: ing.moistureContentPct ?? prev.moistureContentPct,
-      diastaticPowerLintner:
-        ing.diastaticPowerLintner ?? prev.diastaticPowerLintner,
+      diastaticPowerLintner: ing.diastaticPowerLintner ?? prev.diastaticPowerLintner,
       sugarContentBrix: ing.sugarContentBrix ?? prev.sugarContentBrix,
       calciumPpm: ing.calciumPpm ?? prev.calciumPpm,
       magnesiumPpm: ing.magnesiumPpm ?? prev.magnesiumPpm,
@@ -341,7 +323,14 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
   };
 
   const handleChange = (field: keyof EditedIngredientData, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [field]: value };
+      const safeFields = ['quantity', 'note', 'additionStage', 'unit', 'dosagePer10Liters'];
+      if (prev.globalIngredientId && !safeFields.includes(field)) {
+        next.globalIngredientId = null;
+      }
+      return next;
+    });
   };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -381,10 +370,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
         baseData.yieldPpg = formData.yieldPpg || 0;
         baseData.colorEbc = formData.colorEbc || 0;
         baseData.isMashed = formData.form === 'Grain';
-        if (
-          (formData.form === 'Honey' || formData.form === 'Fruit') &&
-          formData.moistureContentPct
-        ) {
+        if ((formData.form === 'Honey' || formData.form === 'Fruit') && formData.moistureContentPct) {
           baseData.moistureContentPct = formData.moistureContentPct;
         }
       } else if (formData.category === 'Honey') {
@@ -403,21 +389,16 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
         baseData.form = formData.form || 'Pellet';
         baseData.alphaAcidPct = formData.alphaAcidPct ?? 5;
         baseData.alphaAcidPctMin = formData.alphaAcidPctMin ?? 5;
-        if (formData.additionStage)
-          baseData.additionStage = formData.additionStage;
+        if (formData.additionStage) baseData.additionStage = formData.additionStage;
       } else if (formData.category === 'Additive') {
         baseData.additiveType = formData.additiveType ?? 'Nutrient';
         if (formData.additiveType === 'Nutrient' && formData.nutrientRole) {
           baseData.nutrientRole = formData.nutrientRole;
         }
-        if (formData.additionStage)
-          baseData.additionStage = formData.additionStage;
-        if (formData.yanValuePerGramPerLiter != null)
-          baseData.yanValuePerGramPerLiter = formData.yanValuePerGramPerLiter;
-        if (formData.dosagePerGramYeast != null)
-          baseData.dosagePerGramYeast = formData.dosagePerGramYeast;
-        if (formData.dosagePer10Liters != null)
-          baseData.dosagePer10Liters = formData.dosagePer10Liters;
+        if (formData.additionStage) baseData.additionStage = formData.additionStage;
+        if (formData.yanValuePerGramPerLiter != null) baseData.yanValuePerGramPerLiter = formData.yanValuePerGramPerLiter;
+        if (formData.dosagePerGramYeast != null) baseData.dosagePerGramYeast = formData.dosagePerGramYeast;
+        if (formData.dosagePer10Liters != null) baseData.dosagePer10Liters = formData.dosagePer10Liters;
       } else if (formData.category === 'Water Profile') {
         baseData.calciumPpm = formData.calciumPpm || 0;
         baseData.magnesiumPpm = formData.magnesiumPpm || 0;
@@ -428,23 +409,24 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
       }
 
       const newIng = await addCustomIngredient(baseData);
-      if (!newIng?.id) {
-        throw new Error(
-          'addCustomIngredient did not return a new ingredient id',
-        );
-      }
+      if (!newIng?.id) throw new Error('addCustomIngredient did not return a new ingredient id');
       ingredientId = newIng.id;
       setFormData((prev) => ({ ...prev, globalIngredientId: newIng.id }));
       onIngredientCreated?.(newIng);
     }
 
-    await addInventoryItem(activeBrewery.id, {
+    const inventoryPayload: any = {
       ingredientId,
       quantityOnHand: Number(stockQuantity),
       unit: stockUnit,
-      costPerBaseUnit,
-      currency, 
-    });
+    };
+
+    if (costPerBaseUnit > 0) {
+      inventoryPayload.costPerBaseUnit = costPerBaseUnit;
+      inventoryPayload.currency = currency;
+    }
+
+    await addInventoryItem(activeBrewery.id, inventoryPayload);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -458,12 +440,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
         await persistToInventory();
       } catch (err) {
         console.error('Error persisting to inventory:', err);
-        setIsPersistingToStock(false);
-        setStockError(
-          t(
-            'Could not save to inventory. The ingredient was still added to the recipe.',
-          ),
-        );
+        setStockError(t('Could not save to inventory. The ingredient was still added to the recipe.'));
       }
       setIsPersistingToStock(false);
     }
@@ -477,9 +454,8 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Динамический заголовок в зависимости от того, редактируем мы или добавляем
   const modalTitle = initialData 
-    ? t('Edit Ingredient', 'Редактировать ингредиент')
+    ? t('Edit Ingredient', 'Edit Ingredient')
     : mode === 'inventory' 
       ? t('Add to Inventory') 
       : t('Add Ingredient');
@@ -489,12 +465,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
       <div className='editor-modal' onMouseDown={(e) => e.stopPropagation()}>
         <div className='editor-modal__header'>
           <h2>{modalTitle}</h2>
-          <button
-            type='button'
-            className='btn-secondary'
-            onClick={onClose}
-            aria-label={t('Close')}
-          >
+          <button type='button' className='btn-secondary' onClick={onClose} aria-label={t('Close')}>
             <FaTimes />
           </button>
         </div>
@@ -505,18 +476,12 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
             <select
               className='form-field__select'
               value={formData.category || 'Fermentable'}
-              onChange={(e) =>
-                handleCategoryChange(e.target.value as IngredientCategory)
-              }
-              // Если редактируем, лучше не давать менять категорию, чтобы не сломать тип
+              onChange={(e) => handleCategoryChange(e.target.value as IngredientCategory)}
               disabled={!!initialData}
             >
               {ALL_CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
-                  {t(
-                    `constants.categories.${cat.toLowerCase().replace(' ', '_')}`,
-                    cat,
-                  )}
+                  {t(`constants.categories.${cat.toLowerCase().replace(' ', '_')}`, cat)}
                 </option>
               ))}
             </select>
@@ -542,29 +507,18 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
               {showSuggestions && filteredSuggestions.length > 0 && (
                 <ul className='autocomplete__dropdown'>
                   {filteredSuggestions.map((ing) => (
-                    <li
-                      key={ing.id}
-                      className='autocomplete__item'
-                      onClick={() => handleSelectSuggestion(ing)}
-                    >
+                    <li key={ing.id} className='autocomplete__item' onClick={() => handleSelectSuggestion(ing)}>
                       <span className='autocomplete__item-title'>
                         {ing.name}
-                        {ing.inStockQty > 0 &&
-                          ` (${ing.inStockQty} ${t(`constants.units.${ing.inStockUnit.toLowerCase()}`, ing.inStockUnit)})`}
+                        {ing.inStockQty > 0 && ` (${ing.inStockQty} ${t(`constants.units.${ing.inStockUnit.toLowerCase()}`, ing.inStockUnit)})`}
                       </span>
                       <span className='autocomplete__item-meta'>
-                        {formData.category === 'Hops' &&
-                          `${t('Alpha')}: ${(ing as any).alphaAcidPct ?? 0}% | ${(ing as any).form || ''}`}
-                        {formData.category === 'Fermentable' &&
-                          `${t('Yield')}: ${(ing as any).yieldPpg ?? 0} PPG | ${t('Color')}: ${(ing as any).colorEbc ?? 0} EBC`}
-                        {formData.category === 'Honey' &&
-                          `${t('Brix')}: ${(ing as any).sugarContentBrix ?? 0} | ${t('Moisture')}: ${(ing as any).moistureContentPct ?? 0}%`}
-                        {formData.category === 'Yeast' &&
-                          `${t('Tolerance')}: ${(ing as any).alcoholTolerancePct ?? 0}% | ${(ing as any).form || ''}`}
-                        {formData.category === 'Additive' &&
-                          `${(ing as any).producer || ''}`}
-                        {formData.category === 'Water Profile' &&
-                          `${(ing as any).producer || ''}`}
+                        {formData.category === 'Hops' && `${t('Alpha')}: ${(ing as any).alphaAcidPct ?? 0}% | ${(ing as any).form || ''}`}
+                        {formData.category === 'Fermentable' && `${t('Yield')}: ${(ing as any).yieldPpg ?? 0} PPG | ${t('Color')}: ${(ing as any).colorEbc ?? 0} EBC`}
+                        {formData.category === 'Honey' && `${t('Brix')}: ${(ing as any).sugarContentBrix ?? 0} | ${t('Moisture')}: ${(ing as any).moistureContentPct ?? 0}%`}
+                        {formData.category === 'Yeast' && `${t('Tolerance')}: ${(ing as any).alcoholTolerancePct ?? 0}% | ${(ing as any).form || ''}`}
+                        {formData.category === 'Additive' && `${(ing as any).producer || ''}`}
+                        {formData.category === 'Water Profile' && `${(ing as any).producer || ''}`}
                       </span>
                     </li>
                   ))}
@@ -584,16 +538,10 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                   min='0'
                   step='0.1'
                   className='form-field__input'
-                  value={
-                    mode === 'inventory'
-                      ? stockQuantity
-                      : formData.quantity || ''
-                  }
+                  value={mode === 'inventory' ? stockQuantity : formData.quantity || ''}
                   onChange={(e) => {
                     if (mode === 'inventory') {
-                      setStockQuantity(
-                        e.target.value === '' ? '' : parseFloat(e.target.value),
-                      );
+                      setStockQuantity(e.target.value === '' ? '' : parseFloat(e.target.value));
                     } else {
                       handleChange('quantity', parseFloat(e.target.value) || 0);
                     }
@@ -607,16 +555,12 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                     onChange={(e) => setStockUnit(e.target.value as UnitType)}
                   >
                     {UNIT_TYPES.map((u) => (
-                      <option key={u} value={u}>
-                        {t(`constants.units.${u.toLowerCase()}`, u)}
-                      </option>
+                      <option key={u} value={u}>{t(`constants.units.${u.toLowerCase()}`, u)}</option>
                     ))}
                   </select>
                 )}
                 {mode === 'recipe' && (
-                  <span className='form-field__unit-label'>
-                    {t('constants.units.g', 'g')}
-                  </span>
+                  <span className='form-field__unit-label'>{t('constants.units.g', 'g')}</span>
                 )}
               </div>
             </div>
@@ -625,55 +569,20 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
               <>
                 <div className='form-field'>
                   <label className='form-field__label'>{t('Form')}</label>
-                  <select
-                    className='form-field__select'
-                    value={formData.form ?? 'Pellet'}
-                    onChange={(e) => handleChange('form', e.target.value)}
-                  >
+                  <select className='form-field__select' value={formData.form ?? 'Pellet'} onChange={(e) => handleChange('form', e.target.value)}>
                     {HOPS_FORMS.map((form) => (
-                      <option key={form} value={form}>
-                        {t(
-                          `constants.hops_forms.${form.toLowerCase().replace(' ', '_')}`,
-                          form,
-                        )}
-                      </option>
+                      <option key={form} value={form}>{t(`constants.hops_forms.${form.toLowerCase().replace(' ', '_')}`, form)}</option>
                     ))}
                   </select>
                 </div>
                 <div className='editor-modal__grid-2'>
                   <div className='form-field'>
-                    <label className='form-field__label'>
-                      {t('Alpha Acid Min')} (%)
-                    </label>
-                    <input
-                      type='number'
-                      step='0.1'
-                      className='form-field__input'
-                      value={formData.alphaAcidPctMin ?? ''}
-                      onChange={(e) =>
-                        handleChange(
-                          'alphaAcidPctMin',
-                          parseFloat(e.target.value) || 0,
-                        )
-                      }
-                    />
+                    <label className='form-field__label'>{t('Alpha Acid Min')} (%)</label>
+                    <input type='number' step='0.1' className='form-field__input' value={formData.alphaAcidPctMin ?? ''} onChange={(e) => handleChange('alphaAcidPctMin', parseFloat(e.target.value) || 0)} />
                   </div>
                   <div className='form-field'>
-                    <label className='form-field__label'>
-                      {t('Alpha Acid Max')} (%)
-                    </label>
-                    <input
-                      type='number'
-                      step='0.1'
-                      className='form-field__input'
-                      value={formData.alphaAcidPct ?? ''}
-                      onChange={(e) =>
-                        handleChange(
-                          'alphaAcidPct',
-                          parseFloat(e.target.value) || 0,
-                        )
-                      }
-                    />
+                    <label className='form-field__label'>{t('Alpha Acid Max')} (%)</label>
+                    <input type='number' step='0.1' className='form-field__input' value={formData.alphaAcidPct ?? ''} onChange={(e) => handleChange('alphaAcidPct', parseFloat(e.target.value) || 0)} />
                   </div>
                 </div>
 
@@ -682,12 +591,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                     <div className='form-field'>
                       <label className='form-field__label form-field__label-flex'>
                         {t('Addition Stage')}
-                        <FaInfoCircle
-                          className='icon-info'
-                          title={t(
-                            'Select when to add hops: during boil, whirlpool, or dry hopping.',
-                          )}
-                        />
+                        <FaInfoCircle className='icon-info' title={t('Select when to add hops: during boil, whirlpool, or dry hopping.')} />
                       </label>
                       <select
                         className='form-field__select'
@@ -695,33 +599,22 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                         onChange={(e) => {
                           const selectedStage = e.target.value;
                           handleChange('additionStage', selectedStage);
-                          if (selectedStage === 'Dry Hop') {
-                            handleChange('boilTimeMinutes', 0);
-                          }
+                          if (selectedStage === 'Dry Hop') handleChange('boilTimeMinutes', 0);
                         }}
                       >
                         <option value='Boil'>{t('Boil')}</option>
-                        <option value='Whirlpool'>
-                          {t('Whirlpool / Flameout')}
-                        </option>
+                        <option value='Whirlpool'>{t('Whirlpool / Flameout')}</option>
                         <option value='Dry Hop'>{t('Dry Hop')}</option>
                       </select>
                     </div>
                     <div className='form-field'>
-                      <label className='form-field__label'>
-                        {t('Boil Time')} ({t('min')})
-                      </label>
+                      <label className='form-field__label'>{t('Boil Time')} ({t('min')})</label>
                       <input
                         type='number'
                         min='0'
                         className='form-field__input'
                         value={formData.boilTimeMinutes ?? ''}
-                        onChange={(e) =>
-                          handleChange(
-                            'boilTimeMinutes',
-                            parseFloat(e.target.value) || 0,
-                          )
-                        }
+                        onChange={(e) => handleChange('boilTimeMinutes', parseFloat(e.target.value) || 0)}
                         placeholder={t('Optional')}
                         disabled={formData.additionStage === 'Dry Hop'}
                       />
@@ -735,84 +628,28 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
               <>
                 <div className='form-field'>
                   <label className='form-field__label'>{t('Type')}</label>
-                  <select
-                    className='form-field__select'
-                    value={formData.form ?? 'Grain'}
-                    onChange={(e) => handleChange('form', e.target.value)}
-                  >
+                  <select className='form-field__select' value={formData.form ?? 'Grain'} onChange={(e) => handleChange('form', e.target.value)}>
                     {FERMENTABLE_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {t(
-                          `constants.fermentable_types.${type.toLowerCase()}`,
-                          type,
-                        )}
-                      </option>
+                      <option key={type} value={type}>{t(`constants.fermentable_types.${type.toLowerCase()}`, type)}</option>
                     ))}
                   </select>
                 </div>
                 <div className='form-field'>
-                  <label className='form-field__label'>
-                    {t('Yield')} (PPG)
-                  </label>
-                  <input
-                    type='number'
-                    step='0.1'
-                    className='form-field__input'
-                    value={formData.yieldPpg ?? ''}
-                    onChange={(e) =>
-                      handleChange('yieldPpg', parseFloat(e.target.value) || 0)
-                    }
-                  />
+                  <label className='form-field__label'>{t('Yield')} (PPG)</label>
+                  <input type='number' step='0.1' className='form-field__input' value={formData.yieldPpg ?? ''} onChange={(e) => handleChange('yieldPpg', parseFloat(e.target.value) || 0)} />
                 </div>
                 <div className='form-field'>
-                  <label className='form-field__label'>
-                    {t('Color')} (EBC)
-                  </label>
-                  <input
-                    type='number'
-                    step='0.1'
-                    className='form-field__input'
-                    value={formData.colorEbc ?? ''}
-                    onChange={(e) =>
-                      handleChange('colorEbc', parseFloat(e.target.value) || 0)
-                    }
-                  />
+                  <label className='form-field__label'>{t('Color')} (EBC)</label>
+                  <input type='number' step='0.1' className='form-field__input' value={formData.colorEbc ?? ''} onChange={(e) => handleChange('colorEbc', parseFloat(e.target.value) || 0)} />
                 </div>
                 <div className='form-field'>
-                  <label className='form-field__label'>
-                    {t('Diastatic Power')} (°L)
-                  </label>
-                  <input
-                    type='number'
-                    step='1'
-                    className='form-field__input'
-                    value={formData.diastaticPowerLintner ?? ''}
-                    onChange={(e) =>
-                      handleChange(
-                        'diastaticPowerLintner',
-                        parseFloat(e.target.value) || 0,
-                      )
-                    }
-                    placeholder={t('Optional')}
-                  />
+                  <label className='form-field__label'>{t('Diastatic Power')} (°L)</label>
+                  <input type='number' step='1' className='form-field__input' value={formData.diastaticPowerLintner ?? ''} onChange={(e) => handleChange('diastaticPowerLintner', parseFloat(e.target.value) || 0)} placeholder={t('Optional')} />
                 </div>
                 {(formData.form === 'Honey' || formData.form === 'Fruit') && (
                   <div className='form-field'>
-                    <label className='form-field__label'>
-                      {t('Moisture')} (%)
-                    </label>
-                    <input
-                      type='number'
-                      step='0.1'
-                      className='form-field__input'
-                      value={formData.moistureContentPct ?? ''}
-                      onChange={(e) =>
-                        handleChange(
-                          'moistureContentPct',
-                          parseFloat(e.target.value) || 0,
-                        )
-                      }
-                    />
+                    <label className='form-field__label'>{t('Moisture')} (%)</label>
+                    <input type='number' step='0.1' className='form-field__input' value={formData.moistureContentPct ?? ''} onChange={(e) => handleChange('moistureContentPct', parseFloat(e.target.value) || 0)} />
                   </div>
                 )}
               </>
@@ -821,57 +658,17 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
             {formData.category === 'Honey' && (
               <>
                 <div className='form-field'>
-                  <label className='form-field__label'>
-                    {t('Sugar Content')} (Brix)
-                  </label>
-                  <input
-                    type='number'
-                    step='0.1'
-                    className='form-field__input'
-                    value={formData.sugarContentBrix ?? ''}
-                    onChange={(e) =>
-                      handleChange(
-                        'sugarContentBrix',
-                        parseFloat(e.target.value) || 0,
-                      )
-                    }
-                  />
+                  <label className='form-field__label'>{t('Sugar Content')} (Brix)</label>
+                  <input type='number' step='0.1' className='form-field__input' value={formData.sugarContentBrix ?? ''} onChange={(e) => handleChange('sugarContentBrix', parseFloat(e.target.value) || 0)} />
                 </div>
                 <div className='form-field'>
-                  <label className='form-field__label'>
-                    {t('Moisture')} (%)
-                  </label>
-                  <input
-                    type='number'
-                    step='0.1'
-                    className='form-field__input'
-                    value={formData.moistureContentPct ?? ''}
-                    onChange={(e) =>
-                      handleChange(
-                        'moistureContentPct',
-                        parseFloat(e.target.value) || 0,
-                      )
-                    }
-                  />
+                  <label className='form-field__label'>{t('Moisture')} (%)</label>
+                  <input type='number' step='0.1' className='form-field__input' value={formData.moistureContentPct ?? ''} onChange={(e) => handleChange('moistureContentPct', parseFloat(e.target.value) || 0)} />
                 </div>
                 <div className='form-field'>
-                  <label className='form-field__label'>
-                    {t('Approx. Yield for OG calc')} (PPG)
-                  </label>
-                  <input
-                    type='number'
-                    step='0.1'
-                    className='form-field__input'
-                    value={formData.yieldPpg ?? ''}
-                    onChange={(e) =>
-                      handleChange('yieldPpg', parseFloat(e.target.value) || 0)
-                    }
-                  />
-                  <span className='form-field__hint'>
-                    {t(
-                      'Approximation used only for gravity estimate; the math library has no Brix-to-gravity formula.',
-                    )}
-                  </span>
+                  <label className='form-field__label'>{t('Approx. Yield for OG calc')} (PPG)</label>
+                  <input type='number' step='0.1' className='form-field__input' value={formData.yieldPpg ?? ''} onChange={(e) => handleChange('yieldPpg', parseFloat(e.target.value) || 0)} />
+                  <span className='form-field__hint'>{t('Approximation used only for gravity estimate; the math library has no Brix-to-gravity formula.')}</span>
                 </div>
               </>
             )}
@@ -880,136 +677,45 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
               <>
                 <div className='form-field'>
                   <label className='form-field__label'>{t('Form')}</label>
-                  <select
-                    className='form-field__select'
-                    value={formData.form ?? 'Dry'}
-                    onChange={(e) => handleChange('form', e.target.value)}
-                  >
+                  <select className='form-field__select' value={formData.form ?? 'Dry'} onChange={(e) => handleChange('form', e.target.value)}>
                     {YEAST_FORMS.map((form) => (
-                      <option key={form} value={form}>
-                        {t(`constants.yeast_forms.${form.toLowerCase()}`, form)}
-                      </option>
+                      <option key={form} value={form}>{t(`constants.yeast_forms.${form.toLowerCase()}`, form)}</option>
                     ))}
                   </select>
                 </div>
                 <div className='editor-modal__grid-2'>
                   <div className='form-field'>
-                    <label className='form-field__label'>
-                      {t('Tolerance Min')} (%)
-                    </label>
-                    <input
-                      type='number'
-                      step='0.1'
-                      className='form-field__input'
-                      value={formData.alcoholTolerancePctMin ?? ''}
-                      onChange={(e) =>
-                        handleChange(
-                          'alcoholTolerancePctMin',
-                          parseFloat(e.target.value) || 0,
-                        )
-                      }
-                    />
+                    <label className='form-field__label'>{t('Tolerance Min')} (%)</label>
+                    <input type='number' step='0.1' className='form-field__input' value={formData.alcoholTolerancePctMin ?? ''} onChange={(e) => handleChange('alcoholTolerancePctMin', parseFloat(e.target.value) || 0)} />
                   </div>
                   <div className='form-field'>
-                    <label className='form-field__label'>
-                      {t('Tolerance Max')} (%)
-                    </label>
-                    <input
-                      type='number'
-                      step='0.1'
-                      className='form-field__input'
-                      value={formData.alcoholTolerancePct ?? ''}
-                      onChange={(e) =>
-                        handleChange(
-                          'alcoholTolerancePct',
-                          parseFloat(e.target.value) || 0,
-                        )
-                      }
-                    />
+                    <label className='form-field__label'>{t('Tolerance Max')} (%)</label>
+                    <input type='number' step='0.1' className='form-field__input' value={formData.alcoholTolerancePct ?? ''} onChange={(e) => handleChange('alcoholTolerancePct', parseFloat(e.target.value) || 0)} />
                   </div>
                 </div>
                 <div className='editor-modal__grid-2'>
                   <div className='form-field'>
-                    <label className='form-field__label'>
-                      {t('Attenuation Min')} (%)
-                    </label>
-                    <input
-                      type='number'
-                      step='0.1'
-                      className='form-field__input'
-                      value={formData.attenuationPctMin ?? ''}
-                      onChange={(e) =>
-                        handleChange(
-                          'attenuationPctMin',
-                          parseFloat(e.target.value) || 0,
-                        )
-                      }
-                    />
+                    <label className='form-field__label'>{t('Attenuation Min')} (%)</label>
+                    <input type='number' step='0.1' className='form-field__input' value={formData.attenuationPctMin ?? ''} onChange={(e) => handleChange('attenuationPctMin', parseFloat(e.target.value) || 0)} />
                   </div>
                   <div className='form-field'>
-                    <label className='form-field__label'>
-                      {t('Attenuation Max')} (%)
-                    </label>
-                    <input
-                      type='number'
-                      step='0.1'
-                      className='form-field__input'
-                      value={formData.attenuationPct ?? ''}
-                      onChange={(e) =>
-                        handleChange(
-                          'attenuationPct',
-                          parseFloat(e.target.value) || 0,
-                        )
-                      }
-                    />
+                    <label className='form-field__label'>{t('Attenuation Max')} (%)</label>
+                    <input type='number' step='0.1' className='form-field__input' value={formData.attenuationPct ?? ''} onChange={(e) => handleChange('attenuationPct', parseFloat(e.target.value) || 0)} />
                   </div>
                 </div>
                 <div className='form-field'>
-                  <label className='form-field__label'>
-                    {t('Min Temp')} (°C)
-                  </label>
-                  <input
-                    type='number'
-                    step='0.1'
-                    className='form-field__input'
-                    value={formData.tempMinC ?? ''}
-                    onChange={(e) =>
-                      handleChange('tempMinC', parseFloat(e.target.value) || 0)
-                    }
-                  />
+                  <label className='form-field__label'>{t('Min Temp')} (°C)</label>
+                  <input type='number' step='0.1' className='form-field__input' value={formData.tempMinC ?? ''} onChange={(e) => handleChange('tempMinC', parseFloat(e.target.value) || 0)} />
                 </div>
                 <div className='form-field'>
-                  <label className='form-field__label'>
-                    {t('Max Temp')} (°C)
-                  </label>
-                  <input
-                    type='number'
-                    step='0.1'
-                    className='form-field__input'
-                    value={formData.tempMaxC ?? ''}
-                    onChange={(e) =>
-                      handleChange('tempMaxC', parseFloat(e.target.value) || 0)
-                    }
-                  />
+                  <label className='form-field__label'>{t('Max Temp')} (°C)</label>
+                  <input type='number' step='0.1' className='form-field__input' value={formData.tempMaxC ?? ''} onChange={(e) => handleChange('tempMaxC', parseFloat(e.target.value) || 0)} />
                 </div>
                 <div className='form-field'>
-                  <label className='form-field__label'>
-                    {t('Nitrogen Demand')}
-                  </label>
-                  <select
-                    className='form-field__select'
-                    value={formData.nitrogenDemand ?? 'Medium'}
-                    onChange={(e) =>
-                      handleChange('nitrogenDemand', e.target.value)
-                    }
-                  >
+                  <label className='form-field__label'>{t('Nitrogen Demand')}</label>
+                  <select className='form-field__select' value={formData.nitrogenDemand ?? 'Medium'} onChange={(e) => handleChange('nitrogenDemand', e.target.value)}>
                     {NITROGEN_LEVELS.map((level) => (
-                      <option key={level} value={level}>
-                        {t(
-                          `constants.nitrogen_demand.${level.toLowerCase().replace(' ', '_')}`,
-                          level,
-                        )}
-                      </option>
+                      <option key={level} value={level}>{t(`constants.nitrogen_demand.${level.toLowerCase().replace(' ', '_')}`, level)}</option>
                     ))}
                   </select>
                 </div>
@@ -1021,10 +727,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                 <div className='form-field'>
                   <label className='form-field__label form-field__label-flex'>
                     {t('Additive Type')}
-                    <FaInfoCircle
-                      className='icon-info'
-                      title={t('Category of the additive')}
-                    />
+                    <FaInfoCircle className='icon-info' title={t('Category of the additive')} />
                   </label>
                   <select
                     className='form-field__select'
@@ -1032,10 +735,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                     onChange={(e) => {
                       const val = e.target.value as AdditiveType;
                       handleChange('additiveType', val);
-                      handleChange(
-                        'additionStage',
-                        SUGGESTED_STAGE_BY_ADDITIVE_TYPE[val] ?? '',
-                      );
+                      handleChange('additionStage', SUGGESTED_STAGE_BY_ADDITIVE_TYPE[val] ?? '');
                       if (val !== 'Nutrient') {
                         handleChange('nutrientRole', undefined);
                       } else {
@@ -1044,12 +744,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                     }}
                   >
                     {ADDITIVE_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {t(
-                          `constants.additive_types.${type.toLowerCase()}`,
-                          type,
-                        )}
-                      </option>
+                      <option key={type} value={type}>{t(`constants.additive_types.${type.toLowerCase()}`, type)}</option>
                     ))}
                   </select>
                 </div>
@@ -1058,32 +753,16 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                   <div className='form-field'>
                     <label className='form-field__label form-field__label-flex'>
                       {t('Nutrient Role')}
-                      <FaInfoCircle
-                        className='icon-info'
-                        title={t(
-                          'Rehydration for yeast prep (e.g., Go-Ferm). Fermentation for active yeast feeding (e.g., Fermaid O).',
-                        )}
-                      />
+                      <FaInfoCircle className='icon-info' title={t('Rehydration for yeast prep (e.g., Go-Ferm). Fermentation for active yeast feeding (e.g., Fermaid O).')} />
                     </label>
                     <select
                       className='form-field__select'
                       value={formData.nutrientRole ?? 'Fermentation'}
-                      onChange={(e) =>
-                        handleChange(
-                          'nutrientRole',
-                          e.target.value as NutrientRole,
-                        )
-                      }
+                      onChange={(e) => handleChange('nutrientRole', e.target.value as NutrientRole)}
                     >
-                      <option value='Rehydration'>
-                        {t('constants.nutrient_roles.rehydration')}
-                      </option>
-                      <option value='Fermentation'>
-                        {t('constants.nutrient_roles.fermentation')}
-                      </option>
-                      <option value='Other'>
-                        {t('constants.nutrient_roles.other')}
-                      </option>
+                      <option value='Rehydration'>{t('constants.nutrient_roles.rehydration')}</option>
+                      <option value='Fermentation'>{t('constants.nutrient_roles.fermentation')}</option>
+                      <option value='Other'>{t('constants.nutrient_roles.other')}</option>
                     </select>
                   </div>
                 )}
@@ -1092,94 +771,59 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                   <div className='form-field'>
                     <label className='form-field__label form-field__label-flex'>
                       {t('Addition Stage')}
-                      <FaInfoCircle
-                        className='icon-info'
-                        title={t(
-                          'When to add: Primary, Secondary, Bottling, Rehydration...',
-                        )}
-                      />
+                      <FaInfoCircle className='icon-info' title={t('When to add: Primary, Secondary, Bottling, Rehydration...')} />
                     </label>
                     <input
                       type='text'
                       className='form-field__input'
                       value={formData.additionStage ?? ''}
-                      onChange={(e) =>
-                        handleChange('additionStage', e.target.value)
-                      }
+                      onChange={(e) => handleChange('additionStage', e.target.value)}
                       placeholder={t('e.g. Boil, Secondary, Aging, Bottling')}
                     />
                   </div>
                 )}
 
-                {formData.additiveType === 'Nutrient' &&
-                  formData.nutrientRole === 'Fermentation' && (
-                    <div className='form-field'>
-                      <label className='form-field__label form-field__label-flex'>
-                        {t('YAN Value')} (mg N / g / L)
-                        <FaInfoCircle
-                          className='icon-info'
-                          title={t(
-                            'Yeast Assimilable Nitrogen. Example: Fermaid O = 5.2',
-                          )}
-                        />
-                      </label>
-                      <input
-                        type='number'
-                        min='0'
-                        step='0.01'
-                        className='form-field__input'
-                        value={formData.yanValuePerGramPerLiter ?? ''}
-                        onChange={(e) =>
-                          handleChange(
-                            'yanValuePerGramPerLiter',
-                            parseFloat(e.target.value) || 0,
-                          )
-                        }
-                        placeholder={t('Optional')}
-                      />
-                    </div>
-                  )}
+                {formData.additiveType === 'Nutrient' && formData.nutrientRole === 'Fermentation' && (
+                  <div className='form-field'>
+                    <label className='form-field__label form-field__label-flex'>
+                      {t('YAN Value')} (mg N / g / L)
+                      <FaInfoCircle className='icon-info' title={t('Yeast Assimilable Nitrogen. Example: Fermaid O = 5.2')} />
+                    </label>
+                    <input
+                      type='number'
+                      min='0'
+                      step='0.01'
+                      className='form-field__input'
+                      value={formData.yanValuePerGramPerLiter ?? ''}
+                      onChange={(e) => handleChange('yanValuePerGramPerLiter', parseFloat(e.target.value) || 0)}
+                      placeholder={t('Optional')}
+                    />
+                  </div>
+                )}
 
-                {formData.additiveType === 'Nutrient' &&
-                  formData.nutrientRole === 'Rehydration' && (
-                    <div className='form-field'>
-                      <label className='form-field__label form-field__label-flex'>
-                        {t('Dosage per 1g Yeast')}
-                        <FaInfoCircle
-                          className='icon-info'
-                          title={t(
-                            'Grams of nutrient per 1g of dry yeast. Standard is 1.25g for Go-Ferm.',
-                          )}
-                        />
-                      </label>
-                      <input
-                        type='number'
-                        min='0'
-                        step='0.01'
-                        className='form-field__input'
-                        value={formData.dosagePerGramYeast ?? ''}
-                        onChange={(e) =>
-                          handleChange(
-                            'dosagePerGramYeast',
-                            parseFloat(e.target.value) || 0,
-                          )
-                        }
-                        placeholder={t('Optional')}
-                      />
-                    </div>
-                  )}
+                {formData.additiveType === 'Nutrient' && formData.nutrientRole === 'Rehydration' && (
+                  <div className='form-field'>
+                    <label className='form-field__label form-field__label-flex'>
+                      {t('Dosage per 1g Yeast')}
+                      <FaInfoCircle className='icon-info' title={t('Grams of nutrient per 1g of dry yeast. Standard is 1.25g for Go-Ferm.')} />
+                    </label>
+                    <input
+                      type='number'
+                      min='0'
+                      step='0.01'
+                      className='form-field__input'
+                      value={formData.dosagePerGramYeast ?? ''}
+                      onChange={(e) => handleChange('dosagePerGramYeast', parseFloat(e.target.value) || 0)}
+                      placeholder={t('Optional')}
+                    />
+                  </div>
+                )}
 
-                {(formData.additiveType !== 'Nutrient' ||
-                  formData.nutrientRole === 'Fermentation') && (
+                {(formData.additiveType !== 'Nutrient' || formData.nutrientRole === 'Fermentation') && (
                   <div className='form-field'>
                     <label className='form-field__label form-field__label-flex'>
                       {t('Dosage per 10L')}
-                      <FaInfoCircle
-                        className='icon-info'
-                        title={t(
-                          'Recommended dosage in grams per 10 liters of volume.',
-                        )}
-                      />
+                      <FaInfoCircle className='icon-info' title={t('Recommended dosage in grams per 10 liters of volume.')} />
                     </label>
                     <input
                       type='number'
@@ -1187,12 +831,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                       step='0.01'
                       className='form-field__input'
                       value={formData.dosagePer10Liters ?? ''}
-                      onChange={(e) =>
-                        handleChange(
-                          'dosagePer10Liters',
-                          parseFloat(e.target.value) || 0,
-                        )
-                      }
+                      onChange={(e) => handleChange('dosagePer10Liters', parseFloat(e.target.value) || 0)}
                       placeholder={t('Optional')}
                     />
                   </div>
@@ -1203,154 +842,51 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
             {formData.category === 'Water Profile' && (
               <>
                 <div className='form-field'>
-                  <label className='form-field__label'>
-                    {t('Calcium')} (ppm)
-                  </label>
-                  <input
-                    type='number'
-                    step='1'
-                    className='form-field__input'
-                    value={formData.calciumPpm ?? ''}
-                    onChange={(e) =>
-                      handleChange(
-                        'calciumPpm',
-                        parseFloat(e.target.value) || 0,
-                      )
-                    }
-                  />
+                  <label className='form-field__label'>{t('Calcium')} (ppm)</label>
+                  <input type='number' step='1' className='form-field__input' value={formData.calciumPpm ?? ''} onChange={(e) => handleChange('calciumPpm', parseFloat(e.target.value) || 0)} />
                 </div>
                 <div className='form-field'>
-                  <label className='form-field__label'>
-                    {t('Magnesium')} (ppm)
-                  </label>
-                  <input
-                    type='number'
-                    step='1'
-                    className='form-field__input'
-                    value={formData.magnesiumPpm ?? ''}
-                    onChange={(e) =>
-                      handleChange(
-                        'magnesiumPpm',
-                        parseFloat(e.target.value) || 0,
-                      )
-                    }
-                  />
+                  <label className='form-field__label'>{t('Magnesium')} (ppm)</label>
+                  <input type='number' step='1' className='form-field__input' value={formData.magnesiumPpm ?? ''} onChange={(e) => handleChange('magnesiumPpm', parseFloat(e.target.value) || 0)} />
                 </div>
                 <div className='form-field'>
-                  <label className='form-field__label'>
-                    {t('Sodium')} (ppm)
-                  </label>
-                  <input
-                    type='number'
-                    step='1'
-                    className='form-field__input'
-                    value={formData.sodiumPpm ?? ''}
-                    onChange={(e) =>
-                      handleChange('sodiumPpm', parseFloat(e.target.value) || 0)
-                    }
-                  />
+                  <label className='form-field__label'>{t('Sodium')} (ppm)</label>
+                  <input type='number' step='1' className='form-field__input' value={formData.sodiumPpm ?? ''} onChange={(e) => handleChange('sodiumPpm', parseFloat(e.target.value) || 0)} />
                 </div>
                 <div className='form-field'>
-                  <label className='form-field__label'>
-                    {t('Sulfate')} (ppm)
-                  </label>
-                  <input
-                    type='number'
-                    step='1'
-                    className='form-field__input'
-                    value={formData.sulfatePpm ?? ''}
-                    onChange={(e) =>
-                      handleChange(
-                        'sulfatePpm',
-                        parseFloat(e.target.value) || 0,
-                      )
-                    }
-                  />
+                  <label className='form-field__label'>{t('Sulfate')} (ppm)</label>
+                  <input type='number' step='1' className='form-field__input' value={formData.sulfatePpm ?? ''} onChange={(e) => handleChange('sulfatePpm', parseFloat(e.target.value) || 0)} />
                 </div>
                 <div className='form-field'>
-                  <label className='form-field__label'>
-                    {t('Chloride')} (ppm)
-                  </label>
-                  <input
-                    type='number'
-                    step='1'
-                    className='form-field__input'
-                    value={formData.chloridePpm ?? ''}
-                    onChange={(e) =>
-                      handleChange(
-                        'chloridePpm',
-                        parseFloat(e.target.value) || 0,
-                      )
-                    }
-                  />
+                  <label className='form-field__label'>{t('Chloride')} (ppm)</label>
+                  <input type='number' step='1' className='form-field__input' value={formData.chloridePpm ?? ''} onChange={(e) => handleChange('chloridePpm', parseFloat(e.target.value) || 0)} />
                 </div>
                 <div className='form-field'>
-                  <label className='form-field__label'>
-                    {t('Bicarbonate')} (ppm)
-                  </label>
-                  <input
-                    type='number'
-                    step='1'
-                    className='form-field__input'
-                    value={formData.bicarbonatePpm ?? ''}
-                    onChange={(e) =>
-                      handleChange(
-                        'bicarbonatePpm',
-                        parseFloat(e.target.value) || 0,
-                      )
-                    }
-                  />
+                  <label className='form-field__label'>{t('Bicarbonate')} (ppm)</label>
+                  <input type='number' step='1' className='form-field__input' value={formData.bicarbonatePpm ?? ''} onChange={(e) => handleChange('bicarbonatePpm', parseFloat(e.target.value) || 0)} />
                 </div>
               </>
             )}
 
             <div className='form-field'>
               <label className='form-field__label'>{t('Origin')}</label>
-              <input
-                type='text'
-                className='form-field__input'
-                value={formData.origin ?? ''}
-                onChange={(e) => handleChange('origin', e.target.value)}
-                placeholder={t('Optional')}
-              />
+              <input type='text' className='form-field__input' value={formData.origin ?? ''} onChange={(e) => handleChange('origin', e.target.value)} placeholder={t('Optional')} />
             </div>
             <div className='form-field'>
               <label className='form-field__label'>{t('Producer')}</label>
-              <input
-                type='text'
-                className='form-field__input'
-                value={formData.producer ?? ''}
-                onChange={(e) => handleChange('producer', e.target.value)}
-                placeholder={t('Optional')}
-              />
+              <input type='text' className='form-field__input' value={formData.producer ?? ''} onChange={(e) => handleChange('producer', e.target.value)} placeholder={t('Optional')} />
             </div>
           </div>
 
           <div className='form-field editor-modal__section'>
-            <label className='form-field__label'>
-              {t('Ingredient Description')}
-            </label>
-            <textarea
-              className='form-field__textarea'
-              rows={2}
-              value={formData.description ?? ''}
-              onChange={(e) => handleChange('description', e.target.value)}
-              placeholder={t('General info about this ingredient...')}
-            />
+            <label className='form-field__label'>{t('Ingredient Description')}</label>
+            <textarea className='form-field__textarea' rows={2} value={formData.description ?? ''} onChange={(e) => handleChange('description', e.target.value)} placeholder={t('General info about this ingredient...')} />
           </div>
 
           {mode === 'recipe' && (
             <div className='form-field editor-modal__section'>
-              <label className='form-field__label'>
-                {t('Notes / Details')}
-              </label>
-              <textarea
-                className='form-field__textarea'
-                rows={2}
-                value={formData.note || ''}
-                onChange={(e) => handleChange('note', e.target.value)}
-                placeholder={t('Optional notes for this recipe...')}
-              />
+              <label className='form-field__label'>{t('Notes / Details')}</label>
+              <textarea className='form-field__textarea' rows={2} value={formData.note || ''} onChange={(e) => handleChange('note', e.target.value)} placeholder={t('Optional notes for this recipe...')} />
             </div>
           )}
 
@@ -1358,11 +894,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
             <div className='form-field editor-modal__section editor-modal__section--bordered'>
               {mode === 'recipe' && (
                 <label className='form-field__label form-field__label--checkbox'>
-                  <input
-                    type='checkbox'
-                    checked={saveToStock}
-                    onChange={(e) => setSaveToStock(e.target.checked)}
-                  />
+                  <input type='checkbox' checked={saveToStock} onChange={(e) => setSaveToStock(e.target.checked)} />
                   {t('Also add to inventory stock')}
                 </label>
               )}
@@ -1372,45 +904,28 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                   {mode === 'recipe' && (
                     <div className='editor-modal__grid editor-modal__grid--stock'>
                       <div className='form-field'>
-                        <label className='form-field__label'>
-                          {t('Quantity on hand')}
-                        </label>
+                        <label className='form-field__label'>{t('Quantity on hand')}</label>
                         <input
                           type='number'
                           min='0'
                           step='0.01'
                           className='form-field__input'
                           value={stockQuantity}
-                          onChange={(e) =>
-                            setStockQuantity(
-                              e.target.value === ''
-                                ? ''
-                                : Number(e.target.value),
-                            )
-                          }
+                          onChange={(e) => setStockQuantity(e.target.value === '' ? '' : Number(e.target.value))}
                           required={saveToStock}
                         />
                       </div>
                       <div className='form-field'>
                         <label className='form-field__label'>{t('Unit')}</label>
-                        <select
-                          className='form-field__select'
-                          value={stockUnit || 'kg'}
-                          onChange={(e) =>
-                            setStockUnit(e.target.value as UnitType)
-                          }
-                        >
+                        <select className='form-field__select' value={stockUnit || 'kg'} onChange={(e) => setStockUnit(e.target.value as UnitType)}>
                           {UNIT_TYPES.map((u) => (
-                            <option key={u} value={u}>
-                              {t(`constants.units.${u.toLowerCase()}`, u)}
-                            </option>
+                            <option key={u} value={u}>{t(`constants.units.${u.toLowerCase()}`, u)}</option>
                           ))}
                         </select>
                       </div>
                     </div>
                   )}
 
-                  {/* ИНТЕГРАЦИЯ КАЛЬКУЛЯТОРА СТОИМОСТИ */}
                   <div style={{ marginTop: '16px' }}>
                     <CostCalculatorWidget
                       initialUnit={stockUnit}
@@ -1428,18 +943,10 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
           )}
 
           <div className='editor-modal__footer'>
-            <button
-              type='button'
-              className='btn-secondary btn-secondary--outline'
-              onClick={onClose}
-            >
+            <button type='button' className='btn-secondary btn-secondary--outline' onClick={onClose}>
               {t('Cancel')}
             </button>
-            <button
-              type='submit'
-              className='btn-primary'
-              disabled={isPersistingToStock}
-            >
+            <button type='submit' className='btn-primary' disabled={isPersistingToStock}>
               {isPersistingToStock
                 ? t('Saving...')
                 : mode === 'inventory'

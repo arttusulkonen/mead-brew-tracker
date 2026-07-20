@@ -1,4 +1,3 @@
-// src/components/TimelineWidget.tsx
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaCheck, FaCommentDots, FaEdit, FaGripLines, FaPause, FaPlay, FaPlus, FaSave, FaTrash } from 'react-icons/fa';
@@ -18,7 +17,6 @@ interface TimelineWidgetProps {
 const VALID_PHASES: StepPhase[] = ['Preparation', 'Mashing', 'Boiling', 'Fermentation', 'Conditioning', 'Packaging'];
 const VALID_UNITS: TimeUnit[] = ['minutes', 'days'];
 
-// Функция для безопасного маппинга фаз (Conditioning -> aging)
 const mapPhaseToTranslationKey = (phase: string): string => {
   const p = phase?.toLowerCase() || 'preparation';
   if (p === 'conditioning') return 'constants.step_phases.aging';
@@ -61,23 +59,22 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
     setDraggedIndex(null);
   };
 
-  // Интеграция onPhaseAction для запуска модалок из родителя
   const toggleStepTimer = async (stepId: string, phase: string) => {
     const isCurrentlyActive = safeSteps.find(s => s?.id === stepId)?.isActive;
 
-    // Перехват событий: если шаг еще не запущен, и он меняет глобальную фазу варки
     if (!isCurrentlyActive && onPhaseAction && currentSession) {
       if (phase === 'Fermentation' && currentSession.status === 'Brew Day') {
         onPhaseAction(phase);
-        // Не запускаем таймер тут, родитель запустит его после ввода OG
+        return; 
       } else if (phase === 'Conditioning' && currentSession.status === 'Fermentation') {
         onPhaseAction(phase);
+        return; 
       } else if (phase === 'Packaging' && currentSession.status === 'Conditioning') {
         onPhaseAction(phase);
+        return; 
       }
     }
 
-    // Локальная логика старта/паузы таймера
     const now = new Date().toISOString();
     const updatedSteps = safeSteps.map(s => {
       if (s?.id === stepId) {
@@ -85,9 +82,6 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
           const elapsed = Math.floor((new Date(now).getTime() - new Date(s.startedAt).getTime()) / 1000);
           return { ...s, isActive: false, startedAt: null, accumulatedSeconds: (s.accumulatedSeconds || 0) + elapsed };
         } else {
-          if (!s.isActive && onPhaseAction && s.phase) {
-             onPhaseAction(s.phase);
-          }
           return { ...s, isActive: true, startedAt: now };
         }
       } else if (s?.isActive) {
@@ -172,7 +166,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
   };
 
   const deleteStep = async (stepId: string) => {
-    if (!window.confirm(t('Are you sure you want to delete this step?', 'Вы уверены, что хотите удалить этот шаг?'))) return;
+    if (!window.confirm(t('Are you sure you want to delete this step?'))) return;
     const updatedSteps = safeSteps.filter(s => s?.id !== stepId).map((s, idx) => ({ ...s, stepNumber: idx + 1 }));
     await saveSteps(updatedSteps);
   };

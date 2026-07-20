@@ -11,7 +11,7 @@ import { UNIT_TYPES } from '../types/ingredient';
 
 const getBaseUnit = (u: string) => {
   if (['g', 'kg', 'oz', 'lb'].includes(u)) return 'kg';
-  if (['ml', 'L', 'gal'].includes(u)) return 'L';
+  if (['ml', 'L', 'gal'].includes(u)) return 'l';
   return 'unit';
 };
 
@@ -151,12 +151,17 @@ const Inventory: React.FC = () => {
     if (!activeBrewery?.id || !editingStockItem || editStockQty === '') return;
     setIsUpdating(true);
     try {
-      await updateItem(activeBrewery.id, editingStockItem.id, {
+      const payload: Record<string, any> = {
         quantityOnHand: Number(editStockQty),
-        unit: editStockUnit,
-        costPerBaseUnit: editCostPerBaseUnit,
-        currency: editCurrency
-      });
+        unit: editStockUnit
+      };
+
+      if (editCostPerBaseUnit > 0) {
+        payload.costPerBaseUnit = editCostPerBaseUnit;
+        payload.currency = editCurrency;
+      }
+
+      await updateItem(activeBrewery.id, editingStockItem.id, payload);
       setEditingStockItem(null);
     } catch (err) {
       console.error(err);

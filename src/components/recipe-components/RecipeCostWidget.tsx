@@ -15,26 +15,19 @@ export const RecipeCostWidget: React.FC<RecipeCostWidgetProps> = ({ ingredients,
   const { inventory } = useInventoryStore();
 
   const costData = useMemo(() => {
-    let totalCost = 0;
-    let mainCurrency = '€';
+    const totalsByCurrency: Record<string, number> = {};
     let matchedCount = 0;
 
     const breakdown = (ingredients || []).map(ing => {
-      // Ищем ингредиент на складе по ID складской записи или глобальному ID
       const invItem = inventory.find(inv => 
         (ing.inventoryItemId && inv.id === ing.inventoryItemId) || 
         (ing.globalIngredientId && inv.ingredientId === ing.globalIngredientId)
       );
 
       if (!invItem || !invItem.costPerBaseUnit) {
-        return { ...ing, cost: 0, isMatched: false };
+        return { ...ing, cost: 0, isMatched: false, currency: '' };
       }
 
-      if (matchedCount === 0 && invItem.currency) {
-        mainCurrency = invItem.currency; // Берем валюту первого найденного товара
-      }
-
-      // Приводим граммы из рецепта в базовые единицы (кг/Л) для расчета стоимости
       let qtyInBase = ing.quantity;
       const unit = ing.unit || 'g';
       
@@ -44,47 +37,56 @@ export const RecipeCostWidget: React.FC<RecipeCostWidgetProps> = ({ ingredients,
       else if (unit === 'gal') qtyInBase = ing.quantity * 3.78541;
 
       const itemCost = qtyInBase * invItem.costPerBaseUnit;
-      totalCost += itemCost;
+      const currency = invItem.currency || '€';
+      
+      totalsByCurrency[currency] = (totalsByCurrency[currency] || 0) + itemCost;
       matchedCount += 1;
 
-      return { ...ing, cost: itemCost, isMatched: true };
+      return { ...ing, cost: itemCost, isMatched: true, currency };
     });
 
-    const costPerLiter = batchSizeLiters > 0 ? totalCost / batchSizeLiters : 0;
+    return { totalsByCurrency, matchedCount, totalIngredients: ingredients.length, breakdown };
+  }, [ingredients, inventory]);
 
-    return { totalCost, costPerLiter, mainCurrency, matchedCount, totalIngredients: ingredients.length, breakdown };
-  }, [ingredients, inventory, batchSizeLiters]);
+  const hasCosts = Object.keys(costData.totalsByCurrency).length > 0;
 
-  if (!costData || costData.totalCost === 0) return null;
+  if (!costData || !hasCosts) return null;
 
   return (
     <div className="stat-panel stat-panel--finance">
       <h3 className="stat-panel__title stat-panel__title--flex">
-        <FaCoins className="stat-panel__icon-money" /> {t('Brew Cost', 'Стоимость варки')}
+        <FaCoins className="stat-panel__icon-money" /> {t('Brew Cost')}
       </h3>
       
       <ul className="stat-panel__list stat-panel__list--stacked">
-        <li className="stat-panel__item stat-panel__item--row">
-          <span className="stat-panel__label">{t('Total Cost', 'Итоговая стоимость')}</span>
-          <span className="stat-panel__value stat-panel__value--success">
-            {costData.totalCost.toFixed(2)} {costData.mainCurrency}
-          </span>
-        </li>
-        <li className="stat-panel__item stat-panel__item--row">
-          <span className="stat-panel__label">{t('Cost per Liter', 'Себестоимость литра')}</span>
-          <span className="stat-panel__value">
-            {costData.costPerLiter.toFixed(2)} {costData.mainCurrency} / {t('L')}
-          </span>
-        </li>
-        
-        {batchSizeLiters > 0 && (
-          <li className="stat-panel__item stat-panel__item--row">
-            <span className="stat-panel__label">{t('Cost per 0.5L Bottle', 'Бутылка 0.5Л')}</span>
-            <span className="stat-panel__value">
-              {(costData.costPerLiter * 0.5).toFixed(2)} {costData.mainCurrency}
-            </span>
-          </li>
-        )}
+        {Object.entries(costData.totalsByCurrency).map(([currency, total]) => {
+          const costPerLiter = batchSizeLiters > 0 ? total / batchSizeLiters : 0;
+          
+          return (
+            <React.Fragment key={currency}>
+              <li className="stat-panel__item stat-panel__item--row">
+                <span className="stat-panel__label">{t('Total Cost')} ({currency})</span>
+                <span className="stat-panel__value stat-panel__value--success">
+                  {total.toFixed(2)} {currency}
+                </span>
+              </li>
+              <li className="stat-panel__item stat-panel__item--row">
+                <span className="stat-panel__label">{t('Cost per Liter')}</span>
+                <span className="stat-panel__value">
+                  {costPerLiter.toFixed(2)} {currency} / {t('L')}
+                </span>
+              </li>
+              {batchSizeLiters > 0 && (
+                <li className="stat-panel__item stat-panel__item--row">
+                  <span className="stat-panel__label">{t('Cost per 0.5L Bottle')}</span>
+                  <span className="stat-panel__value">
+                    {(costPerLiter * 0.5).toFixed(2)} {currency}
+                  </span>
+                </li>
+              )}
+            </React.Fragment>
+          );
+        })}
       </ul>
 
       <div className="stat-panel__footer">

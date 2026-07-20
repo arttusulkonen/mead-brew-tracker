@@ -1,4 +1,3 @@
-// src/components/TosnaTracker.tsx
 import { calculateOneThirdSugarBreak } from '@mead-tracker/math';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,19 +21,16 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
   const fermentationStart = session?.pitchTimestamp;
   const isSessionEnded = session?.status === 'Completed' || session?.status === 'Conditioning';
 
-  // --- УМНЫЙ АДАПТЕР ГРАФИКА (Центр Истины) ---
   const tosna = useMemo(() => {
     if (!originalTosna) return null;
 
     const currentOg = Number(session?.actualOg || session?.targetOg || 1.000);
     
-    // Если плотность высокая (Standard/Sack >= 1.050), оставляем оригинальные 4 шага
     if (currentOg >= 1.050) return originalTosna;
 
-    // Если это Session Mead (OG < 1.050), ПРИНУДИТЕЛЬНО сжимаем график до 2 шагов
     const originalAdditions = originalTosna.additions || [];
-    const totalNutrientGrams = (originalTosna.dosePerAdditionGrams || 0) * originalAdditions.length;
-    const halfDose = parseFloat((totalNutrientGrams / 2).toFixed(1));
+    const totalFermaidGrams = originalTosna.totalFermaidOGrams || 0;
+    const halfDose = parseFloat((totalFermaidGrams / 2).toFixed(1));
 
     const sessionAdditions = [
       {
@@ -133,12 +129,8 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
           if (!addition) return null;
           
           const targetSeconds = (addition.targetHours || 0) * 3600;
-          
-          // ШАГ 1: Этап доступен для внесения (Due), если текущее время больше или равно целевому
           const isDue = elapsedSeconds >= targetSeconds;
           
-          // ШАГ 2: БИОТЕХНОЛОГИЧЕСКИЙ БУФЕР (12 часов = 43200 секунд)
-          // Мы считаем этап "ПРОСРОЧЕННЫМ", только если прошло больше 12 часов от целевого времени
           const GRACE_PERIOD_SEC = 12 * 3600; 
           const isOverdue = fermentationStart && !addition.isCompleted && !addition.isOneThirdBreak && elapsedSeconds > (targetSeconds + GRACE_PERIOD_SEC);
           
@@ -154,21 +146,19 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
             }
           }
 
-          // Умное переименование карточек
           let stepTitle = addition.isOneThirdBreak 
             ? t('1/3 Sugar Break') 
             : t('Addition {{num}} ({{hours}}h)', { num: index + 1, hours: addition.targetHours || 0 });
           
           if (addition.targetHours === 0) {
-            stepTitle = t('Initial Feed (0h / Pitch)', 'Стартовое питание (Засев)');
+            stepTitle = t('Initial Feed (0h / Pitch)', 'Initial Feed (Pitch)');
           } else if (addition.targetHours === 24 && (tosna.additions || []).length === 2) {
-            stepTitle = t('Final Feed (24h)', 'Финальное питание (24ч)');
+            stepTitle = t('Final Feed (24h)', 'Final Feed (24h)');
           }
           
           return (
             <div 
               key={addition.id} 
-              // Если время подошло (isDue), но еще не просрочено, подсвечиваем карточку приятным цветом
               className={`tosna-widget__item ${isOverdue ? 'tosna-widget__item--overdue' : ''} ${addition.isCompleted ? 'tosna-widget__item--completed' : ''} ${isDue && !addition.isCompleted && !isOverdue ? 'tosna-widget__item--due-now' : ''}`}
             >
               <div className="tosna-widget__info tosna-widget__info--flex">
@@ -191,9 +181,8 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
 
                   {isOverdue && <span className="badge badge--danger tosna-widget__badge-overdue">{t('OVERDUE')}</span>}
                   
-                  {/* Добавляем бейдж "Пора вносить", если время подошло, но еще не просрочено */}
                   {isDue && !isOverdue && !addition.isCompleted && (
-                    <span className="badge badge--primary tosna-widget__badge-due">{t('DUE NOW', 'ПОРА ВНОСИТЬ')}</span>
+                    <span className="badge badge--primary tosna-widget__badge-due">{t('DUE NOW')}</span>
                   )}
                 </div>
 
@@ -216,7 +205,7 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
                 <div className="tosna-widget__form tosna-widget__form--expanded">
                   <div className="tosna-widget__form-layout">
                     <div>
-                      <label className="tosna-widget__form-label">{t('Current Gravity (SG)', 'Текущая плотность (SG)')}</label>
+                      <label className="tosna-widget__form-label">{t('Current Gravity (SG)')}</label>
                       <input 
                         className="tosna-widget__form-input"
                         type="number" 
@@ -227,19 +216,19 @@ export const TosnaTracker: React.FC<TosnaTrackerProps> = ({ session, onMarkAddit
                       />
                     </div>
                     <div>
-                      <label className="tosna-widget__form-label">{t('Notes & Observations', 'Заметки и наблюдения')}</label>
+                      <label className="tosna-widget__form-label">{t('Notes & Observations')}</label>
                       <textarea 
                         className="tosna-widget__form-textarea"
-                        placeholder={t('Notes...', 'Заметки...')} 
+                        placeholder={t('Notes...')} 
                         value={inputNotes} 
                         onChange={e => setInputNotes(e.target.value)} 
                         rows={3}
                       />
                     </div>
                     <div className="tosna-widget__form-actions">
-                      <button className="btn-secondary" onClick={() => setActiveAdditionId(null)} disabled={isSubmitting}>{t('Cancel', 'Отмена')}</button>
+                      <button className="btn-secondary" onClick={() => setActiveAdditionId(null)} disabled={isSubmitting}>{t('Cancel')}</button>
                       <button className="btn-primary" onClick={() => handleSave(addition.id)} disabled={isSubmitting}>
-                        {isSubmitting ? t('Saving...', 'Сохранение...') : t('Save Addition', 'Сохранить добавку')}
+                        {isSubmitting ? t('Saving...') : t('Save Addition')}
                       </button>
                     </div>
                   </div>

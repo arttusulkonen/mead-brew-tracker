@@ -7,11 +7,10 @@ interface RecipePerformanceWidgetProps {
   totalBrews?: number;
   completedBrews?: number;
   avgAiScore?: number | null;
-  // Новые пропсы для пользовательского рейтинга
-  avgUserRating?: number | null;     // Средняя оценка пользователей (например, 4.5)
-  totalUserRatings?: number;         // Количество проголосовавших
-  currentUserRating?: number | null; // Оценка текущего пользователя (чтобы подсветить его выбор)
-  onRateRecipe?: (rating: number) => void; // Коллбэк для сохранения оценки в БД
+  avgUserRating?: number | null;
+  totalUserRatings?: number;
+  currentUserRating?: number | null;
+  onRateRecipe?: (rating: number) => Promise<void>;
 }
 
 export const RecipePerformanceWidget: React.FC<RecipePerformanceWidgetProps> = ({ 
@@ -25,11 +24,22 @@ export const RecipePerformanceWidget: React.FC<RecipePerformanceWidgetProps> = (
 }) => {
   const { t } = useTranslation();
   const [hoveredStar, setHoveredStar] = useState<number>(0);
+  const [isRating, setIsRating] = useState(false);
 
-  // Отрисовка интерактивных звезд для пользователей
+  const handleRate = async (star: number) => {
+    if (!onRateRecipe || isRating) return;
+    
+    setIsRating(true);
+    try {
+      await onRateRecipe(star);
+    } catch (err) {
+      console.error('Failed to submit rating:', err);
+    } finally {
+      setIsRating(false);
+    }
+  };
+
   const renderInteractiveStars = () => {
-    // Если юзер навел мышку — показываем ховер. Иначе показываем его собственную оценку. 
-    // Если он еще не оценивал — показываем средний рейтинг по всем юзерам.
     const displayScore = hoveredStar || currentUserRating || Math.round(avgUserRating || 0);
 
     return (
@@ -43,8 +53,8 @@ export const RecipePerformanceWidget: React.FC<RecipePerformanceWidgetProps> = (
               className={`recipe-performance__star-btn ${isFilled ? 'recipe-performance__star-btn--filled' : ''}`}
               onMouseEnter={() => setHoveredStar(star)}
               onMouseLeave={() => setHoveredStar(0)}
-              onClick={() => onRateRecipe && onRateRecipe(star)}
-              disabled={!onRateRecipe}
+              onClick={() => handleRate(star)}
+              disabled={!onRateRecipe || isRating}
               aria-label={t('Rate {{star}} stars', { star, defaultValue: `Rate ${star} stars` })}
             >
               {isFilled ? <FaStar /> : <FaRegStar />}
@@ -59,43 +69,40 @@ export const RecipePerformanceWidget: React.FC<RecipePerformanceWidgetProps> = (
     <div className="recipe-performance">
       <h3 className="recipe-performance__header">
         <FaChartBar className="recipe-performance__icon" /> 
-        {t('Recipe Performance', 'Статистика рецепта')}
+        {t('Recipe Performance')}
       </h3>
       
       <div className="recipe-performance__stats">
         
-        {/* Блок 1: История варок */}
         <div className="recipe-performance__stat">
           <span className="recipe-performance__label">
-            {t('Total Brews', 'Всего варок')}
+            {t('Total Brews')}
           </span>
           <div className="recipe-performance__value-group">
             <strong className="recipe-performance__value">{totalBrews}</strong>
             <span className="recipe-performance__sub-value">
-              ({completedBrews} {t('completed', 'завершено')})
+              ({completedBrews} {t('completed')})
             </span>
           </div>
         </div>
 
-        {/* Блок 2: Оценка пользователей (НОВЫЙ) */}
         <div className="recipe-performance__stat recipe-performance__stat--divider">
           <span className="recipe-performance__label">
-            {t('User Rating', 'Оценка')}
+            {t('User Rating')}
           </span>
           <div className="recipe-performance__value-group recipe-performance__value-group--column">
             {renderInteractiveStars()}
             <span className="recipe-performance__sub-value">
-              {avgUserRating ? `${avgUserRating.toFixed(1)} / 5` : t('Not rated', 'Нет оценок')}
+              {avgUserRating ? `${avgUserRating.toFixed(1)} / 5` : t('Not rated')}
               {totalUserRatings > 0 && ` (${totalUserRatings})`}
             </span>
           </div>
         </div>
 
-        {/* Блок 3: Оценка ИИ */}
         {avgAiScore !== null && avgAiScore !== undefined && (
           <div className="recipe-performance__stat recipe-performance__stat--divider">
             <span className="recipe-performance__label">
-              {t('AI Score', 'Рейтинг ИИ')}
+              {t('AI Score')}
             </span>
             <strong className="recipe-performance__value recipe-performance__value--ai">
               <FaStar className="recipe-performance__star-icon" /> {avgAiScore}/100

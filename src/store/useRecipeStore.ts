@@ -97,13 +97,11 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       if (error) throw error;
       
       const formattedRecipes = (data || []).map((row: any) => {
-        // Подсчет статистики варок
         const sessions = row.brew_sessions || [];
         const completedSessions = sessions.filter((s: any) => s.status === 'completed');
         const scores = completedSessions.map((s: any) => s.ai_score).filter((v: any) => typeof v === 'number');
         const avgAiScore = scores.length > 0 ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : null;
 
-        // Подсчет пользовательских рейтингов
         const ratings = row.recipe_ratings || [];
         const totalUserRatings = ratings.length;
         const avgUserRating = totalUserRatings > 0 ? ratings.reduce((a: number, b: any) => a + b.score, 0) / totalUserRatings : null;
@@ -199,7 +197,6 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
 
       const formatted = mapRowToRecipe(data[0] as RecipeRow);
       
-      // Сохраняем загруженные ранее форки, чтобы они не исчезли при апдейте стейта
       const existingForks = get().currentRecipe?.forks || [];
       formatted.forks = existingForks;
 
@@ -226,7 +223,6 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id;
 
-      // 1. Загружаем сам рецепт со статистикой
       const { data, error } = await supabase
         .from('recipes')
         .select(`
@@ -246,7 +242,6 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       if (error) throw error;
       
       if (data) {
-        // 2. ЗАГРУЖАЕМ ВАРИАЦИИ (FORKS) ЭТОГО РЕЦЕПТА
         const { data: forksData } = await supabase
           .from('recipes')
           .select('id, name, target_style, target_abv, target_original_gravity')
@@ -272,7 +267,6 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
         (mapped as any).totalUserRatings = totalUserRatings;
         (mapped as any).currentUserRating = currentUserRating;
         
-        // Прикрепляем найденные форки
         mapped.forks = forksData || [];
 
         set({ currentRecipe: mapped, isLoading: false });
@@ -283,6 +277,11 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
   },
 
   rateRecipe: async (recipeId, score) => {
+    // ИСПРАВЛЕНИЕ: Защита от кривых оценок (Comment 6)
+    if (typeof score !== 'number' || score < 1 || score > 5) {
+      throw new Error("Invalid score. Must be between 1 and 5.");
+    }
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");

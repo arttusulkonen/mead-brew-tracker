@@ -154,22 +154,22 @@ const RecipeDetails: React.FC = () => {
             </ul>
           </section>
 
-          {(currentRecipe as any).forks && (currentRecipe as any).forks.length > 0 && (
+          {currentRecipe.forks && currentRecipe.forks.length > 0 && (
             <section className="recipe-details__section">
               <h2 className="recipe-details__section-title">
                 {t('Recipe Variations')} 
                 <span className="badge badge--primary" style={{ marginLeft: '8px' }}>
-                  {(currentRecipe as any).forks.length}
+                  {currentRecipe.forks.length}
                 </span>
               </h2>
               <p className="recipe-details__empty-text" style={{ marginBottom: '16px', fontSize: '14px' }}>
                 {t('These recipes were created as split batches or modifications of this original recipe.')}
               </p>
               <div className="recipes-grid">
-                {(currentRecipe as any).forks.map((fork: any) => (
+                {currentRecipe.forks.map((fork) => (
                   <div 
                     key={fork.id} 
-                    className="recipe-card recipe-card--interactive" 
+                    className="recipe-card recipe-card--interactive"
                     onClick={() => {
                       navigate(`/recipes/${fork.id}`);
                     }}
@@ -207,7 +207,6 @@ const RecipeDetails: React.FC = () => {
                     </span>
                   </div>
                   
-                  {/* ИЗМЕНЕНИЕ ЗДЕСЬ: Добавлено style={{ whiteSpace: 'pre-wrap' }} чтобы включить абзацы */}
                   <div 
                     className="recipe-details__step-desc" 
                     style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', color: 'var(--text-secondary)' }}

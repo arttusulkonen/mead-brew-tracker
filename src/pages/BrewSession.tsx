@@ -81,8 +81,7 @@ const BrewSession: React.FC = () => {
   const isPrepDone = steps.filter((s: any) => s?.phase === 'Preparation').every((s: any) => s?.isCompleted);
   const isFermDone = steps.filter((s: any) => s?.phase === 'Fermentation').every((s: any) => s?.isCompleted);
 
-  // РАЗРЕШАЕМ СПЛИТ НА ЭТАПАХ БРОЖЕНИЯ И СОЗРЕВАНИЯ, ЕСЛИ ОНА ЕЩЕ НЕ РАЗДЕЛЕНА
-  const canSplit = ['Fermentation', 'Conditioning'].includes(currentSession.status) && !currentSession.isSplit;
+  const canSplit = ['Brew Day', 'Fermentation', 'Conditioning'].includes(currentSession.status) && !currentSession.isSplit;
   
   const canMidAdd = ['Fermentation', 'Conditioning'].includes(currentSession.status) && !currentSession.isSplit;
 
