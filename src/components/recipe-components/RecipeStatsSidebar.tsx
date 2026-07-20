@@ -108,20 +108,20 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
               let isHintSuccess = false;
 
               if (add.id === 'virtual-erythritol' || add.name.toLowerCase().includes('эритрит')) {
-                hintText = t('constants.additive_hints.erythritol');
+                hintText = t('Adds body and safe sweetness without restarting fermentation.');
                 isHintSuccess = true;
               } else if (add.id === 'virtual-dextrose' || add.name.toLowerCase().includes('декстроза')) {
-                hintText = t('constants.additive_hints.dextrose');
+                hintText = t('Boil into a syrup, cool down, and add before bottling.');
                 isHintSuccess = true;
               } else if (add.type === 'Yeast') {
                 hintText = `${t('Pitch Rate')}: ${add.rule}`;
               } else if (isRehydration) {
-                hintText = t('constants.nutrient_roles.rehydration_hint');
+                hintText = t('At 35-40°C. Acclimatize to <10°C delta before pitch.');
                 isHintSuccess = true;
               } else {
                 hintText = isSession
-                  ? t('constants.nutrient_roles.fermentation_2step')
-                  : t('constants.nutrient_roles.fermentation_4step');
+                  ? t('2-Step TOSNA: Add at pitch & 24h (Degas first!)')
+                  : t('4-Step TOSNA: 24h, 48h, 72h & 1/3 sugar break.');
               }
 
               return (

@@ -475,9 +475,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   splitBrewSession: async ({ breweryId, parentSessionId, splits }) => {
     set({ isLoading: true, error: null });
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
       const { data: sessionData, error: sessionError } = await supabase
@@ -486,71 +484,59 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         .eq('id', parentSessionId)
         .eq('brewery_id', breweryId)
         .single();
-
+        
       if (sessionError) throw sessionError;
-
+      
       const originalRecipe = sessionData.recipes;
+      const originalVolume = sessionData.actual_batch_size_liters || sessionData.batch_size_liters || 1;
 
-      const originalVolume =
-        sessionData.actual_batch_size_liters ||
-        sessionData.batch_size_liters ||
-        1;
+      const parsedSessionIngredients = typeof sessionData.session_ingredients === 'string'
+        ? JSON.parse(sessionData.session_ingredients)
+        : (sessionData.session_ingredients || []);
+
+      const parsedTosna = typeof sessionData.tosna_schedule === 'string'
+        ? JSON.parse(sessionData.tosna_schedule)
+        : sessionData.tosna_schedule;
 
       for (const split of splits) {
         const scaleFactor = split.volumeLiters / originalVolume;
 
-        const scaledRecipeIngredients = (originalRecipe.ingredients || []).map(
-          (ing: any) => ({
-            ...ing,
-            quantity: parseFloat((ing.quantity * scaleFactor).toFixed(2)),
-          }),
-        );
-
-        const scaledSessionIngredients = (
-          sessionData.session_ingredients || []
-        ).map((ing: any) => ({
+        const scaledRecipeIngredients = (originalRecipe.ingredients || []).map((ing: any) => ({
           ...ing,
-          quantity: parseFloat((ing.quantity * scaleFactor).toFixed(2)),
+          quantity: parseFloat((ing.quantity * scaleFactor).toFixed(2))
+        }));
+
+        const scaledSessionIngredients = parsedSessionIngredients.map((ing: any) => ({
+          ...ing,
+          quantity: parseFloat((ing.quantity * scaleFactor).toFixed(2))
         }));
 
         let scaledTosna = null;
-        if (sessionData.tosna_schedule) {
+        if (parsedTosna) {
           scaledTosna = {
-            ...sessionData.tosna_schedule,
-            totalFermaidOGrams: parseFloat(
-              (
-                sessionData.tosna_schedule.totalFermaidOGrams * scaleFactor
-              ).toFixed(2),
-            ),
-            goFermGrams: parseFloat(
-              (sessionData.tosna_schedule.goFermGrams * scaleFactor).toFixed(2),
-            ),
-            dosePerAdditionGrams: parseFloat(
-              (
-                sessionData.tosna_schedule.dosePerAdditionGrams * scaleFactor
-              ).toFixed(2),
-            ),
+            ...parsedTosna,
+            totalFermaidOGrams: parseFloat((parsedTosna.totalFermaidOGrams * scaleFactor).toFixed(2)),
+            goFermGrams: parseFloat((parsedTosna.goFermGrams * scaleFactor).toFixed(2)),
+            dosePerAdditionGrams: parseFloat((parsedTosna.dosePerAdditionGrams * scaleFactor).toFixed(2))
           };
         }
 
         const { data: newRecipeData, error: recipeError } = await supabase
           .from('recipes')
-          .insert([
-            {
-              brewery_id: breweryId,
-              parent_recipe_id: originalRecipe.id,
-              name: `${originalRecipe.name} (${split.namePostfix})`,
-              beverage_type: originalRecipe.beverage_type,
-              target_style: originalRecipe.target_style,
-              expected_batch_size_liters: split.volumeLiters,
-              target_original_gravity: originalRecipe.target_original_gravity,
-              target_final_gravity: originalRecipe.target_final_gravity,
-              target_abv: originalRecipe.target_abv,
-              ingredients: scaledRecipeIngredients,
-              steps: originalRecipe.steps,
-              created_by: user.id,
-            },
-          ])
+          .insert([{
+            brewery_id: breweryId,
+            parent_recipe_id: originalRecipe.id,
+            name: `${originalRecipe.name} (${split.namePostfix})`,
+            beverage_type: originalRecipe.beverage_type,
+            target_style: originalRecipe.target_style,
+            expected_batch_size_liters: split.volumeLiters,
+            target_original_gravity: originalRecipe.target_original_gravity,
+            target_final_gravity: originalRecipe.target_final_gravity,
+            target_abv: originalRecipe.target_abv,
+            ingredients: scaledRecipeIngredients,
+            steps: originalRecipe.steps,
+            created_by: user.id
+          }])
           .select()
           .single();
 
@@ -558,23 +544,21 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
         const { data: newSessionData, error: newSessionError } = await supabase
           .from('brew_sessions')
-          .insert([
-            {
-              recipe_id: newRecipeData.id,
-              recipe_name: newRecipeData.name,
-              beverage_type: newRecipeData.beverage_type,
-              brewery_id: breweryId,
-              batch_size_liters: split.volumeLiters,
-              actual_batch_size_liters: split.volumeLiters,
-              status: sessionData.status,
-              pitch_timestamp: sessionData.pitch_timestamp,
-              actual_original_gravity: sessionData.actual_original_gravity,
-              session_steps: sessionData.session_steps,
-              session_ingredients: scaledSessionIngredients,
-              tosna_schedule: scaledTosna,
-              created_by: user.id,
-            },
-          ])
+          .insert([{
+            recipe_id: newRecipeData.id,
+            recipe_name: newRecipeData.name,
+            beverage_type: newRecipeData.beverage_type,
+            brewery_id: breweryId,
+            batch_size_liters: split.volumeLiters,
+            actual_batch_size_liters: split.volumeLiters,
+            status: sessionData.status,
+            pitch_timestamp: sessionData.pitch_timestamp,
+            actual_original_gravity: sessionData.actual_original_gravity,
+            session_steps: sessionData.session_steps,
+            session_ingredients: scaledSessionIngredients,
+            tosna_schedule: scaledTosna,
+            created_by: user.id
+          }])
           .select()
           .single();
 
@@ -584,7 +568,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           .from('daily_fermentation_logs')
           .select('*')
           .eq('session_id', parentSessionId);
-
+          
         if (originalLogs && originalLogs.length > 0) {
           const logsToInsert = originalLogs.map((log: any) => ({
             session_id: newSessionData.id,
@@ -592,7 +576,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             gravity_reading: log.gravity_reading,
             ph_reading: log.ph_reading,
             liquid_temperature_c: log.liquid_temperature_c,
-            notes: log.notes,
+            notes: log.notes
           }));
           await supabase.from('daily_fermentation_logs').insert(logsToInsert);
         }
@@ -600,10 +584,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
       await supabase
         .from('brew_sessions')
-        .update({
-          is_split: true,
+        .update({ 
+          is_split: true, 
           status: 'completed',
-          completed_date: new Date().toISOString(),
+          completed_date: new Date().toISOString()
         })
         .eq('id', parentSessionId)
         .eq('brewery_id', breweryId);

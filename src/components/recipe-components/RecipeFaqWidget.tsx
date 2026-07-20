@@ -1,3 +1,4 @@
+// src/components/recipe-components/RecipeFaqWidget.tsx
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaChevronDown, FaChevronUp, FaQuestionCircle } from 'react-icons/fa';
@@ -37,69 +38,49 @@ export const RecipeFaqWidget: React.FC<RecipeFaqWidgetProps> = ({
 
   const faqItems = [
     {
-      title: t('faq.water_volume_title', 'Why do I start with less water than my target batch size?'),
+      title: t('Why do I start with less water than my target batch size?'),
       content: t(
-        'faq.water_volume_desc',
         'Honey takes up physical space. 1kg of honey displaces approximately 0.7 liters of volume. If your target is {{liters}}L, you cannot start with {{liters}}L of water. You must start with less water, dissolve the honey, and then top it up with cold water to reach exactly {{liters}}L.',
         { liters: batchSizeLiters }
       )
     },
     {
-      title: t('faq.no_boil_title', 'Why don\'t we boil the honey (No-Boil)?'),
-      content: t(
-        'faq.no_boil_desc',
-        'Heating honey above 45°C irreversibly destroys beneficial enzymes (diastase, invertase) and evaporates delicate floral aromatics (monoterpenes, esters). Instead, we heat water to 40-45°C, dissolve the honey, and rapidly cool it. This preserves the pure honey profile and prevents caramel/burnt off-flavors.'
-      )
+      title: t('Why don\'t we boil the honey (No-Boil)?'),
+      content: t('Heating honey above 45°C irreversibly destroys beneficial enzymes (diastase, invertase) and evaporates delicate floral aromatics (monoterpenes, esters). Instead, we heat water to 40-45°C, dissolve the honey, and rapidly cool it. This preserves the pure honey profile and prevents caramel/burnt off-flavors.')
     },
     {
-      title: t('faq.chilling_aeration_title', 'Why do we chill so fast and shake the fermenter?'),
-      content: t(
-        'faq.chilling_aeration_desc',
-        'A rapid chill with a wort chiller prevents wild bacteria from taking over. Shaking the must vigorously for 10 minutes introduces oxygen, which yeast desperately need during their initial growth phase to build strong cell walls (sterol synthesis).'
-      )
+      title: t('Why do we chill so fast and shake the fermenter?'),
+      content: t('A rapid chill with a wort chiller prevents wild bacteria from taking over. Shaking the must vigorously for 10 minutes introduces oxygen, which yeast desperately need during their initial growth phase to build strong cell walls (sterol synthesis).')
     },
     {
-      title: t('faq.yeast_prep_title', 'Why do we rehydrate and temper the yeast?'),
-      content: t(
-        'faq.yeast_prep_desc',
-        'Dry yeast cells are fragile. Go-Ferm provides essential sterols and vitamins. We rehydrate at 40°C, wait 15 minutes, and then slowly mix in small amounts of cold must every 5 minutes (tempering). This prevents a temperature shock that could kill half your yeast colony before fermentation even begins.'
-      )
+      title: t('Why do we rehydrate and temper the yeast?'),
+      content: t('Dry yeast cells are fragile. Go-Ferm provides essential sterols and vitamins. We rehydrate at 40°C, wait 15 minutes, and then slowly mix in small amounts of cold must every 5 minutes (tempering). This prevents a temperature shock that could kill half your yeast colony before fermentation even begins.')
     },
     {
-      title: t('faq.tosna_degas_title', 'Why do I need to degas before adding nutrients?'),
-      content: t(
-        'faq.tosna_degas_desc',
-        'During fermentation, CO2 dissolves into the liquid. If you dump dry nutrient powder (Fermaid O) directly into it, it acts as thousands of nucleation points, causing a massive foam volcano. Always stir gently to release gas first!'
-      )
+      title: t('Why do I need to degas before adding nutrients?'),
+      content: t('During fermentation, CO2 dissolves into the liquid. If you dump dry nutrient powder (Fermaid O) directly into it, it acts as thousands of nucleation points, causing a massive foam volcano. Always stir gently to release gas first!')
     },
     {
-      title: t('faq.fermentation_cleanup_title', 'When is fermentation actually finished?'),
-      content: t(
-        'faq.fermentation_cleanup_desc',
-        'Fermentation is done when the specific gravity reaches 1.000 and does not change for 48 hours. The waiting period after reaching 1.000 is crucial: the yeast enter a "cleanup phase" where they re-absorb harsh off-flavors (fusel alcohols) created during active fermentation.'
-      )
+      title: t('When is fermentation actually finished?'),
+      content: t('Fermentation is done when the specific gravity reaches 1.000 and does not change for 48 hours. The waiting period after reaching 1.000 is crucial: the yeast enter a "cleanup phase" where they re-absorb harsh off-flavors (fusel alcohols) created during active fermentation.')
     }
   ];
 
   if (isColdCrashEnabled) {
     faqItems.push({
-      title: t('faq.cold_crash_title', 'What is a Cold Crash?'),
-      content: t(
-        'faq.cold_crash_desc',
-        'Moving the fermenter to a cold environment (2-4°C) for 3-5 days. This puts the yeast to sleep, causing them to drop out of suspension like a stone, resulting in a crystal-clear mead.'
-      )
+      title: t('What is a Cold Crash?'),
+      content: t('Moving the fermenter to a cold environment (2-4°C) for 3-5 days. This puts the yeast to sleep, causing them to drop out of suspension like a stone, resulting in a crystal-clear mead.')
     });
   }
 
   if (isSafeBacksweetening) {
     faqItems.push({
-      title: t('faq.mjolnir_hack_title', 'How is the Erythritol and Dextrose calculated?'),
+      title: t('How is the Erythritol and Dextrose calculated?'),
       content: t(
-        'faq.mjolnir_hack_desc',
         'This is the Safe Backsweetening logic for a {{liters}}L batch:\n\nDextrose (Carbonation): We need ~6.5g per liter for a sparkling champagne-like carbonation (2.5 vols CO2). {{liters}}L * 6.5g = {{dextroseGrams}}g.\n\nErythritol (Sweetness): It takes ~2.5g of Erythritol per liter to raise the gravity by 0.001 points. To reach a "{{sweetness}}" profile ({{targetFg}} FG) from 1.000 FG, we need {{points}} points. {{liters}}L * {{points}} * 2.5g = {{erythritolGrams}}g.\n\nWARNING: You must boil this syrup for sterility, but COOL IT TO ROOM TEMPERATURE before mixing. Hot syrup will kill the yeast needed for carbonation!',
         { 
           liters: batchSizeLiters, 
-          sweetness: sweetnessLvl?.name || 'Sweet', 
+          sweetness: t(`constants.sweetness.${wizardSweetness}`) || sweetnessLvl?.name || 'Sweet', 
           targetFg: targetSweetFg.toFixed(3),
           points: points,
           dextroseGrams, 
