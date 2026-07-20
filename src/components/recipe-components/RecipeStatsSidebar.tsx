@@ -1,29 +1,11 @@
 // src/components/recipe-components/RecipeStatsSidebar.tsx
-import type { TosnaRequirements } from '@mead-tracker/math';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaExclamationTriangle, FaInfoCircle } from 'react-icons/fa';
 import type { BeverageType } from '../../types/recipe';
 import type { BjcpStyle, StyleValidationResult } from '../../utils/bjcpMatchEngine';
+import type { RecipeDetailsStats } from '../../utils/recipeCalculators';
 import type { RecipeIngredientEntry } from './types';
-
-interface DynamicAdditive {
-  id: string;
-  name: string;
-  totalGrams: number;
-  rule: string;
-  type: 'Yeast' | 'Nutrient' | 'Additive';
-}
-
-export interface RecipeDetailsStats {
-  og: number;
-  abv: number;
-  ibu: number;
-  ebc: number;
-  tosna: TosnaRequirements | null;
-  yeastAdded: number;
-  dynamicAdditives: DynamicAdditive[];
-}
 
 interface RecipeStatsSidebarProps {
   validation: StyleValidationResult;
@@ -34,7 +16,7 @@ interface RecipeStatsSidebarProps {
   isAbvMismatch: boolean;
   targetStyle: string;
   updateIngredient: (id: string, updates: Partial<RecipeIngredientEntry>) => void;
-  onAddVirtualIngredient: (id: string, name: string, quantity: number, type: string) => void; // НОВЫЙ ПРОПС
+  onAddVirtualIngredient: (id: string, name: string, quantity: number, type: string, formKey?: string) => void; 
   handleSaveRecipe: () => void;
   isSaving: boolean;
   recipeName: string;
@@ -132,9 +114,9 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
                 hintText = t('Boil into a syrup, cool down, and add before bottling.');
                 isHintSuccess = true;
               } else if (add.type === 'Yeast') {
-                hintText = t('Pitch Rate', 'Pitch Rate: ') + add.rule;
+                hintText = `${t('Pitch Rate')}: ${add.rule}`;
               } else if (isRehydration) {
-                hintText = t('constants.nutrient_roles.rehydration_hint');
+                hintText = t('constants.nutrient_roles.rehydration_hint', 'At 35-40°C. Acclimatize to <10°C delta before pitch.');
                 isHintSuccess = true;
               } else {
                 hintText = isSession
@@ -160,12 +142,15 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
                         if (currentIng) {
                           updateIngredient(add.id, { quantity: targetGrams });
                         } else {
-                          onAddVirtualIngredient(add.id, add.name, targetGrams, add.type);
+                          let formKey: string | undefined;
+                          if (add.id === 'virtual-erythritol') formKey = 'Erythritol';
+                          if (add.id === 'virtual-dextrose') formKey = 'Dextrose';
+                          onAddVirtualIngredient(add.id, add.name, targetGrams, add.type, formKey);
                         }
                       }}
                       disabled={isApplied}
                     >
-                      {isApplied ? t('Applied', 'Applied') : t('Apply')}
+                      {isApplied ? t('Applied') : t('Apply')}
                     </button>
                   </div>
                 </li>

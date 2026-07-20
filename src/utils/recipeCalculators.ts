@@ -151,7 +151,7 @@ export const calculateRecipeStats = ({
     const erythritolGrams = Math.round(batchSizeLiters * points * 2.5);
     
     if (erythritolGrams > 0) {
-      const existingErythritol = (ingredients || []).find(i => i.name?.toLowerCase().includes('erythritol') || i.name?.toLowerCase().includes('эритрит'));
+      const existingErythritol = (ingredients || []).find(i => i.form === 'Erythritol' || i.name?.toLowerCase().includes('erythritol') || i.name?.toLowerCase().includes('эритрит'));
       dynamicAdditives.push({
         id: existingErythritol ? existingErythritol.id : 'virtual-erythritol',
         name: existingErythritol ? existingErythritol.name : 'Erythritol',
@@ -163,7 +163,7 @@ export const calculateRecipeStats = ({
 
     const dextroseGrams = Math.round(batchSizeLiters * 6.5);
     if (dextroseGrams > 0) {
-      const existingDextrose = (ingredients || []).find(i => i.name?.toLowerCase().includes('dextrose') || i.name?.toLowerCase().includes('декстроза'));
+      const existingDextrose = (ingredients || []).find(i => i.form === 'Dextrose' || i.name?.toLowerCase().includes('dextrose') || i.name?.toLowerCase().includes('декстроза'));
       dynamicAdditives.push({
         id: existingDextrose ? existingDextrose.id : 'virtual-dextrose',
         name: existingDextrose ? existingDextrose.name : 'Dextrose',

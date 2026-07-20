@@ -84,6 +84,7 @@ const NITROGEN_LEVELS: Array<NonNullable<EditedIngredientData['nitrogenDemand']>
 const HOPS_FORMS = ['Pellet', 'Whole', 'Extract'];
 const YEAST_FORMS = ['Dry', 'Liquid'];
 const FERMENTABLE_TYPES = ['Grain', 'Extract', 'Sugar', 'Honey', 'Fruit'];
+const SWEETENER_TYPES = ['Erythritol', 'Dextrose', 'Lactose', 'Sucralose', 'Stevia', 'Other'];
 
 const SUGGESTED_STAGE_BY_ADDITIVE_TYPE: Partial<Record<AdditiveType, string>> = {
   Fruit: 'Secondary',
@@ -167,6 +168,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
           additionStage: validInitialAdditiveType
             ? SUGGESTED_STAGE_BY_ADDITIVE_TYPE[validInitialAdditiveType] || ''
             : '',
+          form: validInitialAdditiveType === 'Sweetener' ? 'Erythritol' : undefined,
         }
       : {}),
     ...(targetCategory === 'Water Profile'
@@ -325,7 +327,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
   const handleChange = (field: keyof EditedIngredientData, value: any) => {
     setFormData((prev) => {
       const next = { ...prev, [field]: value };
-      const safeFields = ['quantity', 'note', 'additionStage', 'unit', 'dosagePer10Liters'];
+      const safeFields = ['quantity', 'note', 'additionStage', 'unit', 'dosagePer10Liters', 'form'];
       if (prev.globalIngredientId && !safeFields.includes(field)) {
         next.globalIngredientId = null;
       }
@@ -392,6 +394,8 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
         if (formData.additionStage) baseData.additionStage = formData.additionStage;
       } else if (formData.category === 'Additive') {
         baseData.additiveType = formData.additiveType ?? 'Nutrient';
+        if (formData.form) baseData.form = formData.form; 
+        
         if (formData.additiveType === 'Nutrient' && formData.nutrientRole) {
           baseData.nutrientRole = formData.nutrientRole;
         }
@@ -736,6 +740,13 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                       const val = e.target.value as AdditiveType;
                       handleChange('additiveType', val);
                       handleChange('additionStage', SUGGESTED_STAGE_BY_ADDITIVE_TYPE[val] ?? '');
+                      
+                      if (val === 'Sweetener') {
+                        handleChange('form', 'Erythritol');
+                      } else {
+                        handleChange('form', undefined);
+                      }
+
                       if (val !== 'Nutrient') {
                         handleChange('nutrientRole', undefined);
                       } else {
@@ -748,6 +759,21 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                     ))}
                   </select>
                 </div>
+
+                {formData.additiveType === 'Sweetener' && (
+                  <div className='form-field'>
+                    <label className='form-field__label'>{t('Sweetener Type', 'Тип подсластителя')}</label>
+                    <select
+                      className='form-field__select'
+                      value={formData.form ?? 'Other'}
+                      onChange={(e) => handleChange('form', e.target.value)}
+                    >
+                      {SWEETENER_TYPES.map((type) => (
+                        <option key={type} value={type}>{t(`constants.sweetener_types.${type.toLowerCase()}`, type)}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {formData.additiveType === 'Nutrient' && (
                   <div className='form-field'>

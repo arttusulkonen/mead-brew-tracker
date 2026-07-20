@@ -113,8 +113,8 @@ const Recipes: React.FC = () => {
     if (state.beverageType !== 'Mead') return null;
     switch (state.wizardStyle) {
       case 'traditional': return { category: 'Honey' as IngredientCategory, label: t('Honey') };
-      case 'melomel': return { category: 'Additive' as IngredientCategory, additiveType: 'Fruit' as AdditiveType, label: t('constants.additive_types.fruit', 'Fruit') };
-      case 'metheglin': return { category: 'Additive' as IngredientCategory, additiveType: 'Spice' as AdditiveType, label: t('constants.additive_types.spice', 'Spice') };
+      case 'melomel': return { category: 'Additive' as IngredientCategory, additiveType: 'Fruit' as AdditiveType, label: t('constants.additive_types.fruit') };
+      case 'metheglin': return { category: 'Additive' as IngredientCategory, additiveType: 'Spice' as AdditiveType, label: t('constants.additive_types.spice') };
       case 'session_hopped': case 'braggot': return { category: 'Hops' as IngredientCategory, label: t('Hops') };
       default: return null;
     }
@@ -162,7 +162,7 @@ const Recipes: React.FC = () => {
     state.updateIngredient(targetEntry.id, { quantity: Math.round(bestGrams / 10) * 10 });
   };
 
-  const handleAddVirtualIngredient = (id: string, name: string, quantity: number, type: string) => {
+  const handleAddVirtualIngredient = (id: string, name: string, quantity: number, type: string, formKey?: string) => {
     const newIng = {
       id: crypto.randomUUID(),
       globalIngredientId: null,
@@ -170,7 +170,8 @@ const Recipes: React.FC = () => {
       category: type === 'Yeast' ? 'Yeast' : 'Additive',
       quantity,
       additiveType: name.includes('Erythritol') || name.includes('Эритрит') ? 'Sweetener' : 'Other',
-      additionStage: 'Bottling',
+      form: formKey, // СОХРАНЯЕМ КЛЮЧ!
+      additionStage: t('Bottling', 'Bottling'), // ИСПОЛЬЗУЕМ ПЕРЕВОД
       note: t('Added by Smart Calculator'),
       showNote: false
     } as unknown as RecipeIngredientEntry;

@@ -75,6 +75,7 @@ export interface AdditiveIngredient extends BaseIngredient {
   yanValuePerGramPerLiter?: number;
   dosagePer10Liters?: number;
   dosagePerGramYeast?: number;
+  form?: string; 
 }
 
 export type IngredientUnion =
