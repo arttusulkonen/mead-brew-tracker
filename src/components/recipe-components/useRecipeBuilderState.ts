@@ -80,6 +80,9 @@ export function useRecipeBuilderState() {
   const [wizardSweetness, setWizardSweetness] = useState<string>(SWEETNESS_LEVELS[2].id);
   const [wizardHoney, setWizardHoney] = useState<string>(HONEY_TERROIR[0].id);
 
+  const [isSafeBacksweetening, setIsSafeBacksweetening] = useState<boolean>(true);
+  const [isColdCrashEnabled, setIsColdCrashEnabled] = useState<boolean>(true);
+
   const [bjcpStyles, setBjcpStyles] = useState<BjcpStyle[]>([]);
   const [selectedStyleId, setSelectedStyleId] = useState<string>('');
 
@@ -173,6 +176,12 @@ export function useRecipeBuilderState() {
       setTargetStyle(r.targetStyle || 'Standard');
       setTargetFg(r.targetFinalGravity || 1.000);
 
+      if (r.beverageType === 'Mead' && r.targetFinalGravity === 1.000) {
+        setIsSafeBacksweetening(true);
+      } else {
+        setIsSafeBacksweetening(false);
+      }
+
       if (r.baseStyle) {
         setWizardStyle(r.baseStyle);
       }
@@ -247,6 +256,8 @@ export function useRecipeBuilderState() {
     setBatchSizeLiters(20);
     setTargetStyle('Standard');
     setTargetFg(1.010);
+    setIsSafeBacksweetening(true);
+    setIsColdCrashEnabled(true); // Сбрасываем в true
     setSelectedStyleId('');
     setRecipeIngredients([]);
     setRecipeSteps([]);
@@ -317,6 +328,8 @@ export function useRecipeBuilderState() {
     wizardStyle, setWizardStyle,
     wizardSweetness, setWizardSweetness,
     wizardHoney, setWizardHoney,
+    isSafeBacksweetening, setIsSafeBacksweetening,
+    isColdCrashEnabled, setIsColdCrashEnabled, 
     bjcpStyles,
     selectedStyleId, setSelectedStyleId,
     globalCatalog, setGlobalCatalog,

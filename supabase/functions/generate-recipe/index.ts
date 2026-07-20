@@ -36,6 +36,8 @@ Deno.serve(async (req) => {
       targetAbv,
       batchSizeLiters,
       targetFg,
+      isSafeBacksweetening, 
+      isColdCrashEnabled, 
       ingredients,
       locale,
     } = requestBody;
@@ -75,6 +77,8 @@ Deno.serve(async (req) => {
       - Target ABV: ${targetAbv || 0}%
       - Batch Size: ${batchSizeLiters || 0} Liters
       - Target Final Gravity (FG): ${targetFg || 1.0}
+      - Safe Homebrew Backsweetening Mode (Mjolnir Hack): ${isSafeBacksweetening ? 'ENABLED (Use Erythritol for sweetness)' : 'DISABLED (Use commercial stabilization)'}
+      - Cold Crash (Refrigeration step): ${isColdCrashEnabled ? 'ENABLED (Include 3-day step at 2-4°C)' : 'DISABLED (Do NOT include Cold Crash. Clarify at room temp)'}
 
       # SELECTED INGREDIENTS WITH FRONTEND CALCULATED EXACT QUANTITIES
       ${JSON.stringify(ingredients, null, 2)}

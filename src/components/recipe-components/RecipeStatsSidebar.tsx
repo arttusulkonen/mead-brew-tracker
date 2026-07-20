@@ -34,6 +34,7 @@ interface RecipeStatsSidebarProps {
   isAbvMismatch: boolean;
   targetStyle: string;
   updateIngredient: (id: string, updates: Partial<RecipeIngredientEntry>) => void;
+  onAddVirtualIngredient: (id: string, name: string, quantity: number, type: string) => void; // НОВЫЙ ПРОПС
   handleSaveRecipe: () => void;
   isSaving: boolean;
   recipeName: string;
@@ -51,6 +52,7 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
   isAbvMismatch,
   targetStyle,
   updateIngredient,
+  onAddVirtualIngredient,
   handleSaveRecipe,
   isSaving,
   recipeName,
@@ -123,15 +125,21 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
               let hintText: string;
               let isHintSuccess = false;
 
-              if (add.type === 'Yeast') {
+              if (add.id === 'virtual-erythritol' || add.name.toLowerCase().includes('эритрит')) {
+                hintText = t('Adds body and safe sweetness without restarting fermentation.');
+                isHintSuccess = true;
+              } else if (add.id === 'virtual-dextrose' || add.name.toLowerCase().includes('декстроза')) {
+                hintText = t('Boil into a syrup, cool down, and add before bottling.');
+                isHintSuccess = true;
+              } else if (add.type === 'Yeast') {
                 hintText = t('Pitch Rate', 'Pitch Rate: ') + add.rule;
               } else if (isRehydration) {
-                hintText = t('constants.nutrient_roles.rehydration_hint', 'At 35-40°C. Acclimatize to <10°C delta before pitch.');
+                hintText = t('constants.nutrient_roles.rehydration_hint');
                 isHintSuccess = true;
               } else {
                 hintText = isSession
-                  ? t('constants.nutrient_roles.fermentation_2step', '2-Step TOSNA: Add at pitch & 24h (Degas first!)')
-                  : t('constants.nutrient_roles.fermentation_4step', '4-Step TOSNA: 24h, 48h, 72h & 1/3 sugar break.');
+                  ? t('constants.nutrient_roles.fermentation_2step')
+                  : t('constants.nutrient_roles.fermentation_4step');
               }
 
               return (
@@ -148,7 +156,13 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
                     <button
                       type="button"
                       className={`stat-panel__btn-apply ${isApplied ? 'stat-panel__btn-apply--applied' : ''}`}
-                      onClick={() => updateIngredient(add.id, { quantity: targetGrams })}
+                      onClick={() => {
+                        if (currentIng) {
+                          updateIngredient(add.id, { quantity: targetGrams });
+                        } else {
+                          onAddVirtualIngredient(add.id, add.name, targetGrams, add.type);
+                        }
+                      }}
                       disabled={isApplied}
                     >
                       {isApplied ? t('Applied', 'Applied') : t('Apply')}
