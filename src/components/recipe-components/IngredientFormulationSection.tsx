@@ -1,3 +1,4 @@
+// src/components/recipe-components/IngredientFormulationSection.tsx
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaMagic } from 'react-icons/fa';

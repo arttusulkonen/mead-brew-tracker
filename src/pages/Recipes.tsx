@@ -1,5 +1,4 @@
-// src/pages/Recipes.tsx
-import { calculateAbvCrouch, calculateIbuTinseth, calculateMcu, calculateTosna, estimateOG, estimateSrmMorey, srmToEbc } from '@mead-tracker/math';
+import { calculateAbvCrouch, estimateOG } from '@mead-tracker/math';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../supabase/client';
@@ -7,18 +6,21 @@ import { supabase } from '../supabase/client';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useRecipeStore } from '../store/useRecipeStore';
 import { getSuggestedIngredients, validateStyleBounds } from '../utils/bjcpMatchEngine';
+import { calculateRecipeStats } from '../utils/recipeCalculators';
 
 import { IngredientEditorModal, type EditedIngredientData } from '../components/IngredientEditorModal';
 import { StyleSearchModal } from '../components/StyleSearchModal';
 
+import { useNavigate } from 'react-router-dom';
 import { BeerSuggestionsSection } from '../components/recipe-components/BeerSuggestionsSection';
 import { BrewingStepsEditor } from '../components/recipe-components/BrewingStepsEditor';
 import { CoreParametersSection } from '../components/recipe-components/CoreParametersSection';
 import { IngredientFormulationSection } from '../components/recipe-components/IngredientFormulationSection';
 import { IngredientGroup } from '../components/recipe-components/IngredientGroup';
 import { MeadWizardSection } from '../components/recipe-components/MeadWizardSection';
+import { RecipeFaqWidget } from '../components/recipe-components/RecipeFaqWidget';
 import { RecipeListView } from '../components/recipe-components/RecipeListView';
-import { RecipeStatsSidebar, type RecipeDetailsStats } from '../components/recipe-components/RecipeStatsSidebar';
+import { RecipeStatsSidebar } from '../components/recipe-components/RecipeStatsSidebar';
 import type { AiIngredientProposal, RecipeIngredientEntry, RecipeStepEntry } from '../components/recipe-components/types';
 import { useRecipeBuilderState } from '../components/recipe-components/useRecipeBuilderState';
 import type { AdditiveType, BaseIngredient, IngredientCategory, IngredientUnion, YeastIngredient } from '../types/ingredient';
@@ -45,8 +47,8 @@ interface AiResponseIngredient {
 const Recipes: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { activeBrewery } = useBreweryStore();
+  const navigate = useNavigate();
   
-  // ИСПРАВЛЕНИЕ: Достаем fetchRecipes из стора
   const { recipes, saveRecipe, updateRecipe, fetchRecipes, isLoading: isRecipesLoading } = useRecipeStore();
 
   const state = useRecipeBuilderState();
@@ -54,7 +56,8 @@ const Recipes: React.FC = () => {
   const [aiProposedSteps, setAiProposedSteps] = useState<RecipeStepEntry[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // ИСПРАВЛЕНИЕ: Автоматически подтягиваем рецепты, если зашли напрямую на страницу
+  const [editingIngredientId, setEditingIngredientId] = useState<string | null>(null);
+
   useEffect(() => {
     if (activeBrewery?.id) {
       fetchRecipes(activeBrewery.id);
@@ -65,96 +68,16 @@ const Recipes: React.FC = () => {
     return (state.bjcpStyles || []).find(s => s?.style_id === state.selectedStyleId) || null;
   }, [state.selectedStyleId, state.bjcpStyles]);
 
-  const recipeDetails: RecipeDetailsStats = useMemo(() => {
-    let totalFermentableGrams = 0;
-    let averageBrixEquivalent = 0;
-    let totalMcu = 0;
-    let totalIbu = 0;
-    let yeastAddedGrams = 0;
-    let yeastNitrogenDemand: string = 'Medium';
-    let totalWeightedBrix = 0;
-    let customNutrientName = '';
-    const dynamicAdditives: Array<{ id: string; name: string; totalGrams: number; rule: string }> = [];
-
-    (state.recipeIngredients || []).forEach(item => {
-      if (!item) return;
-      if (item.category === 'Fermentable' || item.category === 'Honey') {
-        let brixVal = 80;
-        if (item.category === 'Honey' && item.sugarContentBrix) {
-          brixVal = item.sugarContentBrix;
-        } else if (item.yieldPpg) {
-          brixVal = item.yieldPpg; 
-        }
-
-        const qty = item.quantity || 0;
-
-        totalFermentableGrams += qty;
-        totalWeightedBrix += (brixVal * qty);
-
-        if (item.category === 'Fermentable' && state.beverageType === 'Beer' && state.batchSizeLiters > 0) {
-          totalMcu += calculateMcu(qty / 1000, item.colorEbc || 5, state.batchSizeLiters);
-        }
-      } else if (item.category === 'Yeast') {
-        yeastAddedGrams += item.quantity || 0;
-        if (item.nitrogenDemand) yeastNitrogenDemand = item.nitrogenDemand;
-      }
+  const recipeDetails = useMemo(() => {
+    return calculateRecipeStats({
+      ingredients: state.recipeIngredients || [],
+      batchSizeLiters: state.batchSizeLiters,
+      targetFg: state.targetFg,
+      beverageType: state.beverageType,
+      isSafeBacksweetening: state.isSafeBacksweetening,
+      wizardSweetness: state.wizardSweetness
     });
-
-    if (totalFermentableGrams > 0) {
-      averageBrixEquivalent = totalWeightedBrix / totalFermentableGrams;
-    }
-
-    const estimatedOg = estimateOG(state.batchSizeLiters, totalFermentableGrams, averageBrixEquivalent);
-    const estimatedAbv = calculateAbvCrouch(estimatedOg, state.targetFg);
-    const estimatedEbc = state.beverageType === 'Beer' ? srmToEbc(estimateSrmMorey(totalMcu)) : 0;
-
-    (state.recipeIngredients || []).forEach(item => {
-      if (!item) return;
-      if (item.category === 'Hops' && state.beverageType === 'Beer' && state.batchSizeLiters > 0) {
-        const boilTime = item.boilTimeMinutes || 0;
-        const alpha = item.alphaAcidPct || 5;
-        totalIbu += calculateIbuTinseth(alpha, item.quantity || 0, boilTime, state.batchSizeLiters, estimatedOg);
-      }
-    });
-
-    let tosnaData = null;
-    if (state.beverageType === 'Mead' && yeastAddedGrams > 0 && estimatedOg > 1.000) {
-      let nFactor = 0.90;
-      if (yeastNitrogenDemand === 'Low') nFactor = 0.75;
-      else if (yeastNitrogenDemand === 'High' || yeastNitrogenDemand === 'Very High') nFactor = 1.25;
-      tosnaData = calculateTosna(state.batchSizeLiters, estimatedOg, nFactor);
-    }
-
-    (state.recipeIngredients || []).forEach(item => {
-      if (!item || item.category !== 'Additive') return;
-      let calculatedGrams = 0;
-      let ruleApplied = '';
-
-      if (item.additiveType === 'Nutrient' && tosnaData) {
-        if (item.nutrientRole === 'Rehydration' || (!item.nutrientRole && item.name?.toLowerCase().includes('go-ferm'))) {
-          calculatedGrams = tosnaData.goFermGrams;
-          ruleApplied = 'TOSNA 3.0: Rehydration';
-        } else if (item.nutrientRole === 'Fermentation' || !item.nutrientRole) {
-          calculatedGrams = tosnaData.totalFermaidOGrams;
-          ruleApplied = 'TOSNA 3.0: Total Fermentation Nutrient';
-          if (!customNutrientName) customNutrientName = item.name;
-        }
-      } else if (item.dosagePerGramYeast && yeastAddedGrams > 0) {
-        calculatedGrams = yeastAddedGrams * item.dosagePerGramYeast;
-        ruleApplied = `${item.dosagePerGramYeast}g / 1g Yeast`;
-      } else if (item.dosagePer10Liters && state.batchSizeLiters > 0) {
-        calculatedGrams = (state.batchSizeLiters / 10) * item.dosagePer10Liters;
-        ruleApplied = `${item.dosagePer10Liters}g / 10L`;
-        if (item.additiveType === 'Nutrient' && !customNutrientName) customNutrientName = item.name;
-      }
-
-      if (calculatedGrams > 0) {
-        dynamicAdditives.push({ id: item.id, name: item.name, totalGrams: calculatedGrams, rule: ruleApplied });
-      }
-    });
-
-    return { og: estimatedOg, abv: estimatedAbv, ibu: totalIbu, ebc: estimatedEbc, tosna: tosnaData, yeastAdded: yeastAddedGrams, dynamicAdditives };
-  }, [state.recipeIngredients, state.batchSizeLiters, state.targetFg, state.beverageType]);
+  }, [state.recipeIngredients, state.batchSizeLiters, state.targetFg, state.beverageType, state.isSafeBacksweetening, state.wizardSweetness]);
 
   const validation = useMemo(() => {
     return validateStyleBounds(currentSelectedStyle, recipeDetails.og, state.targetFg, recipeDetails.abv, recipeDetails.ibu, recipeDetails.ebc);
@@ -189,13 +112,18 @@ const Recipes: React.FC = () => {
   const meadIngredientHint = useMemo(() => {
     if (state.beverageType !== 'Mead') return null;
     switch (state.wizardStyle) {
-      case 'traditional': return { category: 'Honey' as IngredientCategory, label: t('Honey') };
-      case 'melomel': return { category: 'Additive' as IngredientCategory, additiveType: 'Fruit' as AdditiveType, label: t('constants.additive_types.fruit', 'Fruit') };
-      case 'metheglin': return { category: 'Additive' as IngredientCategory, additiveType: 'Spice' as AdditiveType, label: t('constants.additive_types.spice', 'Spice') };
-      case 'session_hopped': case 'braggot': return { category: 'Hops' as IngredientCategory, label: t('Hops') };
+      case 'traditional': return { category: 'Honey' as IngredientCategory, label: t('constants.categories.honey') };
+      case 'melomel': return { category: 'Additive' as IngredientCategory, additiveType: 'Fruit' as AdditiveType, label: t('constants.additive_types.fruit') };
+      case 'metheglin': return { category: 'Additive' as IngredientCategory, additiveType: 'Spice' as AdditiveType, label: t('constants.additive_types.spice') };
+      case 'session_hopped': case 'braggot': return { category: 'Hops' as IngredientCategory, label: t('constants.categories.hops') };
       default: return null;
     }
   }, [state.beverageType, state.wizardStyle, t]);
+
+  const editingIngredientData = useMemo(() => {
+    const found = editingIngredientId ? state.recipeIngredients?.find(i => i.id === editingIngredientId) : undefined;
+    return found as unknown as Partial<EditedIngredientData> | undefined;
+  }, [editingIngredientId, state.recipeIngredients]);
 
   const handleAutoCalculateHoney = () => {
     const targetEntry = (state.recipeIngredients || []).find(i => i?.category === 'Fermentable' || i?.category === 'Honey');
@@ -234,6 +162,23 @@ const Recipes: React.FC = () => {
     state.updateIngredient(targetEntry.id, { quantity: Math.round(bestGrams / 10) * 10 });
   };
 
+  const handleAddVirtualIngredient = (id: string, name: string, quantity: number, type: string, formKey?: string) => {
+    const newIng = {
+      id: id,
+      globalIngredientId: null,
+      name,
+      category: type === 'Yeast' ? 'Yeast' : 'Additive',
+      quantity,
+      additiveType: formKey ? 'Sweetener' : 'Other',
+      form: formKey,
+      additionStage: 'Bottling',
+      note: t('constants.notes.added_by_calculator'),
+      showNote: false
+    } as unknown as RecipeIngredientEntry;
+    
+    state.setRecipeIngredients(prev => [...(prev || []), newIng]);
+  };
+
   const handleAiGeneration = async () => {
     setIsGenerating(true);
     try {
@@ -245,6 +190,8 @@ const Recipes: React.FC = () => {
         targetAbv: state.targetAutoAbv,
         batchSizeLiters: state.batchSizeLiters,
         targetFg: state.targetFg,
+        isSafeBacksweetening: state.isSafeBacksweetening,
+        isColdCrashEnabled: state.isColdCrashEnabled,
         locale: i18n?.resolvedLanguage || i18n?.language || 'en',
         ingredients: (state.recipeIngredients || []).map(i => ({
           ingredientId: i.id,
@@ -312,11 +259,19 @@ const Recipes: React.FC = () => {
         return copy as unknown as RecipeIngredientReference;
       });
 
-      const formattedSteps = (state.recipeSteps || []).map(step => {
+      let formattedSteps = (state.recipeSteps || []).map(step => {
         const copy = { ...step } as Partial<RecipeStepEntry>;
         delete copy.isExpanded;
         return copy as unknown as RecipeStep;
       });
+
+      if (!state.isColdCrashEnabled) {
+        formattedSteps = formattedSteps.filter(step => {
+          const titleLower = (step.title || '').toLowerCase();
+          const isColdPhase = step.phase === 'Conditioning' && typeof step.targetTempC === 'number' && step.targetTempC <= 5;
+          return !(titleLower.includes('cold crash') || titleLower.includes('холод') || isColdPhase);
+        });
+      }
 
       const recipeData: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'> = {
         breweryId: activeBrewery.id,
@@ -331,17 +286,38 @@ const Recipes: React.FC = () => {
         targetColorEbc: state.beverageType === 'Beer' ? recipeDetails.ebc : undefined,
         ingredients: formattedIngredients,
         steps: formattedSteps,
-        createdBy: userId
-      };
+        wizard_data: {
+          wizardStyle: state.wizardStyle,
+          wizardSweetness: state.wizardSweetness,
+          wizardHoney: state.wizardHoney,
+          isSafeBacksweetening: state.isSafeBacksweetening,
+          isColdCrashEnabled: state.isColdCrashEnabled
+        },
+        created_by: userId
+      } as any;
 
-      if (state.editingRecipeId) await updateRecipe(state.editingRecipeId, recipeData);
-      else await saveRecipe(recipeData);
+      let savedRecipe;
+      if (state.editingRecipeId) {
+        savedRecipe = await updateRecipe(state.editingRecipeId, recipeData as unknown as Recipe);
+      } else {
+        savedRecipe = await saveRecipe(recipeData as unknown as Recipe);
+      }
 
       setAiProposedIngredients([]);
       setAiProposedSteps([]);
       state.resetForm();
-      state.setView('list');
-    } finally { state.setIsSaving(false); }
+      
+      if (savedRecipe && savedRecipe.id) {
+        navigate(`/recipes/${savedRecipe.id}`);
+      } else {
+        state.setView('list'); 
+      }
+
+    } catch (error) {
+      console.error('Failed to save recipe:', error);
+    } finally { 
+      state.setIsSaving(false); 
+    }
   };
 
   if (!activeBrewery) {
@@ -363,10 +339,19 @@ const Recipes: React.FC = () => {
       {state.activeIngredientCategory && (
         <IngredientEditorModal
           isOpen={true}
-          onClose={() => state.setActiveIngredientCategory(null)}
-          onSave={(data: EditedIngredientData) => {
-            state.setRecipeIngredients(prev => [...(prev || []), { id: crypto.randomUUID(), ...data, showNote: !!data.note } as unknown as RecipeIngredientEntry]);
+          initialData={editingIngredientData}
+          onClose={() => {
             state.setActiveIngredientCategory(null);
+            setEditingIngredientId(null);
+          }}
+          onSave={(data: EditedIngredientData) => {
+            if (editingIngredientId) {
+              state.updateIngredient(editingIngredientId, { ...data, showNote: !!data.note });
+            } else {
+              state.setRecipeIngredients(prev => [...(prev || []), { id: crypto.randomUUID(), ...data, showNote: !!data.note } as unknown as RecipeIngredientEntry]);
+            }
+            state.setActiveIngredientCategory(null);
+            setEditingIngredientId(null);
           }}
           catalog={state.globalCatalog || []}
           category={state.activeIngredientCategory}
@@ -408,6 +393,8 @@ const Recipes: React.FC = () => {
               wizardStyle={state.wizardStyle} setWizardStyle={state.setWizardStyle}
               wizardSweetness={state.wizardSweetness} setWizardSweetness={state.setWizardSweetness}
               setTargetFg={state.setTargetFg} wizardHoney={state.wizardHoney} setWizardHoney={state.setWizardHoney}
+              isSafeBacksweetening={state.isSafeBacksweetening} setIsSafeBacksweetening={state.setIsSafeBacksweetening}
+              isColdCrashEnabled={state.isColdCrashEnabled} setIsColdCrashEnabled={state.setIsColdCrashEnabled}
               meadIngredientHint={meadIngredientHint} meadYeastSuggestions={meadYeastSuggestions}
               openIngredientModal={state.openIngredientModal} isGenerating={isGenerating} onGenerate={handleAiGeneration}
             />
@@ -419,15 +406,23 @@ const Recipes: React.FC = () => {
 
           <IngredientFormulationSection targetAutoAbv={state.targetAutoAbv} setTargetAutoAbv={state.setTargetAutoAbv} handleAutoCalculateHoney={handleAutoCalculateHoney}>
             {(['Fermentable', 'Honey', 'Hops', 'Yeast', 'Additive'] as IngredientCategory[]).map(cat => {
-              if (state.beverageType !== 'Beer' && cat === 'Hops') return null;
               const titleMap: Record<string, string> = {
-                'Fermentable': t('Fermentables (Malts, Extracts, Sugars)'), 'Honey': t('Honey'), 'Hops': t('Hops'), 'Yeast': t('Yeasts'), 'Additive': t('Additives & Water Chemistry')
+                'Fermentable': t('constants.categories.fermentable'), 'Honey': t('constants.categories.honey'), 'Hops': t('constants.categories.hops'), 'Yeast': t('constants.categories.yeast'), 'Additive': t('constants.categories.additive')
               };
               return (
                 <IngredientGroup
                   key={cat} category={cat} title={titleMap[cat]} beverageType={state.beverageType}
                   recipeIngredients={state.recipeIngredients || []} aiProposedIngredients={aiProposedIngredients || []}
-                  isSaving={state.isSaving} onOpenModal={state.openIngredientModal} onUpdateIngredient={state.updateIngredient}
+                  isSaving={state.isSaving} 
+                  onOpenModal={state.openIngredientModal} 
+                  onUpdateIngredient={state.updateIngredient}
+                  onEditIngredient={(id) => {
+                    const ing = state.recipeIngredients?.find(i => i.id === id);
+                    if (ing) {
+                      setEditingIngredientId(id);
+                      state.setActiveIngredientCategory(ing.category);
+                    }
+                  }}
                   onRemoveIngredient={(id) => state.handleRemoveIngredient(id, (id) => setAiProposedIngredients(prev => (prev || []).filter(p => p.ingredientId !== id)))}
                   onAcceptProposal={(proposal) => {
                     state.updateIngredient(proposal.ingredientId, { quantity: proposal.suggestedQuantityGrams, note: proposal.aiNote, showNote: !!proposal.aiNote });
@@ -445,6 +440,15 @@ const Recipes: React.FC = () => {
             onAcceptAllAiSteps={() => { state.setRecipeSteps((aiProposedSteps || []).map(s => ({ ...s, isExpanded: false }))); setAiProposedSteps([]); }}
             onRejectAllAiSteps={() => setAiProposedSteps([])} setAiProposedSteps={setAiProposedSteps}
           />
+
+          <RecipeFaqWidget 
+            beverageType={state.beverageType}
+            isSafeBacksweetening={state.isSafeBacksweetening}
+            isColdCrashEnabled={state.isColdCrashEnabled}
+            batchSizeLiters={state.batchSizeLiters}
+            wizardSweetness={state.wizardSweetness}
+          />
+
         </main>
 
         <RecipeStatsSidebar
@@ -456,6 +460,7 @@ const Recipes: React.FC = () => {
           isAbvMismatch={isAbvMismatch}
           targetStyle={state.targetStyle}
           updateIngredient={state.updateIngredient}
+          onAddVirtualIngredient={handleAddVirtualIngredient}
           handleSaveRecipe={handleSaveRecipe}
           isSaving={state.isSaving}
           recipeName={state.recipeName}

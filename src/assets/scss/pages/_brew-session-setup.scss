@@ -31,6 +31,8 @@
     color: var(--text-secondary);
   }
 
+  // Объединяем оба варианта селекторов для безопасности
+  &__layout,
   &__grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -270,6 +272,14 @@
   &__icon {
     &--water {
       color: var(--color-primary);
+    }
+  }
+
+  &__smart-list {
+    li {
+      &::marker {
+        content: '';
+      }
     }
   }
 }

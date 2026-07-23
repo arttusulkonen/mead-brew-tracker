@@ -1,7 +1,7 @@
 // src/components/recipe-components/RecipeListView.tsx
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaBookOpen, FaPlus } from 'react-icons/fa';
+import { FaBookOpen, FaPlus, FaStar } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import type { Recipe } from '../../types/recipe';
 
@@ -27,7 +27,7 @@ export const RecipeListView: React.FC<RecipeListViewProps> = ({ recipes, isLoadi
       </header>
 
       {isLoading ? (
-        <div className="recipe-lab__loading">{t('Loading recipes...')}</div>
+        <div className="recipe-lab__loading"><div className="spinner"></div></div>
       ) : (recipes || []).length === 0 ? (
         <div className="recipe-lab__empty-state">
           <FaBookOpen className="recipe-lab__empty-icon" />
@@ -39,8 +39,13 @@ export const RecipeListView: React.FC<RecipeListViewProps> = ({ recipes, isLoadi
       ) : (
         <ul className="recipe-list">
           {(recipes || []).map(recipe => {
-            // Расширяем тип на лету для получения доступа к новым полям аналитики
-            const extendedRecipe = recipe as Recipe & { totalBrews?: number; avgAiScore?: number | null };
+            // Расширяем тип на лету для получения доступа к полям аналитики
+            const extendedRecipe = recipe as Recipe & { 
+              totalBrews?: number; 
+              avgAiScore?: number | null;
+              avgUserRating?: number | null;
+              totalUserRatings?: number;
+            };
             
             return (
               <li
@@ -60,29 +65,43 @@ export const RecipeListView: React.FC<RecipeListViewProps> = ({ recipes, isLoadi
                   <div className="recipe-card__header">
                     <h3 className="recipe-card__title">{recipe.name}</h3>
                     <span className="recipe-card__badge">
-                      {t(`constants.beverage_types.${recipe.beverageType?.toLowerCase() || 'mead'}`, recipe.beverageType || 'Mead')}
+                      {t(`constants.beverage_types.${recipe.beverageType?.toLowerCase() || 'mead'}`, recipe.beverageType || 'Mead') as string}
                     </span>
                   </div>
                   
-                  {/* НОВЫЙ БЛОК СТАТИСТИКИ (Заменяет старый span) */}
-                  <div className="recipe-card__meta" style={{ display: 'flex', gap: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)', alignItems: 'center', marginTop: '4px' }}>
-                    <span>{recipe.targetStyle}</span>
-                    <span>•</span>
-                    <span>{recipe.expectedBatchSizeLiters} {t('L')}</span>
+                  {/* Блок мета-данных со строгими BEM классами */}
+                  <div className="recipe-card__meta">
+                    <span className="recipe-card__meta-item">{recipe.targetStyle}</span>
+                    <span className="recipe-card__meta-divider">•</span>
+                    <span className="recipe-card__meta-item">{recipe.expectedBatchSizeLiters} {t('L')}</span>
                     
                     {extendedRecipe.totalBrews ? (
                       <>
-                        <span>•</span>
-                        <span className="recipe-card__brews-count">
+                        <span className="recipe-card__meta-divider">•</span>
+                        <span className="recipe-card__meta-item">
                           📊 {t('Brews', 'Варок')}: <strong>{extendedRecipe.totalBrews}</strong>
                         </span>
                       </>
                     ) : null}
+
+                    {/* Пользовательский рейтинг */}
+                    {extendedRecipe.avgUserRating !== null && extendedRecipe.avgUserRating !== undefined && (
+                      <>
+                        <span className="recipe-card__meta-divider">•</span>
+                        <span className="recipe-card__meta-item recipe-card__meta-item--user-rating">
+                          <FaStar className="recipe-card__star-icon" /> {extendedRecipe.avgUserRating.toFixed(1)}
+                          <span className="recipe-card__meta-count">
+                            ({extendedRecipe.totalUserRatings || 0})
+                          </span>
+                        </span>
+                      </>
+                    )}
                     
+                    {/* ИИ Рейтинг */}
                     {extendedRecipe.avgAiScore !== null && extendedRecipe.avgAiScore !== undefined && (
                       <>
-                        <span>•</span>
-                        <span className="recipe-card__ai-stars" style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>
+                        <span className="recipe-card__meta-divider">•</span>
+                        <span className="recipe-card__meta-item recipe-card__meta-item--ai-rating">
                           ✨ ИИ: {extendedRecipe.avgAiScore}/100
                         </span>
                       </>

@@ -67,6 +67,7 @@ export interface TosnaRequirements {
   goFermGrams: number;
   totalFermaidOGrams: number;
   dosePerAdditionGrams: number;
+  numberOfAdditions: number; // dynamically adjusted for session meads
 }
 
 /**
@@ -96,13 +97,17 @@ export const calculateTosna = (
   const totalYeastGrams = pitchRate * batchSizeGallons;
   const goFermGrams = 1.25 * totalYeastGrams;
   const totalFermaidOGrams = ((brix * 10 * nitrogenDemandFactor) / 50) * batchSizeGallons;
-  const dosePerAdditionGrams = totalFermaidOGrams / 4;
+  
+  // Dynamic schedule adjustment: 2 steps for session/hydromel, 4 steps for standard/sack
+  const numberOfAdditions = og < 1.050 ? 2 : 4;
+  const dosePerAdditionGrams = totalFermaidOGrams / numberOfAdditions;
 
   return {
     totalYeastGrams: Number(totalYeastGrams.toFixed(1)),
     goFermGrams: Number(goFermGrams.toFixed(1)),
     totalFermaidOGrams: Number(totalFermaidOGrams.toFixed(1)),
-    dosePerAdditionGrams: Number(dosePerAdditionGrams.toFixed(1))
+    dosePerAdditionGrams: Number(dosePerAdditionGrams.toFixed(1)),
+    numberOfAdditions
   };
 };
 

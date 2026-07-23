@@ -7,6 +7,17 @@ import { useBreweryStore } from '../store/useBreweryStore';
 import { useRecipeStore } from '../store/useRecipeStore';
 import { useSessionStore } from '../store/useSessionStore';
 
+const getLegacyStatusKey = (status: string) => {
+  const map: Record<string, string> = {
+    'Brew Day': 'planned',
+    'Fermentation': 'fermenting',
+    'Conditioning': 'aging',
+    'Bottled': 'completed',
+    'Completed': 'completed'
+  };
+  return map[status] || 'planned';
+};
+
 const Home: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -30,7 +41,7 @@ const Home: React.FC = () => {
 
   const recentRecipes = (recipes || []).slice(0, 3);
   
-  // ИСПРАВЛЕНИЕ: Фильтруем по нормализованным UI-статусам
+  // ИСПРАВЛЕНИЕ: Фильтруем по нормализованным UI-статусам, чтобы варки отображались
   const activeSessions = (sessions || []).filter(s => 
     ['Brew Day', 'Fermentation', 'Conditioning'].includes(s?.status || '')
   );
@@ -98,9 +109,8 @@ const Home: React.FC = () => {
                   >
                     <div className="brew-item__header">
                       <h3 className="brew-item__title">{session.recipeName || t('Unknown Recipe')}</h3>
-                      <span className="brew-item__badge" data-status={rawStatus}>
-                        {/* ИСПРАВЛЕНИЕ: Безопасный перевод статуса */}
-                        {t(`constants.status.${rawStatus.toLowerCase().replace(' ', '_')}`, rawStatus)}
+                      <span className="brew-item__badge" data-status={getLegacyStatusKey(rawStatus)}>
+                        {t(`constants.status.${rawStatus.toLowerCase().replace(' ', '_')}`, rawStatus) as string}
                       </span>
                     </div>
                     
@@ -157,7 +167,7 @@ const Home: React.FC = () => {
                 >
                   <h3 className="recipe-item__title">{recipe.name || t('Unknown Recipe')}</h3>
                   <div className="recipe-item__meta">
-                    <span className="recipe-item__style">{t(recipe.targetStyle || '')}</span>
+                    <span className="recipe-item__style">{t(recipe.targetStyle || '') as string}</span>
                     <span className="recipe-item__abv">{(recipe.targetAbv || 0).toFixed(1)}% {t('ABV')}</span>
                   </div>
                 </Link>

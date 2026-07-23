@@ -1,4 +1,3 @@
-// src/components/TimelineWidget.tsx
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaCheck, FaCommentDots, FaEdit, FaGripLines, FaPause, FaPlay, FaPlus, FaSave, FaTrash } from 'react-icons/fa';
@@ -17,6 +16,12 @@ interface TimelineWidgetProps {
 
 const VALID_PHASES: StepPhase[] = ['Preparation', 'Mashing', 'Boiling', 'Fermentation', 'Conditioning', 'Packaging'];
 const VALID_UNITS: TimeUnit[] = ['minutes', 'days'];
+
+const mapPhaseToTranslationKey = (phase: string): string => {
+  const p = phase?.toLowerCase() || 'preparation';
+  if (p === 'conditioning') return 'constants.step_phases.aging';
+  return `constants.step_phases.${p}`;
+};
 
 export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessionId, steps, startDate, onPhaseAction }) => {
   const { t } = useTranslation();
@@ -54,24 +59,22 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
     setDraggedIndex(null);
   };
 
-  // ИСПРАВЛЕНИЕ: Интеграция onPhaseAction для запуска модалок из родителя
   const toggleStepTimer = async (stepId: string, phase: string) => {
     const isCurrentlyActive = safeSteps.find(s => s?.id === stepId)?.isActive;
 
-    // Перехват событий: если шаг еще не запущен, и он меняет глобальную фазу варки
     if (!isCurrentlyActive && onPhaseAction && currentSession) {
       if (phase === 'Fermentation' && currentSession.status === 'Brew Day') {
         onPhaseAction(phase);
-        // Не запускаем таймер тут, родитель запустит его после ввода OG (через updateSessionStatus)
-        // Но мы сразу включим его для визуального отклика
+        return; 
       } else if (phase === 'Conditioning' && currentSession.status === 'Fermentation') {
         onPhaseAction(phase);
+        return; 
       } else if (phase === 'Packaging' && currentSession.status === 'Conditioning') {
         onPhaseAction(phase);
+        return; 
       }
     }
 
-    // Локальная логика старта/паузы таймера
     const now = new Date().toISOString();
     const updatedSteps = safeSteps.map(s => {
       if (s?.id === stepId) {
@@ -228,7 +231,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
                 >
                   {VALID_PHASES.map(phase => (
                     <option key={phase} value={phase}>
-                      {t(`constants.step_phases.${phase.toLowerCase()}`, phase)}
+                      {t(mapPhaseToTranslationKey(phase), phase) as string}
                     </option>
                   ))}
                 </select>
@@ -255,7 +258,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
                       >
                         {VALID_UNITS.map(unit => (
                            <option key={unit} value={unit}>
-                             {t(`constants.units.${unit.toLowerCase()}`, unit)}
+                             {t(`constants.units.${unit.toLowerCase()}`, unit) as string}
                            </option>
                         ))}
                       </select>
@@ -292,7 +295,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
           
           let targetText = '';
           if (step.durationValue > 0) {
-            targetText = `${step.durationValue} ${t(`constants.units.${step.durationUnit?.toLowerCase() || 'minutes'}`, step.durationUnit)}`;
+            targetText = `${step.durationValue} ${t(`constants.units.${step.durationUnit?.toLowerCase() || 'minutes'}`, step.durationUnit) as string}`;
           }
 
           let progressText = '';
@@ -324,7 +327,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
                   >
                     {VALID_PHASES.map(phase => (
                       <option key={phase} value={phase}>
-                        {t(`constants.step_phases.${phase.toLowerCase()}`, phase)}
+                        {t(mapPhaseToTranslationKey(phase), phase) as string}
                       </option>
                     ))}
                   </select>
@@ -351,7 +354,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
                         >
                           {VALID_UNITS.map(unit => (
                             <option key={unit} value={unit}>
-                              {t(`constants.units.${unit.toLowerCase()}`, unit)}
+                              {t(`constants.units.${unit.toLowerCase()}`, unit) as string}
                             </option>
                           ))}
                         </select>
@@ -401,7 +404,7 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
                 <div className="timeline__item-header">
                   <div className="timeline__title-group">
                     <span className="timeline__phase">
-                      {t(`constants.step_phases.${step.phase?.toLowerCase() || 'preparation'}`, step.phase || 'Preparation') as string}
+                      {t(mapPhaseToTranslationKey(step.phase || 'Preparation'), step.phase || 'Preparation') as string}
                     </span>
                     <strong className="timeline__item-title">{step.title || t('Unknown Step')}</strong>
                   </div>
@@ -409,8 +412,8 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
                     {step.targetTempC !== null && step.targetTempC !== undefined && <span className="timeline__temp">🌡 {step.targetTempC}°C</span>}
                     {targetText && <span className="timeline__duration">⏱ {targetText}</span>}
                     <div className="timeline__context-actions">
-                      <button type="button" className="timeline__btn-icon" onClick={() => startEditStep(step)} title={t('Edit Step')}><FaEdit /></button>
-                      <button type="button" className="timeline__btn-icon timeline__btn-icon--danger" onClick={() => deleteStep(step.id)} title={t('Delete Step')}><FaTrash /></button>
+                      <button type="button" className="timeline__btn-icon" onClick={() => startEditStep(step)} title={t('Edit Step')} aria-label={t('Edit Step')}><FaEdit /></button>
+                      <button type="button" className="timeline__btn-icon timeline__btn-icon--danger" onClick={() => deleteStep(step.id)} title={t('Delete Step')} aria-label={t('Delete Step')}><FaTrash /></button>
                     </div>
                   </div>
                 </div>
@@ -419,7 +422,6 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
                 <div className="timeline__actions">
                   {!isCompleted && (
                     <>
-                      {/* ИСПРАВЛЕНИЕ: Кнопка вызывает локальный переключатель и пробрасывает фазу родителю */}
                       <button 
                         type="button" 
                         className={`timeline__btn-timer ${isActive ? 'timeline__btn-timer--active' : ''}`} 
@@ -446,12 +448,12 @@ export const TimelineWidget: React.FC<TimelineWidgetProps> = ({ breweryId, sessi
                     <input 
                       type="text" 
                       className="timeline__quick-input"
-                      placeholder={t('Add a quick note...')} 
+                      placeholder={t('Add a quick note...', 'Добавить быструю заметку...')} 
                       value={quickNoteInputs[step.id] || ''}
                       onChange={(e) => setQuickNoteInputs(prev => ({ ...prev, [step.id]: e.target.value }))}
                       onKeyDown={(e) => e.key === 'Enter' && handleQuickNoteSubmit(step.id)}
                     />
-                    <button type="button" className="timeline__quick-btn" onClick={() => handleQuickNoteSubmit(step.id)} disabled={!quickNoteInputs[step.id]?.trim()}>
+                    <button type="button" className="timeline__quick-btn" onClick={() => handleQuickNoteSubmit(step.id)} disabled={!quickNoteInputs[step.id]?.trim()} aria-label={t('Save Note')}>
                       <FaCommentDots />
                     </button>
                   </div>

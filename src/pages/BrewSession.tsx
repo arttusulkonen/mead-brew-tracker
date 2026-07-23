@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaCodeBranch, FaInfoCircle, FaPlay, FaPlus } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ActiveTimer } from '../components/ActiveTimer';
 import { MeasurementBottomSheet } from '../components/MeasurementBottomSheet';
 import { SplitBatchModal } from '../components/SplitBatchModal';
@@ -81,7 +81,8 @@ const BrewSession: React.FC = () => {
   const isPrepDone = steps.filter((s: any) => s?.phase === 'Preparation').every((s: any) => s?.isCompleted);
   const isFermDone = steps.filter((s: any) => s?.phase === 'Fermentation').every((s: any) => s?.isCompleted);
 
-  const canSplit = false; 
+  const canSplit = ['Brew Day', 'Fermentation', 'Conditioning'].includes(currentSession.status) && !currentSession.isSplit;
+  
   const canMidAdd = ['Fermentation', 'Conditioning'].includes(currentSession.status) && !currentSession.isSplit;
 
   const targetSugarBreak = currentSession.beverageType === 'Mead' 
@@ -220,8 +221,12 @@ const BrewSession: React.FC = () => {
   const handleSplitBatch = async (splits: any) => {
     if (!activeBreweryId) return;
     try {
+      // Запускаем процесс разделения
       await splitBrewSession({ breweryId: activeBreweryId, parentSessionId: currentSession.id, splits });
       setShowSplitModal(false);
+      
+      // Показываем успех и уводим на дашборд
+      alert(t('Batch successfully split! Your new sessions are ready.'));
       navigate('/');
     } catch (err) {
       console.error('Failed to split batch:', err);
@@ -235,6 +240,29 @@ const BrewSession: React.FC = () => {
     .filter(log => log?.sg !== null && log?.sg !== undefined)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     .map(log => ({ day: `${t('Day')} ${log.dayNumber}`, sg: log.sg }));
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.95)',
+          border: '1px solid #e2e8f0',
+          borderRadius: '12px',
+          padding: '12px',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+          backdropFilter: 'blur(4px)'
+        }}>
+          <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: 'bold', color: '#64748b' }}>
+            {label}
+          </p>
+          <p style={{ margin: 0, color: 'var(--color-primary)', fontWeight: 700, fontSize: '16px' }}>
+            SG: {payload[0].value.toFixed(3)}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="brew-session">
@@ -436,13 +464,43 @@ const BrewSession: React.FC = () => {
         {chartData.length > 0 ? (
           <div className="session-chart__container">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                <YAxis domain={['dataMin - 0.005', 'dataMax + 0.005']} tick={{ fontSize: 12, fill: '#3b82f6' }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
-                <Line type="monotone" dataKey="sg" stroke="var(--color-primary)" strokeWidth={3} activeDot={{ r: 6, fill: 'var(--color-primary)', stroke: '#fff', strokeWidth: 2 }} />
-              </LineChart>
+              <AreaChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 10 }}>
+                <defs>
+                  <linearGradient id="colorSg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="day" 
+                  tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 500 }} 
+                  axisLine={false} 
+                  tickLine={false} 
+                  dy={10}
+                />
+                <YAxis 
+                  domain={['dataMin - 0.002', 'dataMax + 0.002']} 
+                  tickFormatter={(value) => value.toFixed(3)}
+                  tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 500 }} 
+                  axisLine={false} 
+                  tickLine={false}
+                  width={50}
+                />
+                <Tooltip 
+                  content={<CustomTooltip />} 
+                  cursor={{ stroke: '#cbd5e1', strokeWidth: 2, strokeDasharray: '4 4' }} 
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="sg" 
+                  stroke="var(--color-primary)" 
+                  strokeWidth={3} 
+                  fillOpacity={1} 
+                  fill="url(#colorSg)" 
+                  activeDot={{ r: 6, fill: '#fff', stroke: 'var(--color-primary)', strokeWidth: 3 }} 
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         ) : (

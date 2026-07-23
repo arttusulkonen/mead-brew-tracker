@@ -121,6 +121,7 @@ const mapIngredientRow = (item: IngredientRow): IngredientUnion => {
         ...base,
         category: 'Additive',
         additiveType: item.additive_type as AdditiveType,
+        form: item.form, // ИСПРАВЛЕНИЕ: Теперь мы читаем тип подсластителя из БД!
         nutrientRole: item.nutrient_role,
         additionStage: item.addition_stage,
         yanValuePerGramPerLiter: item.yan_value_per_gram_per_liter,
@@ -180,6 +181,8 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         unit: row.unit,
         batchLotNumber: row.batch_lot_number,
         expirationDate: row.expiration_date,
+        costPerBaseUnit: row.cost_per_base_unit,
+        currency: row.currency,
         ingredient: mapIngredientRow(row.ingredient as IngredientRow),
       }));
 
@@ -210,24 +213,32 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         .single();
 
       if (existing) {
+        const updatePayload: any = {
+          quantity_on_hand: existing.quantity_on_hand + qty,
+          unit: itemData.unit
+        };
+        if (itemData.costPerBaseUnit !== undefined) updatePayload.cost_per_base_unit = itemData.costPerBaseUnit;
+        if (itemData.currency !== undefined) updatePayload.currency = itemData.currency;
+
         const { error: updateError } = await supabase
           .from('inventory')
-          .update({ 
-            quantity_on_hand: existing.quantity_on_hand + qty,
-            unit: itemData.unit 
-          })
+          .update(updatePayload)
           .eq('id', existing.id);
 
         if (updateError) throw updateError;
       } else {
+        const insertPayload: any = {
+          brewery_id: breweryId,
+          ingredient_id: itemData.ingredientId,
+          quantity_on_hand: qty,
+          unit: itemData.unit
+        };
+        if (itemData.costPerBaseUnit !== undefined) insertPayload.cost_per_base_unit = itemData.costPerBaseUnit;
+        if (itemData.currency !== undefined) insertPayload.currency = itemData.currency;
+
         const { error: insertError } = await supabase
           .from('inventory')
-          .insert([{
-            brewery_id: breweryId,
-            ingredient_id: itemData.ingredientId,
-            quantity_on_hand: qty,
-            unit: itemData.unit
-          }]);
+          .insert([insertPayload]);
 
         if (insertError) throw insertError;
       }
@@ -307,10 +318,16 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const payload: Record<string, unknown> = {};
+      
+      // ИСПРАВЛЕНИЕ: Теперь мы передаем обновленный ingredient_id в базу данных!
+      if (updates.ingredientId !== undefined) payload.ingredient_id = updates.ingredientId;
+      
       if (updates.quantityOnHand !== undefined) payload.quantity_on_hand = updates.quantityOnHand;
       if (updates.unit !== undefined) payload.unit = updates.unit;
       if (updates.batchLotNumber !== undefined) payload.batch_lot_number = updates.batchLotNumber;
       if (updates.expirationDate !== undefined) payload.expiration_date = updates.expirationDate;
+      if (updates.costPerBaseUnit !== undefined) payload.cost_per_base_unit = updates.costPerBaseUnit;
+      if (updates.currency !== undefined) payload.currency = updates.currency;
 
       const { error } = await supabase
         .from('inventory')
@@ -320,11 +337,9 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
       if (error) throw error;
 
-      set(state => ({
-        inventory: (state.inventory || []).map(item =>
-          item.id === itemId ? { ...item, ...updates } : item
-        )
-      }));
+      // ИСПРАВЛЕНИЕ: Запрашиваем инвентарь заново, чтобы UI сразу подтянул обновленные данные ингредиента
+      await get().fetchInventory(breweryId);
+      
       return true;
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to update inventory item' });
@@ -364,9 +379,6 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     
     try {
       const currentInventory = get().inventory || [];
-      
-      // ИСПРАВЛЕНИЕ: Агрегируем все списания по ID складской позиции, 
-      // чтобы избежать гонки данных при дублировании ингредиентов в рецепте.
       const decrementsMap = new Map<string, number>();
 
       for (const ing of ingredientsToConsume) {
@@ -376,7 +388,6 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
           
           if (invItem) {
             let decrementQty = ing.quantity;
-            // Приводим граммы из рецепта к единицам измерения на складе
             switch (invItem.unit) {
               case 'kg':
               case 'L':
@@ -403,7 +414,6 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       
       const updatesToMake = [];
 
-      // Валидируем агрегированные списания перед отправкой в БД
       for (const [invId, totalDecrement] of decrementsMap.entries()) {
         const invItem = currentInventory.find(i => i.id === invId);
         if (invItem) {
@@ -417,7 +427,6 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         }
       }
       
-      // Отправляем финальные значения
       const updatePromises = updatesToMake.map(update => 
         supabase
           .from('inventory')

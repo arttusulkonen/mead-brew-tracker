@@ -14,11 +14,13 @@ export interface RecipeState {
   deleteRecipe: (recipeId: string) => Promise<void>;
   saveRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Recipe | null>;
   updateRecipe: (recipeId: string, recipe: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Recipe | null>;
+  rateRecipe: (recipeId: string, score: number) => Promise<void>;
 }
 
 interface RecipeRow {
   id: string;
   brewery_id: string;
+  parent_recipe_id?: string | null;
   name: string;
   beverage_type: BeverageType;
   target_style: string;
@@ -39,6 +41,7 @@ interface RecipeRow {
 const mapRowToRecipe = (data: RecipeRow): Recipe => ({
   id: data.id,
   breweryId: data.brewery_id,
+  parentRecipeId: data.parent_recipe_id,
   name: data.name,
   beverageType: data.beverage_type,
   targetStyle: data.target_style,
@@ -70,7 +73,9 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
     
     set({ isLoading: true, error: null });
     try {
-      // Подтягиваем рецепты вместе с базовыми данными их сессий (Golden Batch Data)
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+
       const { data, error } = await supabase
         .from('recipes')
         .select(`
@@ -80,6 +85,10 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
             ai_score,
             actual_original_gravity,
             actual_final_gravity
+          ),
+          recipe_ratings (
+            score,
+            user_id
           )
         `)
         .eq('brewery_id', breweryId)
@@ -90,34 +99,22 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       const formattedRecipes = (data || []).map((row: any) => {
         const sessions = row.brew_sessions || [];
         const completedSessions = sessions.filter((s: any) => s.status === 'completed');
-        
-        // Считаем среднюю оценку ИИ среди завершенных варок
         const scores = completedSessions.map((s: any) => s.ai_score).filter((v: any) => typeof v === 'number');
         const avgAiScore = scores.length > 0 ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : null;
 
+        const ratings = row.recipe_ratings || [];
+        const totalUserRatings = ratings.length;
+        const avgUserRating = totalUserRatings > 0 ? ratings.reduce((a: number, b: any) => a + b.score, 0) / totalUserRatings : null;
+        const currentUserRating = userId ? ratings.find((r: any) => r.user_id === userId)?.score || null : null;
+
         return {
-          id: row.id,
-          breweryId: row.brewery_id,
-          name: row.name,
-          beverageType: row.beverage_type,
-          targetStyle: row.target_style,
-          expectedBatchSizeLiters: row.expected_batch_size_liters,
-          targetOriginalGravity: row.target_original_gravity,
-          targetFinalGravity: row.target_final_gravity,
-          targetAbv: row.target_abv,
-          targetIbu: row.target_ibu,
-          targetColorEbc: row.target_color_ebc,
-          ingredients: typeof row.ingredients === 'string' ? JSON.parse(row.ingredients) : (row.ingredients || []),
-          steps: typeof row.steps === 'string' ? JSON.parse(row.steps) : (row.steps || []),
-          targetCurves: row.target_curves,
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-          createdBy: row.created_by,
-          
-          // НОВЫЕ ПОЛЯ АНАЛИТИКИ
+          ...mapRowToRecipe(row),
           totalBrews: sessions.length,
           completedBrews: completedSessions.length,
-          avgAiScore: avgAiScore
+          avgAiScore,
+          avgUserRating,
+          totalUserRatings,
+          currentUserRating
         };
       });
       
@@ -134,6 +131,7 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
         .from('recipes')
         .insert([{
           brewery_id: recipeData.breweryId,
+          parent_recipe_id: recipeData.parentRecipeId || null,
           name: recipeData.name,
           beverage_type: recipeData.beverageType,
           target_style: recipeData.targetStyle,
@@ -172,6 +170,7 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
         .from('recipes')
         .update({
           brewery_id: recipeData.breweryId,
+          parent_recipe_id: recipeData.parentRecipeId || null,
           name: recipeData.name,
           beverage_type: recipeData.beverageType,
           target_style: recipeData.targetStyle,
@@ -197,10 +196,12 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       await get().fetchRecipes(recipeData.breweryId);
 
       const formatted = mapRowToRecipe(data[0] as RecipeRow);
+      
+      const existingForks = get().currentRecipe?.forks || [];
+      formatted.forks = existingForks;
+
       set(state => ({
         currentRecipe: state.currentRecipe?.id === recipeId ? formatted : state.currentRecipe,
-        // Мы не заменяем объект в массиве напрямую через mapRowToRecipe, 
-        // чтобы не потерять уже подтянутую аналитику. fetchRecipes обновит список корректно.
       }));
 
       return formatted;
@@ -219,6 +220,9 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
 
     set({ isLoading: true, error: null });
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+
       const { data, error } = await supabase
         .from('recipes')
         .select(`
@@ -226,6 +230,10 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
           brew_sessions (
             status,
             ai_score
+          ),
+          recipe_ratings (
+            score,
+            user_id
           )
         `)
         .eq('id', recipeId)
@@ -234,22 +242,68 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       if (error) throw error;
       
       if (data) {
+        const { data: forksData } = await supabase
+          .from('recipes')
+          .select('id, name, target_style, target_abv, target_original_gravity')
+          .eq('parent_recipe_id', recipeId);
+
         const row = data as any;
+        
         const sessions = row.brew_sessions || [];
         const completedSessions = sessions.filter((s: any) => s.status === 'completed');
-        
         const scores = completedSessions.map((s: any) => s.ai_score).filter((v: any) => typeof v === 'number');
         const avgAiScore = scores.length > 0 ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : null;
+
+        const ratings = row.recipe_ratings || [];
+        const totalUserRatings = ratings.length;
+        const avgUserRating = totalUserRatings > 0 ? ratings.reduce((a: number, b: any) => a + b.score, 0) / totalUserRatings : null;
+        const currentUserRating = userId ? ratings.find((r: any) => r.user_id === userId)?.score || null : null;
 
         const mapped = mapRowToRecipe(row);
         (mapped as any).totalBrews = sessions.length;
         (mapped as any).completedBrews = completedSessions.length;
         (mapped as any).avgAiScore = avgAiScore;
+        (mapped as any).avgUserRating = avgUserRating;
+        (mapped as any).totalUserRatings = totalUserRatings;
+        (mapped as any).currentUserRating = currentUserRating;
+        
+        mapped.forks = forksData || [];
 
         set({ currentRecipe: mapped, isLoading: false });
       }
     } catch (error: unknown) {
       set({ error: error instanceof Error ? error.message : 'Recipe not found', isLoading: false, currentRecipe: null });
+    }
+  },
+
+  rateRecipe: async (recipeId, score) => {
+    // ИСПРАВЛЕНИЕ: Защита от кривых оценок (Comment 6)
+    if (typeof score !== 'number' || score < 1 || score > 5) {
+      throw new Error("Invalid score. Must be between 1 and 5.");
+    }
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      const { error } = await supabase
+        .from('recipe_ratings')
+        .upsert(
+          { recipe_id: recipeId, user_id: user.id, score },
+          { onConflict: 'recipe_id,user_id' }
+        );
+
+      if (error) throw error;
+
+      await get().fetchRecipeById(recipeId);
+      
+      const currentBreweryId = get().currentRecipe?.breweryId;
+      if (currentBreweryId) {
+        get().fetchRecipes(currentBreweryId);
+      }
+    } catch (error: unknown) {
+      console.error('Failed to rate recipe:', error);
+      throw error;
     }
   },
 

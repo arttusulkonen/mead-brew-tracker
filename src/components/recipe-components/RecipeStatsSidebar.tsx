@@ -1,28 +1,11 @@
 // src/components/recipe-components/RecipeStatsSidebar.tsx
-import type { TosnaRequirements } from '@mead-tracker/math';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaExclamationTriangle, FaInfoCircle } from 'react-icons/fa';
 import type { BeverageType } from '../../types/recipe';
 import type { BjcpStyle, StyleValidationResult } from '../../utils/bjcpMatchEngine';
+import type { RecipeDetailsStats } from '../../utils/recipeCalculators';
 import type { RecipeIngredientEntry } from './types';
-
-interface DynamicAdditive {
-  id: string;
-  name: string;
-  totalGrams: number;
-  rule: string;
-}
-
-export interface RecipeDetailsStats {
-  og: number;
-  abv: number;
-  ibu: number;
-  ebc: number;
-  tosna: TosnaRequirements | null;
-  yeastAdded: number;
-  dynamicAdditives: DynamicAdditive[];
-}
 
 interface RecipeStatsSidebarProps {
   validation: StyleValidationResult;
@@ -33,6 +16,7 @@ interface RecipeStatsSidebarProps {
   isAbvMismatch: boolean;
   targetStyle: string;
   updateIngredient: (id: string, updates: Partial<RecipeIngredientEntry>) => void;
+  onAddVirtualIngredient: (id: string, name: string, quantity: number, type: string, formKey?: string) => void;
   handleSaveRecipe: () => void;
   isSaving: boolean;
   recipeName: string;
@@ -50,6 +34,7 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
   isAbvMismatch,
   targetStyle,
   updateIngredient,
+  onAddVirtualIngredient,
   handleSaveRecipe,
   isSaving,
   recipeName,
@@ -109,21 +94,43 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
 
       {(recipeDetails?.dynamicAdditives || []).length > 0 && (
         <div className="stat-panel">
-          <h3 className="stat-panel__title">{t('Smart Additive Calculator')}</h3>
+          <h3 className="stat-panel__title">{t('Smart Scaling Calculator')}</h3>
           <ul className="stat-panel__list stat-panel__list--stacked">
             {(recipeDetails?.dynamicAdditives || []).map((add) => {
-              const isRehydration = add?.rule?.includes('Rehydration');
               const targetGrams = parseFloat((add?.totalGrams || 0).toFixed(1));
               const currentIng = (recipeIngredients || []).find(ing => ing?.id === add?.id);
               const isApplied = currentIng && Math.abs((currentIng.quantity || 0) - targetGrams) < 0.01;
+
+              const isRehydration = add?.rule?.includes('Rehydration');
+              const isSession = (recipeDetails?.abv || 0) < 6.5;
+
+              let hintText: string;
+              let isHintSuccess = false;
+
+              if (add.id === 'virtual-erythritol' || add.name.toLowerCase().includes('эритрит')) {
+                hintText = t('Adds body and safe sweetness without restarting fermentation.');
+                isHintSuccess = true;
+              } else if (add.id === 'virtual-dextrose' || add.name.toLowerCase().includes('декстроза')) {
+                hintText = t('Boil into a syrup, cool down, and add before bottling.');
+                isHintSuccess = true;
+              } else if (add.type === 'Yeast') {
+                hintText = `${t('Pitch Rate')}: ${add.rule}`;
+              } else if (isRehydration) {
+                hintText = t('At 35-40°C. Acclimatize to <10°C delta before pitch.');
+                isHintSuccess = true;
+              } else {
+                hintText = isSession
+                  ? t('2-Step TOSNA: Add at pitch & 24h (Degas first!)')
+                  : t('4-Step TOSNA: 24h, 48h, 72h & 1/3 sugar break.');
+              }
 
               return (
                 <li className="stat-panel__item stat-panel__item--row" key={add.id}>
                   <div className="stat-panel__info stat-panel__info-col">
                     <span className="stat-panel__label stat-panel__label--bold">{add.name}</span>
-                    <span className={`stat-panel__subtext stat-panel__subtext--flex ${isRehydration ? 'stat-panel__subtext--success' : 'stat-panel__subtext--muted'}`}>
-                      {isRehydration ? <FaInfoCircle /> : null}
-                      {isRehydration ? t('constants.nutrient_roles.rehydration', 'Before pitching yeast (Rehydration)') : t('constants.nutrient_roles.fermentation', 'During active fermentation (Feeding)')}
+                    <span className={`stat-panel__subtext stat-panel__subtext--flex ${isHintSuccess ? 'stat-panel__subtext--success' : 'stat-panel__subtext--muted'}`}>
+                      <FaInfoCircle />
+                      {hintText}
                     </span>
                   </div>
                   <div className="stat-panel__apply-group">
@@ -131,10 +138,19 @@ export const RecipeStatsSidebar: React.FC<RecipeStatsSidebarProps> = ({
                     <button
                       type="button"
                       className={`stat-panel__btn-apply ${isApplied ? 'stat-panel__btn-apply--applied' : ''}`}
-                      onClick={() => updateIngredient(add.id, { quantity: targetGrams })}
+                      onClick={() => {
+                        if (currentIng) {
+                          updateIngredient(add.id, { quantity: targetGrams });
+                        } else {
+                          let formKey: string | undefined;
+                          if (add.id === 'virtual-erythritol' || add.name.toLowerCase().includes('эритрит')) formKey = 'Erythritol';
+                          if (add.id === 'virtual-dextrose' || add.name.toLowerCase().includes('декстроза')) formKey = 'Dextrose';
+                          onAddVirtualIngredient(add.id, add.name, targetGrams, add.type, formKey);
+                        }
+                      }}
                       disabled={isApplied}
                     >
-                      {isApplied ? t('Applied', 'Applied') : t('Apply')}
+                      {isApplied ? t('Applied') : t('Apply')}
                     </button>
                   </div>
                 </li>

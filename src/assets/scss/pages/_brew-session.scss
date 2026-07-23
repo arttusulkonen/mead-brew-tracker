@@ -68,7 +68,6 @@
     gap: 12px;
   }
 
-  // --- ИНФОРМАЦИОННАЯ ПАНЕЛЬ МЕТРИК ---
   &__stats-row {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -142,8 +141,8 @@
     }
   }
 
-  &__col-main,
-  &__col-side {
+  &__col-side,
+  &__col-main {
     display: flex;
     flex-direction: column;
     gap: 24px;

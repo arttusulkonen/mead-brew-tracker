@@ -41,6 +41,22 @@
     margin-bottom: $spacing-md;
   }
 
+  &__cost-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background-color: var(--bg-surface-alt);
+    border: 1px solid var(--border-color);
+    border-radius: $border-radius-sm;
+  }
+
+  &__cost-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
   &__empty-state {
     padding: $spacing-xxl $spacing-lg;
     text-align: center;
@@ -100,7 +116,8 @@
     border-radius: $border-radius-sm;
 
     // Семантические цвета для категорий ингредиентов
-    &--fermentable {
+    &--fermentable,
+    &--honey {
       color: #b45309;
       background-color: rgb(251 191 36 / 15%);
     }
@@ -178,6 +195,17 @@
     justify-content: space-between;
     padding-top: $spacing-sm;
     border-top: 1px solid var(--border-color);
+  }
+
+  &__cost {
+    display: flex;
+    align-items: center;
+  }
+
+  &__cost-val {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
   }
 
   &__amount {

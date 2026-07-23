@@ -1,7 +1,7 @@
 // src/components/recipe-components/IngredientGroup.tsx
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaCheck, FaMagic, FaPlus, FaTimes, FaTrash } from 'react-icons/fa';
+import { FaCheck, FaEdit, FaMagic, FaPlus, FaTimes, FaTrash } from 'react-icons/fa';
 import type { IngredientCategory } from '../../types/ingredient';
 import type { BeverageType } from '../../types/recipe';
 import type { AiIngredientProposal, RecipeIngredientEntry } from './types';
@@ -18,6 +18,7 @@ interface IngredientGroupProps {
   onRemoveIngredient: (id: string) => void;
   onAcceptProposal: (proposal: AiIngredientProposal) => void;
   onRejectProposal: (ingredientId: string) => void;
+  onEditIngredient?: (id: string) => void; // Добавлен новый пропс
 }
 
 const formatRange = (min: number | undefined, max: number | undefined) => {
@@ -35,7 +36,8 @@ export const IngredientGroup: React.FC<IngredientGroupProps> = ({
   onUpdateIngredient,
   onRemoveIngredient,
   onAcceptProposal,
-  onRejectProposal
+  onRejectProposal,
+  onEditIngredient
 }) => {
   const { t } = useTranslation();
 
@@ -79,6 +81,17 @@ export const IngredientGroup: React.FC<IngredientGroupProps> = ({
                     </span>
                   </div>
                   <div className="recipe-ingredient__controls">
+                    {/* КНОПКА РЕДАКТИРОВАНИЯ */}
+                    <button
+                      type="button"
+                      className="btn-text"
+                      onClick={() => onEditIngredient?.(item.id)}
+                      disabled={isSaving}
+                      title={t('Edit', 'Редактировать')}
+                    >
+                      <FaEdit />
+                    </button>
+
                     <button
                       type="button"
                       className="btn-text"

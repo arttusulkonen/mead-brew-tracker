@@ -1,3 +1,4 @@
+// src/components/recipe-components/CoreParametersSection.tsx
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BeverageType } from '../../types/recipe';

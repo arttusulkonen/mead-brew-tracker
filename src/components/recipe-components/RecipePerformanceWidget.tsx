@@ -1,53 +1,111 @@
 // src/components/recipe-components/RecipePerformanceWidget.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaChartBar, FaStar } from 'react-icons/fa';
+import { FaChartBar, FaRegStar, FaStar } from 'react-icons/fa';
 
 interface RecipePerformanceWidgetProps {
   totalBrews?: number;
   completedBrews?: number;
   avgAiScore?: number | null;
+  avgUserRating?: number | null;
+  totalUserRatings?: number;
+  currentUserRating?: number | null;
+  onRateRecipe?: (rating: number) => Promise<void>;
 }
 
-export const RecipePerformanceWidget: React.FC<RecipePerformanceWidgetProps> = ({ totalBrews = 0, completedBrews = 0, avgAiScore }) => {
+export const RecipePerformanceWidget: React.FC<RecipePerformanceWidgetProps> = ({ 
+  totalBrews = 0, 
+  completedBrews = 0, 
+  avgAiScore,
+  avgUserRating,
+  totalUserRatings = 0,
+  currentUserRating,
+  onRateRecipe
+}) => {
   const { t } = useTranslation();
-  console.log('Rendering RecipePerformanceWidget with props:', { totalBrews, completedBrews, avgAiScore });
-  if (totalBrews === 0) return null;
+  const [hoveredStar, setHoveredStar] = useState<number>(0);
+  const [isRating, setIsRating] = useState(false);
+
+  const handleRate = async (star: number) => {
+    if (!onRateRecipe || isRating) return;
+    
+    setIsRating(true);
+    try {
+      await onRateRecipe(star);
+    } catch (err) {
+      console.error('Failed to submit rating:', err);
+    } finally {
+      setIsRating(false);
+    }
+  };
+
+  const renderInteractiveStars = () => {
+    const displayScore = hoveredStar || currentUserRating || Math.round(avgUserRating || 0);
+
+    return (
+      <div className="recipe-performance__stars-container">
+        {[1, 2, 3, 4, 5].map(star => {
+          const isFilled = star <= displayScore;
+          return (
+            <button
+              key={star}
+              type="button"
+              className={`recipe-performance__star-btn ${isFilled ? 'recipe-performance__star-btn--filled' : ''}`}
+              onMouseEnter={() => setHoveredStar(star)}
+              onMouseLeave={() => setHoveredStar(0)}
+              onClick={() => handleRate(star)}
+              disabled={!onRateRecipe || isRating}
+              aria-label={t('Rate {{star}} stars', { star, defaultValue: `Rate ${star} stars` })}
+            >
+              {isFilled ? <FaStar /> : <FaRegStar />}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
-    <div style={{ 
-      marginBottom: '24px', 
-      padding: '16px', 
-      backgroundColor: 'var(--bg-surface)', 
-      border: '1px solid var(--border-color)', 
-      borderRadius: '8px', 
-      boxShadow: '0 2px 8px rgba(0,0,0,0.02)' 
-    }}>
-      <h3 style={{ margin: '0 0 16px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-        <FaChartBar style={{ color: 'var(--color-primary)' }} /> 
-        {t('Historical Performance', 'История варок')}
+    <div className="recipe-performance">
+      <h3 className="recipe-performance__header">
+        <FaChartBar className="recipe-performance__icon" /> 
+        {t('Recipe Performance')}
       </h3>
       
-      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: '100px' }}>
-          <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-            {t('Total Brews', 'Всего варок')}
+      <div className="recipe-performance__stats">
+        
+        <div className="recipe-performance__stat">
+          <span className="recipe-performance__label">
+            {t('Total Brews')}
           </span>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-            <strong style={{ fontSize: '1.25rem', color: 'var(--text-primary)' }}>{totalBrews}</strong>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-disabled)' }}>
-              ({completedBrews} {t('completed', 'завершено')})
+          <div className="recipe-performance__value-group">
+            <strong className="recipe-performance__value">{totalBrews}</strong>
+            <span className="recipe-performance__sub-value">
+              ({completedBrews} {t('completed')})
+            </span>
+          </div>
+        </div>
+
+        <div className="recipe-performance__stat recipe-performance__stat--divider">
+          <span className="recipe-performance__label">
+            {t('User Rating')}
+          </span>
+          <div className="recipe-performance__value-group recipe-performance__value-group--column">
+            {renderInteractiveStars()}
+            <span className="recipe-performance__sub-value">
+              {avgUserRating ? `${avgUserRating.toFixed(1)} / 5` : t('Not rated')}
+              {totalUserRatings > 0 && ` (${totalUserRatings})`}
             </span>
           </div>
         </div>
 
         {avgAiScore !== null && avgAiScore !== undefined && (
-          <div style={{ flex: 1, minWidth: '100px', borderLeft: '1px solid var(--border-color)', paddingLeft: '16px' }}>
-            <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-              {t('AI Rating', 'Рейтинг ИИ')}
+          <div className="recipe-performance__stat recipe-performance__stat--divider">
+            <span className="recipe-performance__label">
+              {t('AI Score')}
             </span>
-            <strong style={{ fontSize: '1.25rem', color: '#9333ea', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <FaStar style={{ color: '#eab308', fontSize: '1rem' }} /> {avgAiScore}/100
+            <strong className="recipe-performance__value recipe-performance__value--ai">
+              <FaStar className="recipe-performance__star-icon" /> {avgAiScore}/100
             </strong>
           </div>
         )}

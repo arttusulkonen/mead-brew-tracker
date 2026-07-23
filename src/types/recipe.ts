@@ -1,8 +1,16 @@
-// src/types/recipe.ts
-import type { AdditiveType, IngredientCategory, UnitType, UUID } from './ingredient';
+import type {
+  AdditiveType,
+  IngredientCategory,
+  UnitType,
+  UUID,
+} from './ingredient';
 
 export type BeverageType = 'Beer' | 'Mead' | 'Cider' | 'Other';
-export type MeadStyleTarget = 'Session (4-6%)' | 'Standard (7-10%)' | 'Wine/Sack (11%+)' | 'Custom';
+export type MeadStyleTarget =
+  | 'Session (4-6%)'
+  | 'Standard (7-10%)'
+  | 'Wine/Sack (11%+)'
+  | 'Custom';
 
 export interface RecipeIngredientReference {
   id: UUID;
@@ -14,41 +22,34 @@ export interface RecipeIngredientReference {
   unit: UnitType;
   note: string;
 
-  // --- Универсальные поля ---
   form?: string;
   origin?: string;
   producer?: string;
   description?: string;
 
-  // --- Fermentable ---
   yieldPpg?: number;
   colorEbc?: number;
   moistureContentPct?: number;
   diastaticPowerLintner?: number;
 
-  // --- Honey ---
   sugarContentBrix?: number;
 
-  // --- Hops ---
   alphaAcidPct?: number;
   boilTimeMinutes?: number;
 
-  // --- Yeast ---
   alcoholTolerancePct?: number;
   attenuationPct?: number;
   tempMinC?: number;
   tempMaxC?: number;
   nitrogenDemand?: 'Low' | 'Medium' | 'High' | 'Very High';
 
-  // --- Additive ---
   additiveType?: AdditiveType;
   nutrientRole?: string;
-  additionStage?: string; 
+  additionStage?: string;
   yanValuePerGramPerLiter?: number;
   dosagePerGramYeast?: number;
   dosagePer10Liters?: number;
 
-  // --- Water Profile (ppm) ---
   calciumPpm?: number;
   magnesiumPpm?: number;
   sodiumPpm?: number;
@@ -57,7 +58,13 @@ export interface RecipeIngredientReference {
   bicarbonatePpm?: number;
 }
 
-export type StepPhase = 'Preparation' | 'Mashing' | 'Boiling' | 'Fermentation' | 'Conditioning' | 'Packaging';
+export type StepPhase =
+  | 'Preparation'
+  | 'Mashing'
+  | 'Boiling'
+  | 'Fermentation'
+  | 'Conditioning'
+  | 'Packaging';
 export type TimeUnit = 'minutes' | 'days';
 
 export interface RecipeStep {
@@ -69,7 +76,7 @@ export interface RecipeStep {
   durationValue: number;
   durationUnit: TimeUnit;
   targetTempC: number | null;
-  
+
   isActive?: boolean;
   isCompleted?: boolean;
   startedAt?: string | null;
@@ -89,9 +96,26 @@ export interface IdealTargetCurves {
   };
 }
 
+export interface RecipeFork {
+  id: UUID;
+  name: string;
+  target_style: string;
+  target_abv: number;
+  target_original_gravity: number;
+}
+
+export interface WizardData {
+  wizardStyle: string;
+  wizardSweetness: string;
+  wizardHoney: string;
+  isSafeBacksweetening: boolean;
+  isColdCrashEnabled: boolean;
+}
+
 export interface Recipe {
   id: UUID;
   breweryId: UUID;
+  parentRecipeId?: UUID | null;
   name: string;
   beverageType: BeverageType;
   targetStyle: string;
@@ -104,7 +128,9 @@ export interface Recipe {
   ingredients: RecipeIngredientReference[];
   steps: RecipeStep[];
   targetCurves?: IdealTargetCurves;
+  wizardData?: WizardData;
   createdAt: string;
   updatedAt: string;
   createdBy: UUID;
+  forks?: RecipeFork[]; 
 }
