@@ -17,6 +17,7 @@ export type NutrientRole = 'Rehydration' | 'Fermentation' | 'Other';
 
 export interface EditedIngredientData {
   globalIngredientId: string | null;
+  inventoryItemId?: string;
   name: string;
   category: IngredientCategory;
   quantity: number;
@@ -53,6 +54,8 @@ export interface EditedIngredientData {
   chloridePpm?: number;
   bicarbonatePpm?: number;
   unit?: UnitType;
+  costPerBaseUnit?: number;
+  currency?: string;
 }
 
 interface IngredientEditorModalProps {
@@ -94,6 +97,15 @@ const STAGE_OPTIONS = [
   { value: 'Secondary', labelKey: 'constants.step_phases.aging' },
   { value: 'Bottling', labelKey: 'constants.actions.bottling' }
 ];
+
+const SUGGESTED_STAGE_BY_ADDITIVE_TYPE: Partial<Record<AdditiveType, string>> = {
+  Fruit: 'Secondary',
+  Spice: 'Aging',
+  Acid: 'Bottling',
+  Clarifier: 'Aging',
+  Stabilizer: 'Bottling',
+  Sweetener: 'Bottling',
+};
 
 const normalizeString = (str: string) => (str || '').toLowerCase().replace(/ё/g, 'е');
 
@@ -193,6 +205,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
 
   const [costPerBaseUnit, setCostPerBaseUnit] = useState<number>(0);
   const [currency, setCurrency] = useState<string>('€');
+  const [showCostCalculator, setShowCostCalculator] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -212,16 +225,30 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
           globalIngredientId: initialData.globalIngredientId || null,
         } as EditedIngredientData);
         setShowSuggestions(false);
+        if (mode === 'inventory') {
+          setStockQuantity(initialData.quantity ?? '');
+          setStockUnit(initialData.unit ?? 'kg');
+          setCostPerBaseUnit(initialData.costPerBaseUnit ?? 0);
+          setCurrency(initialData.currency ?? '€');
+          setShowCostCalculator(false);
+        } else {
+          setStockQuantity('');
+          setStockUnit('kg');
+          setCostPerBaseUnit(0);
+          setCurrency('€');
+          setShowCostCalculator(true);
+        }
       } else {
         setFormData(buildDefaults(category));
         setShowSuggestions(!!initialQuery);
+        setStockQuantity('');
+        setStockUnit('kg');
+        setCostPerBaseUnit(0);
+        setCurrency('€');
+        setShowCostCalculator(true);
       }
       setSaveToStock(mode === 'inventory');
-      setStockQuantity('');
-      setStockUnit('kg');
       setStockError('');
-      setCostPerBaseUnit(0);
-      setCurrency('€');
     }
   }, [isOpen, category, initialQuery, initialAdditiveType, mode, initialData]);
 
@@ -435,6 +462,27 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
     e.preventDefault();
     if (!formData.name) return;
 
+    if (mode === 'inventory') {
+      setIsPersistingToStock(true);
+      setStockError('');
+      try {
+        await onSave({
+          ...formData,
+          quantity: Number(stockQuantity),
+          unit: stockUnit,
+          costPerBaseUnit,
+          currency
+        });
+        onClose();
+      } catch (err) {
+        console.error(err);
+        setStockError(t('Failed to save to inventory.'));
+      } finally {
+        setIsPersistingToStock(false);
+      }
+      return;
+    }
+
     if (saveToStock) {
       setIsPersistingToStock(true);
       setStockError('');
@@ -447,10 +495,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
       setIsPersistingToStock(false);
     }
 
-    if (mode === 'recipe') {
-      onSave(formData);
-    }
-
+    onSave(formData);
     onClose();
   };
 
@@ -479,7 +524,7 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
               className='form-field__select'
               value={formData.category || 'Fermentable'}
               onChange={(e) => handleCategoryChange(e.target.value as IngredientCategory)}
-              disabled={!!initialData}
+              disabled={!!initialData && mode !== 'inventory'}
             >
               {ALL_CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
@@ -593,7 +638,6 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                     <div className='form-field'>
                       <label className='form-field__label form-field__label-flex'>
                         {t('Addition Stage')}
-                        <FaInfoCircle className='icon-info' title={t('Select when to add hops: during boil, whirlpool, or dry hopping.')} />
                       </label>
                       <select
                         className='form-field__select'
@@ -670,7 +714,6 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                 <div className='form-field'>
                   <label className='form-field__label'>{t('Approx. Yield for OG calc')} (PPG)</label>
                   <input type='number' step='0.1' className='form-field__input' value={formData.yieldPpg ?? ''} onChange={(e) => handleChange('yieldPpg', parseFloat(e.target.value) || 0)} />
-                  <span className='form-field__hint'>{t('Approximation used only for gravity estimate; the math library has no Brix-to-gravity formula.')}</span>
                 </div>
               </>
             )}
@@ -729,7 +772,6 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                 <div className='form-field'>
                   <label className='form-field__label form-field__label-flex'>
                     {t('Additive Type')}
-                    <FaInfoCircle className='icon-info' title={t('Category of the additive')} />
                   </label>
                   <select
                     className='form-field__select'
@@ -777,7 +819,6 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                   <div className='form-field'>
                     <label className='form-field__label form-field__label-flex'>
                       {t('Nutrient Role')}
-                      <FaInfoCircle className='icon-info' title={t('Rehydration for yeast prep (e.g., Go-Ferm). Fermentation for active yeast feeding (e.g., Fermaid O).')} />
                     </label>
                     <select
                       className='form-field__select'
@@ -795,14 +836,13 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                   <div className='form-field'>
                     <label className='form-field__label form-field__label-flex'>
                       {t('Addition Stage')}
-                      <FaInfoCircle className='icon-info' title={t('When to add: Primary, Secondary, Bottling, Rehydration...')} />
                     </label>
                     <select
                       className='form-field__select'
                       value={formData.additionStage || ''}
                       onChange={(e) => handleChange('additionStage', e.target.value)}
                     >
-                      <option value=''>{t('Select Stage...')}</option>
+                      <option value=''>--</option>
                       {STAGE_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
                       ))}
@@ -814,7 +854,6 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                   <div className='form-field'>
                     <label className='form-field__label form-field__label-flex'>
                       {t('YAN Value')} (mg N / g / L)
-                      <FaInfoCircle className='icon-info' title={t('Yeast Assimilable Nitrogen. Example: Fermaid O = 5.2')} />
                     </label>
                     <input
                       type='number'
@@ -832,7 +871,6 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                   <div className='form-field'>
                     <label className='form-field__label form-field__label-flex'>
                       {t('Dosage per 1g Yeast')}
-                      <FaInfoCircle className='icon-info' title={t('Grams of nutrient per 1g of dry yeast. Standard is 1.25g for Go-Ferm.')} />
                     </label>
                     <input
                       type='number'
@@ -850,7 +888,6 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                   <div className='form-field'>
                     <label className='form-field__label form-field__label-flex'>
                       {t('Dosage per 10L')}
-                      <FaInfoCircle className='icon-info' title={t('Recommended dosage in grams per 10 liters of volume.')} />
                     </label>
                     <input
                       type='number'
@@ -954,14 +991,25 @@ export const IngredientEditorModal: React.FC<IngredientEditorModalProps> = ({
                   )}
 
                   <div style={{ marginTop: '16px' }}>
-                    <CostCalculatorWidget
-                      initialUnit={stockUnit}
-                      initialQty={Number(stockQuantity) || 0}
-                      onCostCalculated={(cost, curr) => {
-                        setCostPerBaseUnit(cost);
-                        setCurrency(curr);
-                      }}
-                    />
+                    {costPerBaseUnit > 0 && !showCostCalculator ? (
+                      <div className="inventory__cost-display">
+                        <span className="inventory__cost-value">
+                          {costPerBaseUnit.toFixed(2)} {currency} / {t(`constants.units.${stockUnit === 'g' || stockUnit === 'ml' ? (stockUnit === 'g' ? 'kg' : 'l') : stockUnit.toLowerCase()}`)}
+                        </span>
+                        <button type="button" className="btn-secondary btn-secondary--small" onClick={() => setShowCostCalculator(true)}>
+                          {t('Update')}
+                        </button>
+                      </div>
+                    ) : (
+                      <CostCalculatorWidget
+                        initialUnit={stockUnit}
+                        initialQty={Number(stockQuantity) || 0}
+                        onCostCalculated={(cost, curr) => {
+                          setCostPerBaseUnit(cost);
+                          setCurrency(curr);
+                        }}
+                      />
+                    )}
                   </div>
                 </>
               )}

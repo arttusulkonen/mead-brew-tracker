@@ -1,4 +1,3 @@
-// src/components/recipe-components/useRecipeBuilderState.ts
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabase/client';
@@ -60,6 +59,7 @@ interface StyleRow {
 
 interface RecipeStateData extends Recipe {
   baseStyle?: string;
+  wizard_data?: string | any;
 }
 
 export function useRecipeBuilderState() {
@@ -176,18 +176,57 @@ export function useRecipeBuilderState() {
       setTargetStyle(r.targetStyle || 'Standard');
       setTargetFg(r.targetFinalGravity || 1.000);
 
-      if (r.beverageType === 'Mead' && r.targetFinalGravity === 1.000) {
-        setIsSafeBacksweetening(true);
+      const parsedWizardData = typeof r.wizard_data === 'string' 
+        ? JSON.parse(r.wizard_data) 
+        : (r.wizardData || r.wizard_data);
+
+      if (parsedWizardData) {
+        setWizardStyle(parsedWizardData.wizardStyle || 'traditional');
+        setWizardSweetness(parsedWizardData.wizardSweetness || SWEETNESS_LEVELS[2].id);
+        setWizardHoney(parsedWizardData.wizardHoney || HONEY_TERROIR[0].id);
+        setIsSafeBacksweetening(parsedWizardData.isSafeBacksweetening ?? true);
+        setIsColdCrashEnabled(parsedWizardData.isColdCrashEnabled ?? true);
       } else {
-        setIsSafeBacksweetening(false);
-      }
+        if (r.baseStyle) setWizardStyle(r.baseStyle);
 
-      if (r.baseStyle) {
-        setWizardStyle(r.baseStyle);
-      }
+        if (r.beverageType === 'Mead' && r.targetFinalGravity === 1.000) {
+          setIsSafeBacksweetening(true);
+          const erythritolIng = (r.ingredients || []).find(i => 
+            i.form === 'Erythritol' || 
+            (i.name || '').toLowerCase().includes('erythritol') || 
+            (i.name || '').toLowerCase().includes('эритрит')
+          );
+          
+          if (erythritolIng && r.expectedBatchSizeLiters) {
+            const points = (erythritolIng.quantity || 0) / (r.expectedBatchSizeLiters * 2.5);
+            const targetSweetFg = 1.000 + (points / 1000);
+            
+            let closest = SWEETNESS_LEVELS[0];
+            let minDiff = Infinity;
+            for (const lvl of SWEETNESS_LEVELS) {
+              const diff = Math.abs(lvl.minFg - targetSweetFg);
+              if (diff < minDiff) {
+                minDiff = diff;
+                closest = lvl;
+              }
+            }
+            setWizardSweetness(closest.id);
+          } else {
+            setWizardSweetness(SWEETNESS_LEVELS[0].id);
+          }
+        } else {
+          setIsSafeBacksweetening(false);
+          const matchedSweetness = (SWEETNESS_LEVELS || []).find(lvl => Math.abs(lvl.minFg - (r.targetFinalGravity || 1.000)) < 0.005);
+          if (matchedSweetness) setWizardSweetness(matchedSweetness.id);
+        }
 
-      const matchedSweetness = (SWEETNESS_LEVELS || []).find(lvl => Math.abs(lvl.minFg - (r.targetFinalGravity || 1.000)) < 0.005);
-      if (matchedSweetness) setWizardSweetness(matchedSweetness.id);
+        const hasColdCrash = (r.steps || []).some(step => {
+          const titleLower = (step.title || '').toLowerCase();
+          const isColdPhase = step.phase === 'Conditioning' && typeof step.targetTempC === 'number' && step.targetTempC <= 5;
+          return titleLower.includes('cold crash') || titleLower.includes('холод') || isColdPhase;
+        });
+        setIsColdCrashEnabled(hasColdCrash);
+      }
 
       const matchedStyle = (bjcpStyles || []).find(s => s.name === r.targetStyle);
       if (matchedStyle) setSelectedStyleId(matchedStyle.style_id);
@@ -257,7 +296,7 @@ export function useRecipeBuilderState() {
     setTargetStyle('Standard');
     setTargetFg(1.010);
     setIsSafeBacksweetening(true);
-    setIsColdCrashEnabled(true); // Сбрасываем в true
+    setIsColdCrashEnabled(true);
     setSelectedStyleId('');
     setRecipeIngredients([]);
     setRecipeSteps([]);
@@ -329,7 +368,7 @@ export function useRecipeBuilderState() {
     wizardSweetness, setWizardSweetness,
     wizardHoney, setWizardHoney,
     isSafeBacksweetening, setIsSafeBacksweetening,
-    isColdCrashEnabled, setIsColdCrashEnabled, 
+    isColdCrashEnabled, setIsColdCrashEnabled,
     bjcpStyles,
     selectedStyleId, setSelectedStyleId,
     globalCatalog, setGlobalCatalog,

@@ -1,4 +1,3 @@
-// src/pages/Recipes.tsx
 import { calculateAbvCrouch, estimateOG } from '@mead-tracker/math';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -172,7 +171,7 @@ const Recipes: React.FC = () => {
       quantity,
       additiveType: formKey ? 'Sweetener' : 'Other',
       form: formKey,
-      additionStage: t('constants.actions.bottling'),
+      additionStage: 'Bottling',
       note: t('constants.notes.added_by_calculator'),
       showNote: false
     } as unknown as RecipeIngredientEntry;
@@ -260,11 +259,19 @@ const Recipes: React.FC = () => {
         return copy as unknown as RecipeIngredientReference;
       });
 
-      const formattedSteps = (state.recipeSteps || []).map(step => {
+      let formattedSteps = (state.recipeSteps || []).map(step => {
         const copy = { ...step } as Partial<RecipeStepEntry>;
         delete copy.isExpanded;
         return copy as unknown as RecipeStep;
       });
+
+      if (!state.isColdCrashEnabled) {
+        formattedSteps = formattedSteps.filter(step => {
+          const titleLower = (step.title || '').toLowerCase();
+          const isColdPhase = step.phase === 'Conditioning' && typeof step.targetTempC === 'number' && step.targetTempC <= 5;
+          return !(titleLower.includes('cold crash') || titleLower.includes('холод') || isColdPhase);
+        });
+      }
 
       const recipeData: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'> = {
         breweryId: activeBrewery.id,
@@ -279,14 +286,21 @@ const Recipes: React.FC = () => {
         targetColorEbc: state.beverageType === 'Beer' ? recipeDetails.ebc : undefined,
         ingredients: formattedIngredients,
         steps: formattedSteps,
-        createdBy: userId
-      };
+        wizard_data: {
+          wizardStyle: state.wizardStyle,
+          wizardSweetness: state.wizardSweetness,
+          wizardHoney: state.wizardHoney,
+          isSafeBacksweetening: state.isSafeBacksweetening,
+          isColdCrashEnabled: state.isColdCrashEnabled
+        },
+        created_by: userId
+      } as any;
 
       let savedRecipe;
       if (state.editingRecipeId) {
-        savedRecipe = await updateRecipe(state.editingRecipeId, recipeData);
+        savedRecipe = await updateRecipe(state.editingRecipeId, recipeData as unknown as Recipe);
       } else {
-        savedRecipe = await saveRecipe(recipeData);
+        savedRecipe = await saveRecipe(recipeData as unknown as Recipe);
       }
 
       setAiProposedIngredients([]);

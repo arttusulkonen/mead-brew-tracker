@@ -1,13 +1,11 @@
 // src/pages/Inventory.tsx
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaPen, FaPlus, FaTimes, FaTrash } from 'react-icons/fa';
+import { FaPen, FaPlus, FaTrash } from 'react-icons/fa';
 import { EditedIngredientData, IngredientEditorModal } from '../components/IngredientEditorModal';
-import { CostCalculatorWidget } from '../components/inventory/CostCalculatorWidget';
 import { useBreweryStore } from '../store/useBreweryStore';
 import { useInventoryStore } from '../store/useInventoryStore';
-import type { IngredientUnion, PopulatedInventoryItem, UnitType } from '../types/ingredient';
-import { UNIT_TYPES } from '../types/ingredient';
+import type { IngredientUnion, PopulatedInventoryItem } from '../types/ingredient';
 
 const getBaseUnit = (u: string) => {
   if (['g', 'kg', 'oz', 'lb'].includes(u)) return 'kg';
@@ -32,14 +30,7 @@ const Inventory: React.FC = () => {
   } = useInventoryStore();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-   
-  const [editingStockItem, setEditingStockItem] = useState<PopulatedInventoryItem | null>(null);
-  const [editStockQty, setEditStockQty] = useState<number | ''>('');
-  const [editStockUnit, setEditStockUnit] = useState<UnitType>('g');
-  const [editCostPerBaseUnit, setEditCostPerBaseUnit] = useState<number>(0);
-  const [editCurrency, setEditCurrency] = useState<string>('€');
-  const [showCostCalculator, setShowCostCalculator] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [editingInventoryItem, setEditingInventoryItem] = useState<PopulatedInventoryItem | null>(null);
 
   useEffect(() => {
     fetchGlobalIngredients();
@@ -60,11 +51,44 @@ const Inventory: React.FC = () => {
     let isModified = false;
     if (original) {
       if (original.name !== data.name) isModified = true;
+      if (original.origin !== data.origin) isModified = true;
+      if (original.producer !== data.producer) isModified = true;
+      if ((original.notes || original.description) !== data.description) isModified = true;
+      if ((original as any).form !== data.form && (original as any).type !== data.form) isModified = true;
+
       if (data.category === 'Additive') {
-        if (data.nutrientRole !== (original as any).nutrientRole) isModified = true;
-        if (data.yanValuePerGramPerLiter !== (original as any).yanValuePerGramPerLiter) isModified = true;
-        if (data.dosagePer10Liters !== (original as any).dosagePer10Liters) isModified = true;
-        if (data.dosagePerGramYeast !== (original as any).dosagePerGramYeast) isModified = true;
+        if ((original as any).additiveType !== data.additiveType) isModified = true;
+        if ((original as any).nutrientRole !== data.nutrientRole) isModified = true;
+        if ((original as any).additionStage !== data.additionStage) isModified = true;
+        if ((original as any).yanValuePerGramPerLiter !== data.yanValuePerGramPerLiter) isModified = true;
+        if ((original as any).dosagePerGramYeast !== data.dosagePerGramYeast) isModified = true;
+        if ((original as any).dosagePer10Liters !== data.dosagePer10Liters) isModified = true;
+      } else if (data.category === 'Fermentable') {
+        if ((original as any).yieldPpg !== data.yieldPpg) isModified = true;
+        if ((original as any).colorEbc !== data.colorEbc) isModified = true;
+        if ((original as any).diastaticPowerLintner !== data.diastaticPowerLintner) isModified = true;
+        if ((original as any).moistureContentPct !== data.moistureContentPct) isModified = true;
+      } else if (data.category === 'Honey') {
+        if ((original as any).sugarContentBrix !== data.sugarContentBrix) isModified = true;
+        if ((original as any).moistureContentPct !== data.moistureContentPct) isModified = true;
+      } else if (data.category === 'Yeast') {
+        if ((original as any).alcoholTolerancePct !== data.alcoholTolerancePct) isModified = true;
+        if ((original as any).alcoholTolerancePctMin !== data.alcoholTolerancePctMin) isModified = true;
+        if ((original as any).attenuationPct !== data.attenuationPct) isModified = true;
+        if ((original as any).attenuationPctMin !== data.attenuationPctMin) isModified = true;
+        if ((original as any).tempMinC !== data.tempMinC) isModified = true;
+        if ((original as any).tempMaxC !== data.tempMaxC) isModified = true;
+        if ((original as any).nitrogenDemand !== data.nitrogenDemand) isModified = true;
+      } else if (data.category === 'Hops') {
+        if ((original as any).alphaAcidPct !== data.alphaAcidPct) isModified = true;
+        if ((original as any).alphaAcidPctMin !== data.alphaAcidPctMin) isModified = true;
+      } else if (data.category === 'Water Profile') {
+        if ((original as any).calciumPpm !== data.calciumPpm) isModified = true;
+        if ((original as any).magnesiumPpm !== data.magnesiumPpm) isModified = true;
+        if ((original as any).sodiumPpm !== data.sodiumPpm) isModified = true;
+        if ((original as any).sulfatePpm !== data.sulfatePpm) isModified = true;
+        if ((original as any).chloridePpm !== data.chloridePpm) isModified = true;
+        if ((original as any).bicarbonatePpm !== data.bicarbonatePpm) isModified = true;
       }
     }
 
@@ -72,9 +96,9 @@ const Inventory: React.FC = () => {
       const baseData: Record<string, unknown> = {
         name: data.name,
         category: data.category,
-        origin: data.origin,
-        producer: data.producer,
-        notes: data.description,
+        origin: data.origin || '',
+        producer: data.producer || '',
+        notes: data.description || '',
       };
 
       if (data.category === 'Fermentable') {
@@ -83,6 +107,7 @@ const Inventory: React.FC = () => {
         baseData.colorEbc = data.colorEbc || 0;
         baseData.isMashed = data.form === 'Grain';
         if (data.moistureContentPct != null) baseData.moistureContentPct = data.moistureContentPct;
+        if (data.diastaticPowerLintner != null) baseData.diastaticPowerLintner = data.diastaticPowerLintner;
       } else if (data.category === 'Honey') {
         baseData.sugarContentBrix = data.sugarContentBrix ?? 80;
         baseData.moistureContentPct = data.moistureContentPct ?? 18;
@@ -101,6 +126,10 @@ const Inventory: React.FC = () => {
         baseData.alphaAcidPctMin = data.alphaAcidPctMin ?? 5;
       } else if (data.category === 'Additive') {
         baseData.additiveType = data.additiveType ?? 'Nutrient';
+        baseData.form = data.form;
+        if (data.additiveType === 'Sweetener' && !baseData.form) {
+          baseData.form = 'Other';
+        }
         if (data.additiveType === 'Nutrient' && data.nutrientRole) {
           baseData.nutrientRole = data.nutrientRole;
         }
@@ -122,12 +151,23 @@ const Inventory: React.FC = () => {
     }
 
     if (targetId) {
-      await addInventoryItem(activeBrewery.id, {
+      const payload: Record<string, any> = {
         ingredientId: targetId,
         quantityOnHand: data.quantity,
         unit: data.unit || 'g',
-      });
+        costPerBaseUnit: data.costPerBaseUnit || 0,
+        currency: data.currency || '€'
+      };
+
+      if (data.inventoryItemId) {
+        await updateItem(activeBrewery.id, data.inventoryItemId, payload);
+      } else {
+        await addInventoryItem(activeBrewery.id, payload);
+      }
     }
+    
+    setIsAddModalOpen(false);
+    setEditingInventoryItem(null);
   };
 
   const handleDeleteItem = async (itemId: string | undefined) => {
@@ -138,37 +178,8 @@ const Inventory: React.FC = () => {
   };
 
   const handleOpenEdit = (item: PopulatedInventoryItem) => {
-    setEditingStockItem(item);
-    setEditStockQty(item.quantityOnHand);
-    setEditStockUnit(item.unit);
-    setEditCostPerBaseUnit(item.costPerBaseUnit || 0);
-    setEditCurrency(item.currency || '€');
-    setShowCostCalculator(false);
-  };
-
-  const handleSaveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeBrewery?.id || !editingStockItem || editStockQty === '') return;
-    setIsUpdating(true);
-    try {
-      const payload: Record<string, any> = {
-        quantityOnHand: Number(editStockQty),
-        unit: editStockUnit
-      };
-
-      if (editCostPerBaseUnit > 0) {
-        payload.costPerBaseUnit = editCostPerBaseUnit;
-        payload.currency = editCurrency;
-      }
-
-      await updateItem(activeBrewery.id, editingStockItem.id, payload);
-      setEditingStockItem(null);
-    } catch (err) {
-      console.error(err);
-      alert(t('Failed to update stock.'));
-    } finally {
-      setIsUpdating(false);
-    }
+    setEditingInventoryItem(item);
+    setIsAddModalOpen(true);
   };
 
   const renderIngredientMeta = (ing: IngredientUnion) => {
@@ -189,7 +200,7 @@ const Inventory: React.FC = () => {
         return `${t('Alpha')}: ${formatRange(ing.alphaAcidPctMin, ing.alphaAcidPct)}% | ${t(`constants.hops_forms.${ing.form?.toLowerCase() || 'pellet'}`)}`;
       case 'Additive': {
         const roleStr = ing.additiveType === 'Nutrient' && (ing as any).nutrientRole
-          ? ` | ${t(`constants.nutrient_roles.${(ing as any).nutrientRole.toLowerCase()}`, (ing as any).nutrientRole)}`
+          ? ` | ${t(`constants.nutrient_roles.${(ing as any).nutrientRole.toLowerCase()}`)}`
           : '';
         const stageStr = (ing as any).additionStage ? ` (${(ing as any).additionStage})` : '';
         return ing.dosagePer10Liters 
@@ -220,87 +231,52 @@ const Inventory: React.FC = () => {
       {isAddModalOpen && (
         <IngredientEditorModal
           isOpen={isAddModalOpen}
-          onClose={() => setIsAddModalOpen(false)}
+          onClose={() => { setIsAddModalOpen(false); setEditingInventoryItem(null); }}
           onSave={handleSaveFromModal}
           catalog={globalIngredients}
-          category="Fermentable"
+          category={editingInventoryItem ? editingInventoryItem.ingredient.category : "Fermentable"}
           mode="inventory"
+          initialData={editingInventoryItem ? {
+            inventoryItemId: editingInventoryItem.id,
+            globalIngredientId: editingInventoryItem.ingredientId,
+            name: editingInventoryItem.ingredient.name,
+            category: editingInventoryItem.ingredient.category,
+            quantity: editingInventoryItem.quantityOnHand,
+            unit: editingInventoryItem.unit,
+            costPerBaseUnit: editingInventoryItem.costPerBaseUnit,
+            currency: editingInventoryItem.currency,
+            form: (editingInventoryItem.ingredient as any).form || (editingInventoryItem.ingredient as any).type,
+            origin: editingInventoryItem.ingredient.origin,
+            producer: editingInventoryItem.ingredient.producer,
+            description: editingInventoryItem.ingredient.notes,
+            yieldPpg: (editingInventoryItem.ingredient as any).yieldPpg,
+            colorEbc: (editingInventoryItem.ingredient as any).colorEbc,
+            moistureContentPct: (editingInventoryItem.ingredient as any).moistureContentPct,
+            diastaticPowerLintner: (editingInventoryItem.ingredient as any).diastaticPowerLintner,
+            sugarContentBrix: (editingInventoryItem.ingredient as any).sugarContentBrix,
+            alphaAcidPct: (editingInventoryItem.ingredient as any).alphaAcidPct,
+            alphaAcidPctMin: (editingInventoryItem.ingredient as any).alphaAcidPctMin,
+            alcoholTolerancePct: (editingInventoryItem.ingredient as any).alcoholTolerancePct,
+            alcoholTolerancePctMin: (editingInventoryItem.ingredient as any).alcoholTolerancePctMin,
+            attenuationPct: (editingInventoryItem.ingredient as any).attenuationPct,
+            attenuationPctMin: (editingInventoryItem.ingredient as any).attenuationPctMin,
+            tempMinC: (editingInventoryItem.ingredient as any).tempMinC,
+            tempMaxC: (editingInventoryItem.ingredient as any).tempMaxC,
+            nitrogenDemand: (editingInventoryItem.ingredient as any).nitrogenDemand,
+            additiveType: (editingInventoryItem.ingredient as any).additiveType,
+            additionStage: (editingInventoryItem.ingredient as any).additionStage,
+            nutrientRole: (editingInventoryItem.ingredient as any).nutrientRole,
+            yanValuePerGramPerLiter: (editingInventoryItem.ingredient as any).yanValuePerGramPerLiter,
+            dosagePerGramYeast: (editingInventoryItem.ingredient as any).dosagePerGramYeast,
+            dosagePer10Liters: (editingInventoryItem.ingredient as any).dosagePer10Liters,
+            calciumPpm: (editingInventoryItem.ingredient as any).calciumPpm,
+            magnesiumPpm: (editingInventoryItem.ingredient as any).magnesiumPpm,
+            sodiumPpm: (editingInventoryItem.ingredient as any).sodiumPpm,
+            sulfatePpm: (editingInventoryItem.ingredient as any).sulfatePpm,
+            chloridePpm: (editingInventoryItem.ingredient as any).chloridePpm,
+            bicarbonatePpm: (editingInventoryItem.ingredient as any).bicarbonatePpm,
+          } : undefined}
         />
-      )}
-
-      {editingStockItem && (
-        <div className="editor-modal-overlay" onMouseDown={() => setEditingStockItem(null)}>
-          <div className="editor-modal" onMouseDown={e => e.stopPropagation()}>
-            <div className="editor-modal__header">
-              <h2>{t('Edit Stock')}</h2>
-              <button type="button" className="btn-secondary" onClick={() => setEditingStockItem(null)} aria-label={t('Close')}>
-                <FaTimes />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEdit} className="editor-modal__body">
-              <p className="modal-subtitle mb-md"><strong>{editingStockItem.ingredient.name}</strong></p>
-
-              <div className="form-field mb-md">
-                <label className="form-field__label">{t('Quantity on hand')}</label>
-                <div className="form-field__group">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="form-field__input"
-                    value={editStockQty}
-                    onChange={e => setEditStockQty(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                  />
-                  <select
-                    className="form-field__select"
-                    value={editStockUnit}
-                    onChange={e => setEditStockUnit(e.target.value as UnitType)}
-                  >
-                    {UNIT_TYPES.map(u => (
-                      <option key={u} value={u}>{t(`constants.units.${u.toLowerCase()}`)}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-field mb-md">
-                <label className="form-field__label">{t('Normalized Cost')}</label>
-                {!showCostCalculator ? (
-                  <div className="inventory__cost-display">
-                    <span className="inventory__cost-value">
-                      {editCostPerBaseUnit > 0 
-                        ? `${editCostPerBaseUnit.toFixed(2)} ${editCurrency} / ${t(`constants.units.${getBaseUnit(editStockUnit)}`)}` 
-                        : t('Not set')}
-                    </span>
-                    <button type="button" className="btn-secondary btn-secondary--small" onClick={() => setShowCostCalculator(true)}>
-                      {t('Update')}
-                    </button>
-                  </div>
-                ) : (
-                  <CostCalculatorWidget
-                    initialUnit={editStockUnit}
-                    onCostCalculated={(cost, curr) => {
-                      if (cost > 0) {
-                        setEditCostPerBaseUnit(cost);
-                        setEditCurrency(curr);
-                      }
-                    }}
-                  />
-                )}
-              </div>
-
-              <div className="editor-modal__footer">
-                <button type="button" className="btn-secondary btn-secondary--outline" onClick={() => setEditingStockItem(null)}>
-                  {t('Cancel')}
-                </button>
-                <button type="submit" className="btn-primary" disabled={isUpdating || editStockQty === ''}>
-                  {isUpdating ? t('Saving...') : t('Save')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
 
       <header className="inventory__header">

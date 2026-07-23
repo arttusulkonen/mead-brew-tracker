@@ -1,4 +1,3 @@
-// src/types/recipe.ts
 import type {
   AdditiveType,
   IngredientCategory,
@@ -12,6 +11,7 @@ export type MeadStyleTarget =
   | 'Standard (7-10%)'
   | 'Wine/Sack (11%+)'
   | 'Custom';
+
 export interface RecipeIngredientReference {
   id: UUID;
   globalIngredientId: UUID | null;
@@ -27,27 +27,22 @@ export interface RecipeIngredientReference {
   producer?: string;
   description?: string;
 
-  // --- Fermentable ---
   yieldPpg?: number;
   colorEbc?: number;
   moistureContentPct?: number;
   diastaticPowerLintner?: number;
 
-  // --- Honey ---
   sugarContentBrix?: number;
 
-  // --- Hops ---
   alphaAcidPct?: number;
   boilTimeMinutes?: number;
 
-  // --- Yeast ---
   alcoholTolerancePct?: number;
   attenuationPct?: number;
   tempMinC?: number;
   tempMaxC?: number;
   nitrogenDemand?: 'Low' | 'Medium' | 'High' | 'Very High';
 
-  // --- Additive ---
   additiveType?: AdditiveType;
   nutrientRole?: string;
   additionStage?: string;
@@ -55,7 +50,6 @@ export interface RecipeIngredientReference {
   dosagePerGramYeast?: number;
   dosagePer10Liters?: number;
 
-  // --- Water Profile (ppm) ---
   calciumPpm?: number;
   magnesiumPpm?: number;
   sodiumPpm?: number;
@@ -110,6 +104,14 @@ export interface RecipeFork {
   target_original_gravity: number;
 }
 
+export interface WizardData {
+  wizardStyle: string;
+  wizardSweetness: string;
+  wizardHoney: string;
+  isSafeBacksweetening: boolean;
+  isColdCrashEnabled: boolean;
+}
+
 export interface Recipe {
   id: UUID;
   breweryId: UUID;
@@ -126,6 +128,7 @@ export interface Recipe {
   ingredients: RecipeIngredientReference[];
   steps: RecipeStep[];
   targetCurves?: IdealTargetCurves;
+  wizardData?: WizardData;
   createdAt: string;
   updatedAt: string;
   createdBy: UUID;
